@@ -81,12 +81,17 @@ export async function fetchCloudShare(slugStr: string, kind: 'single' | 'list'):
   if (!s || s.kind !== kind) return null
   return {
     id: s.id, slug: s.slug, kind: s.kind, title: s.title, ownerName: s.owner_display_name ?? '',
-    items: items.map((i) => ({
-      clientId: '', placeName: i.name, area: i.area ?? undefined, rating: i.rating ?? undefined,
-      budget: i.budget != null ? Number(i.budget) : undefined, reason: i.note_public ?? undefined,
-      tags: i.tags ?? undefined, coverUri: i.cover_url ?? undefined,
-      coordHidden: i.coord_precision === 'hidden',
-    })),
+    items: items.map((raw: any) => {
+      // public_share_read 返回 share_items 行：{id, item:{...白名单字段}, sort_order}
+      // （item 为 jsonb 列，2026-09-04 匿名页端到端实测发现映射错位）；兼容扁平结构。
+      const i = raw?.item ?? raw
+      return {
+        clientId: '', placeName: i.name, area: i.area ?? undefined, rating: i.rating ?? undefined,
+        budget: i.budget != null ? Number(i.budget) : undefined, reason: i.note_public ?? undefined,
+        tags: i.tags ?? undefined, coverUri: i.cover_url ?? undefined,
+        coordHidden: i.coord_precision === 'hidden',
+      }
+    }),
     status: 'active', createdAt: s.created_at,
   }
 }

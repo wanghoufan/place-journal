@@ -103,8 +103,11 @@ export default function AiConfirm() {
         takenAt: now,
       }))
       entry.coverMediaId = media[0]?.id
-      for (const m of media) await repo.saveMedia(m)
+      // 先 entry 后 media（2026-09-04 实测修复）：outbox 按入队序推送，若 media 在前，
+      // 首轮同步必吃一次 media_entry_owner_fk 失败、等下轮才自愈。entry 在前则首轮
+      // 一次通过；封面此轮以 null 上云，media 上传成功后由 sync.ts 封面回填恢复链接。
       await repo.saveEntry(entry)
+      for (const m of media) await repo.saveMedia(m)
       clearDraft()
       await syncOnce().catch(() => {}) // 立即尝试同步；失败保留 local 状态可重试
       nav(`/entry/${entryId}`, { replace: true })

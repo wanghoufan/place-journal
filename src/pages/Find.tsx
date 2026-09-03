@@ -66,14 +66,14 @@ export default function Find() {
           ))}
         </div>
 
-        {/* 已解析条件 */}
+        {/* 已解析条件（同名标签去重展示：防止同名不同 id 的标签重复成对出现） */}
         {(parsed.areaTagIds.length || parsed.typeTagIds.length || parsed.sceneTagIds.length || parsed.maxBudget != null || parsed.minRating != null) ? (
           <div className="flex flex-wrap gap-1.5 text-xs">
             {parsed.maxBudget != null && <span className="chip">预算 ≤ ¥{parsed.maxBudget} ✕</span>}
             {parsed.minRating != null && <span className="chip">{parsed.minRating} 星以上 ✕</span>}
-            {[...parsed.areaTagIds, ...parsed.typeTagIds, ...parsed.sceneTagIds, ...parsed.crowdTagIds].map((id) => (
-              <span key={id} className="chip">{data.tags.find((t) => t.id === id)?.name} ✓</span>
-            ))}
+            {[...new Set([...parsed.areaTagIds, ...parsed.typeTagIds, ...parsed.sceneTagIds, ...parsed.crowdTagIds]
+              .map((id) => data.tags.find((t) => t.id === id)?.name).filter(Boolean))]
+              .map((name) => <span key={name} className="chip">{name} ✓</span>)}
           </div>
         ) : null}
 

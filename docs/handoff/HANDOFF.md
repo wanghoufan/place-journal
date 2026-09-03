@@ -1,4 +1,4 @@
-# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-03 快照（L2 通过 + 标签修复后收工）
+# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-04 快照（ENV-1 Storage 实测通过 + 管理员复审关闭后收工）
 
 > 用途：新智能体接续恢复开发的**唯一入口文档**。先读本文，再按「必读文档」顺序补齐上下文。
 > 项目路径：`/Users/zzymima0000/Developer/coding/1.Active/ing 丨0831个人打卡小工具 MACMINI GL`
@@ -10,7 +10,7 @@
 
 ---
 
-## 0. 2026-09-03 收工快照（最新状态，先读这里）
+## 0. 2026-09-04 收工快照（最新状态，先读这里）
 
 ### 0.1 当前工作进展
 
@@ -28,15 +28,18 @@
 | QA 基线 V0.2 | ✅ 已执行 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；整轮回归已完成见下 |
 | 第二轮 QA（V0.2 整轮回归） | ✅ **QA_V02_PASS（25/25）** | 报告 [docs/qa/QA-REPORT丨V0.2.md](docs/qa/QA-REPORT丨V0.2.md)（含开发侧后处理附录）；K1 滚动**未复现**（D1–D5 全过）、K2 T7/T8 **实证通过**；A 编辑 6/6 |
 | QA 后修复（第二轮） | ✅ 已实测 | ENV-2：`ensurePlacesInCloud` + `sweepDirtyRows` 自愈（万绿园 place+2 entry 实测上云）；ENV-1 连带：封面置空推送/回填、分享快照尽力而为、revoke 幂等、media ≥5 次放弃标 failed；OBS-1：toShareItem 补 tags。**全经 CDP 实测：outbox 清零、脏行 0** |
-| 遗留环境项 | ⏳ 待管理员 | ENV-1：两个 Storage bucket（media-private/media-share）未创建，属 0003 pending 冻结范围 → 已列入管理员收口材料请求项 |
+| 遗留环境项 | ✅ **ENV-1 全链闭环（2026-09-04）** | 两桶（`habit-tracker-media-private`/`habit-tracker-media-share`）已按 [0003](/Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0003_storage_buckets.pending.sql) 上线；真登录 UI 实测 9 项全过：私有桶上传（canvas 压缩 558KB→display 169KB+thumb 25KB，路径 `owner/place/media/`）、本人签名 URL 读 200、**匿名读 400**、分享封面（slug `a3r3ppfnenp3dx4b`）**匿名 200**、匿名 RPC 快照白名单无泄漏、6.3MB→**413**、text/plain→**415**、png 正例 200（测后已删）、匿名写 403、越权写他人目录 403。**管理员已复审通过，ENV-1 关闭**。云端保留 1 条真实记录（绿野书屋）+ 1 个活跃分享（验收数据，可复用）。实测报告已落盘（见 0.1「ENV1 实测报告」行） |
+| outbox 时序修复 | ✅ 已回归（2026-09-04） | `src/pages/AiConfirm.tsx` 先 `saveEntry` 后 `saveMedia`；逐秒轮询 outbox 证据：入队序正确→entry 先推成功→media 一次通过 synced→封面回填入队→清零，全程零错误；云端复核 `revision=2` + `cover_media_id` 回填 |
+| 匿名分享页 bug 修复 | ✅ 已修复+实测（2026-09-04） | `src/lib/shares.ts fetchCloudShare`：RPC items 为嵌套结构（item jsonb 列），原按扁平读致匿名访客分享页丢字段（无店名/封面，`📍 undefined`）。修复解嵌套；无痕视角实测封面（公开桶 640px）+字段完整渲染，tsc 通过 |
+| ENV1 实测报告 | ✅ 已落盘 | [docs/db/ENV1-实测记录丨2026-09-04.md](docs/db/ENV1-实测记录丨2026-09-04.md)（9 项数据 + 截图 4 张于 docs/db/env1-evidence/）；收口清单 ENV-1 行已更新 ✅ |
 | 滚动异常 K1 | ✅ 未复现 | QA D1–D5 全过（含 1661px 长页/相册横滑/键盘）；用户如再遇，按基线 §5-D 固化步骤报修 |
 
 ### 0.2 下一步任务（按优先级）
 
-1. ~~QA 第二轮~~ ✅ QA_V02_PASS（25/25）；开发侧后处理完成（见报告附录），全部 CDP 实测。
-2. **管理员发布后收口核对（当前最优先）**：收口材料已生成——见 `docs/db/送审材料清单丨habit_tracker丨发布后收口核对.md`（含 S1 线上核对 + S2 验证 + L2/QA 证据 + ENV-1 bucket 创建请求）。交用户转送管理员终核；通过即数据库治理全链闭环。
-3. **可选/后续**：分享链路快照级实测（OBS-1 修复后重新生成一次分享，确认标签 chip 显示）；Storage/Realtime（`0002_storage_realtime.pending.sql`）冻结待平台规则（bucket 创建请求已并入收口材料）；Docker 化等用户授权。
-4. QA/验收 Chrome 实例（/tmp/l2-acceptance-chrome，CDP 9334，已登录）保留可复用；确认不用后关闭。
+1. ~~ENV1 实测报告落盘~~ ✅ 2026-09-04 完成（含截图 4 张）；~~Chrome 环境修复~~ ✅（优雅退出 + 清 IDB 目录后恢复）；~~outbox 修复回归~~ ✅ PASS；~~清单 ENV-1 状态~~ ✅ 已更新。
+2. **git commit 待授权**：工作区有 3 个未提交改动（`src/pages/AiConfirm.tsx` outbox 时序、`src/lib/shares.ts` 匿名映射修复、docs 新增实测报告+截图）；需用户明确授权后盘点提交（push 需二次确认）。
+3. **可选/后续**：真 Key 联调（腾讯 ASR/大模型/高德，需用户确认 Key 与环境）；Docker/Vercel 部署待授权。
+4. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩
 
@@ -47,6 +50,7 @@
 5. **单设备约束**：不为双设备/并发场景做开发或验收；同步协议里的冲突处理只作数据安全兜底。
 6. **验证纪律**：云端写入验收以 REST 回执/云端直读为准，页面显示≠同步成功；RLS 验证必须用 authenticated/anon 角色（superuser 绕过 RLS）。
 7. **prompt_manager 是相邻项目**：共用 Supabase 但互不归属；本项目的 bug 不要顺手改它（2026-09-03 曾发生两项目交叉混淆，用户已叫停）。
+8. **Chrome 验收自动化坑（2026-09-04）**：QA Chrome 启动参数 `--user-data-dir=/tmp/chrome-cdp-profile --remote-debugging-port=9334`；TRAE 沙箱会拦 Chrome 的系统访问（Crashpad/Keychain），Chrome 相关命令需 `dangerouslyDisableSandbox`；**强杀（pkill -9）Chrome 会挂死该 profile 的 IndexedDB**（`ensureSeeded` 永不落地 → 应用白屏且零 console 报错），退出尽量走优雅路径；Google OAuth 登录不得代输凭据，必须用户亲自完成；复用同一 profile 免重复登录。
 
 ---
 
