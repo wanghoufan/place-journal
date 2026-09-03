@@ -30,7 +30,7 @@
 1. ✅ **QA 复核标签修复已完成**（TAG_FIX_PASS，6/6 用例全过；2026-09-03 18:00）；报告两项遗留已修复（`ensureTagsInCloud` 递归展开父链 + 父先于叶推送；`upsert_tags` 全量推送按父链深度排序，outbox 不再被父链卡批。tsc 通过；均晚于 QA 实测，下次联网同步顺带观察含父链标签即可）。
 2. **管理员发布后收口核对**：准备收口材料清单（S1 线上核对 + S2 Expose 验证 + L2_PASS 证据路径），写入项目 `docs/db/` 交用户转送管理员终核；管理员确认后数据库治理全链闭环。
 3. **业务项目 git commit**（等用户确认后执行；push 需二次确认）。
-4. **可选/后续**：分享链路实测（单设备内即可做）；**产品候选优化——「编辑已有记录」UI 缺失**（QA 报告遗留事项 3：Gallery/EntryDetail/PlaceDetail/AiConfirm 均无编辑入口，用户只能删除重建，是否要做等用户决策）；Storage/Realtime（`0002_storage_realtime.pending.sql`）仍冻结，须先过平台规则；Docker 化（`Services/personal-checkin/` 未创建，等用户授权）。
+4. **可选/后续**：~~「编辑已有记录」UI 缺失~~ ✅ **已实现**（2026-09-03：EntryDetail 详情页新增「编辑」按钮——评分/日期/人均/感受/公开理由/标签全部可改，保存走 repo.saveEntry 自动 revision+1 + 入 outbox 云同步；tsc+build 通过）；分享链路实测（单设备内即可做）；Storage/Realtime（`0002_storage_realtime.pending.sql`）仍冻结，须先过平台规则；Docker 化（`Services/personal-checkin/` 未创建，等用户授权）。
 5. QA/验收用的 Chrome 实例（`/tmp/l2-acceptance-chrome`，端口 9334）确认不用后关闭；如介意 3100 页面 URL 残留 token：Dashboard → Auth → Users → 该用户 → Sign out all sessions。
 
 ### 0.3 注意事项及相关规矩

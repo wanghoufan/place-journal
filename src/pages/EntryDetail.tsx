@@ -1,4 +1,4 @@
-// 记录详情：多图相册、封面切换、公开/私密笔记、标签、分享入口（方案 3.2）
+// 记录详情：多图相册、封面切换、公开/私密笔记、标签、分享入口（方案 3.2）+ 编辑已有记录（2026-09-03）
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet } from '../components/ui'
@@ -13,13 +13,46 @@ export default function EntryDetail() {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareLink, setShareLink] = useState<string | null>(null)
   const [copied, setCopied] = useState('')
+  // 编辑态：仅覆盖可编辑字段（地点归属/照片/摘要不在此改）
+  const [editing, setEditing] = useState(false)
+  const [fRating, setFRating] = useState<number | undefined>()
+  const [fDate, setFDate] = useState('')
+  const [fBudget, setFBudget] = useState<number | undefined>()
+  const [fTranscript, setFTranscript] = useState('')
+  const [fNotePublic, setFNotePublic] = useState('')
+  const [fTagIds, setFTagIds] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
   if (!data) return null
   const entry = data.entries.find((e) => e.id === id)
   if (!entry) return <div className="p-8 text-center text-inkmuted">记录不存在或已被删除。<Link to="/" className="underline text-terra">回画廊</Link></div>
   const place = data.places.find((p) => p.id === entry.placeId)
   const media = data.media.filter((m) => m.entryId === entry.id).sort((a, b) => a.order - b.order)
   const tagNames = entry.tagIds.map((tid) => data.tags.find((t) => t.id === tid)).filter(Boolean)
+  // 仅叶子标签可选（父标签是分组容器，与 AiConfirm 口径一致）
+  const selectableTags = data.tags.filter((t) => !data.tags.some((x) => x.parentId === t.id))
 
+  function startEdit() {
+    if (!entry) return
+    setFRating(entry.rating)
+    setFDate(entry.visitDate)
+    setFBudget(entry.budget)
+    setFTranscript(entry.transcript ?? '')
+    setFNotePublic(entry.notePublic ?? '')
+    setFTagIds([...entry.tagIds])
+    setEditing(true)
+  }
+  async function saveEdit() {
+    if (!entry || saving) return
+    setSaving(true)
+    try {
+      await repo.saveEntry({
+        ...entry, rating: fRating, visitDate: fDate || entry.visitDate, budget: fBudget,
+        transcript: fTranscript || undefined, notePublic: fNotePublic || undefined, tagIds: fTagIds,
+        updatedAt: new Date().toISOString(),
+      })
+      setEditing(false)
+    } finally { setSaving(false) }
+  }
   async function setCover(m: MediaItem) {
     await repo.saveEntry({ ...entry!, coverMediaId: m.id, updatedAt: new Date().toISOString() })
   }
@@ -44,49 +77,96 @@ export default function EntryDetail() {
         </div>
         <p className="text-xs text-inkmuted">点击任意照片可设为封面（共 {media.length} 张）</p>
 
-        <div className="card-paper p-4 space-y-1">
-          <div className="flex items-center justify-between">
-            <button className="font-bold text-lg text-terra" onClick={() => place && nav(`/place/${place.id}`)}>{place?.name}</button>
-            <span className="text-sm text-inkmuted flex items-center gap-1.5">{entry.visitDate.replace(/-/g, ' . ')} <SyncDot status={entry.sync} /></span>
-          </div>
-          {place?.area && <p className="text-sm text-inkmuted">📍 {place.area}</p>}
-          <div className="flex items-center justify-between pt-1">
-            <Stars value={entry.rating} />
-            <span className="text-sm">{entry.budget != null ? <>人均 <b className="text-terra">¥{entry.budget}</b></> : '—'}</span>
-          </div>
-        </div>
-
-        {/* 标签 */}
-        {tagNames.length > 0 && (
-          <div className="card-paper p-4">
-            <p className="text-sm font-bold mb-2">标签</p>
-            <div className="flex flex-wrap gap-1.5">
-              {tagNames.map((t) => <span key={t!.id} className="tag-chip">{t!.name}</span>)}
+        {editing ? (
+          <>
+            {/* 编辑表单：评分/日期/人均/感受/公开理由/标签 */}
+            <div className="card-paper p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold">评分</span>
+                <Stars value={fRating} size={26} editable onChange={setFRating} />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-bold shrink-0">到访日期</span>
+                <input type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} className="field-input" />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-bold shrink-0">人均 ¥</span>
+                <input type="number" inputMode="numeric" value={fBudget ?? ''} onChange={(e) => setFBudget(e.target.value ? Number(e.target.value) : undefined)} className="field-input w-28 text-right" placeholder="—" />
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-1.5">我的感受（私密）</p>
+                <textarea className="field-input min-h-[70px]" value={fTranscript} onChange={(e) => setFTranscript(e.target.value)} />
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-1.5">公开推荐理由（分享时展示）</p>
+                <textarea className="field-input min-h-[60px]" value={fNotePublic} onChange={(e) => setFNotePublic(e.target.value)} />
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-2">标签</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectableTags.map((t) => (
+                    <button key={t.id} type="button"
+                      onClick={() => setFTagIds((ids) => ids.includes(t.id) ? ids.filter((x) => x !== t.id) : [...ids, t.id])}
+                      className={`px-2.5 py-1 rounded-full text-xs border ${fTagIds.includes(t.id) ? 'bg-terra text-white border-terra' : 'bg-card border-line text-inkmuted'}`}>
+                      {t.parentId ? '└ ' : ''}{t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button className="btn-primary flex-1 py-3" disabled={saving} onClick={saveEdit}>{saving ? '保存中…' : '保存修改'}</button>
+                <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" disabled={saving} onClick={() => setEditing(false)}>取消</button>
+              </div>
             </div>
-          </div>
+          </>
+        ) : (
+          <>
+            <div className="card-paper p-4 space-y-1">
+              <div className="flex items-center justify-between">
+                <button className="font-bold text-lg text-terra" onClick={() => place && nav(`/place/${place.id}`)}>{place?.name}</button>
+                <span className="text-sm text-inkmuted flex items-center gap-1.5">{entry.visitDate.replace(/-/g, ' . ')} <SyncDot status={entry.sync} /></span>
+              </div>
+              {place?.area && <p className="text-sm text-inkmuted">📍 {place.area}</p>}
+              <div className="flex items-center justify-between pt-1">
+                <Stars value={entry.rating} />
+                <span className="text-sm">{entry.budget != null ? <>人均 <b className="text-terra">¥{entry.budget}</b></> : '—'}</span>
+              </div>
+            </div>
+
+            {/* 标签 */}
+            {tagNames.length > 0 && (
+              <div className="card-paper p-4">
+                <p className="text-sm font-bold mb-2">标签</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {tagNames.map((t) => <span key={t!.id} className="tag-chip">{t!.name}</span>)}
+                </div>
+              </div>
+            )}
+
+            {/* 摘要与笔记 */}
+            <div className="card-paper p-4 space-y-3">
+              {entry.summary && <p className="border-l-4 border-terra/70 pl-3 font-bold">{entry.summary}</p>}
+              {entry.transcript && (
+                <div>
+                  <p className="text-xs text-inkmuted mb-1">我的感受</p>
+                  <p className="text-[15px] leading-relaxed">{entry.transcript}</p>
+                </div>
+              )}
+              {entry.notePublic && (
+                <div>
+                  <p className="text-xs text-inkmuted mb-1">公开推荐理由（分享时展示）</p>
+                  <p className="text-[15px] leading-relaxed">{entry.notePublic}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button className="btn-primary flex-1 py-3" onClick={doShare}>分享这个地点</button>
+              <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" onClick={startEdit}>编辑</button>
+              <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" onClick={async () => { await repo.deleteEntry(entry.id); nav('/', { replace: true }) }}>删除</button>
+            </div>
+          </>
         )}
-
-        {/* 摘要与笔记 */}
-        <div className="card-paper p-4 space-y-3">
-          {entry.summary && <p className="border-l-4 border-terra/70 pl-3 font-bold">{entry.summary}</p>}
-          {entry.transcript && (
-            <div>
-              <p className="text-xs text-inkmuted mb-1">我的感受</p>
-              <p className="text-[15px] leading-relaxed">{entry.transcript}</p>
-            </div>
-          )}
-          {entry.notePublic && (
-            <div>
-              <p className="text-xs text-inkmuted mb-1">公开推荐理由（分享时展示）</p>
-              <p className="text-[15px] leading-relaxed">{entry.notePublic}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3">
-          <button className="btn-primary flex-1 py-3" onClick={doShare}>分享这个地点</button>
-          <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" onClick={async () => { await repo.deleteEntry(entry.id); nav('/', { replace: true }) }}>删除</button>
-        </div>
       </div>
 
       <Sheet open={shareOpen} onClose={() => setShareOpen(false)} title="分享">
