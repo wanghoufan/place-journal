@@ -11,6 +11,7 @@
 3. **L2 云端写入验收**：`L2_PASS`（真登录 → 写入回执 → 清登录态重读 7/7；RLS 按用户隔离实证）。
 4. **QA 整轮回归**：`QA_V02_PASS`（25/25，基线 19eb499）；随后开发侧对 QA 环境项的应用层修复全部经真实 Chrome CDP 实测（万绿园 place+entries 补推上云、分享快照上云、outbox 清零、脏行 0）。无 Schema 变更，均为前端 sync 引擎修复。
 5. **请求项（ENV-1，属 0002 冻结范围）**：创建两个 Storage bucket——`habit-tracker-media-private`（私有，媒体原图/缩略图）与 `habit-tracker-media-share`（公开，分享封面缩略图），并按 0002 pending 文件中的 bucket 配置与策略执行；这是当前唯一阻塞项（媒体图片与分享封面上云）。Realtime 其余部分维持冻结，待平台规则明确。
+   - **更新（2026-09-03 晚）**：管理员已出 Storage 拆分草案并完成修正；项目方已确认取值（公开桶 2MB/png-jpeg-webp-gif 够用——公开桶仅承载 640px q0.7 缩略图；私有不设限合理——原图永不上云且展示图 2560px 封顶）。**正式送审版已出：《0003_storage_buckets.pending.sql》**（SQL 正文与草案逐字节一致，头部补项目方确认记录），待管理员增量复审（PG16 隔离复跑 A1–A6）+ 用户解冻批准后执行。
 6. **平台侧提醒**：平台仓库另存有 prompt_manager 项目未推送 Migration `20260901163555`（原样保留），任何 `db push` 会连带推送，需 prompt_manager 项目侧决策，与本项目无关。
 
 ## 二、材料绝对路径
@@ -26,7 +27,8 @@
 ### 治理仓（alw丨数据库管理专家，权威版本）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/数据写入方案丨个人打卡小工具（habit_tracker）丨V1.1.md（§13.1 各阶段记录）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0001_init.sql（已发布版本）
-- /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0002_storage_realtime.pending.sql（bucket 创建请求的配置来源）
+- /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0002_storage_realtime.pending.sql（Realtime 部分继续冻结；Storage 部分已拆出至 0003）
+- /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0003_storage_buckets.pending.sql（**ENV-1 正式送审版**，项目方已确认，待增量复审+解冻批准）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/verify_result.txt（隔离验证 54/54）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/平台丨共享 Supabase 数据库/docs/DATABASE_CATALOG.md（habit_tracker 台账已登记）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/平台丨共享 Supabase 数据库/supabase/migrations/（发布仓库，prompt_manager 未推送迁移在此，勿连带）
@@ -41,5 +43,5 @@
 | L2 写入验收 | ✅ L2_PASS（2026-09-03） |
 | QA V0.2 整轮回归 + 开发侧后处理 | ✅ QA_V02_PASS（2026-09-03） |
 | **发布后收口核对（本清单）** | ⏳ 待管理员终核 |
-| ENV-1 bucket 创建（0002 部分） | ⏳ 待管理员批准执行 |
+| ENV-1 bucket 创建（0003_storage_buckets.pending.sql） | ⏳ 项目方已确认取值，待管理员增量复审 + 用户解冻批准 |
 | Realtime 其余 / Docker 化 | ⏳ 冻结（待平台规则 / 用户授权） |
