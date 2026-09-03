@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink font-hand;
+  background-image: radial-gradient(rgba(120, 90, 50, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* 手账风标题：下方陶土色手绘感短线 */
+.journal-title {
+  @apply relative inline-block text-[28px] leading-tight font-bold tracking-wide;
+}
+.journal-title::after {
+  content: '';
+  position: absolute;
+  left: 2px; right: -6px; bottom: -6px;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(198, 93, 33, 0.55), rgba(198, 93, 33, 0.18));
+  transform: rotate(-0.6deg);
+}
+
+.card-paper {
+  @apply bg-card rounded-2xl shadow-card border border-line/60;
+}
+
+.btn-primary {
+  @apply bg-terra text-[#fff7ee] rounded-full font-bold tracking-wider shadow-pop active:translate-y-px transition;
+}
+.btn-primary:disabled { @apply opacity-40 shadow-none; }
+
+.chip {
+  @apply inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[13px] bg-carddeep text-ink border border-line/70 whitespace-nowrap;
+}
+.chip-active { @apply bg-terra text-[#fff7ee] border-terra; }
+
+.tag-chip { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-terrasoft text-terradeep; }
+
+.field-input {
+  @apply w-full bg-card rounded-xl border border-line px-3 py-2.5 text-[15px] outline-none focus:border-terra/60 placeholder:text-inkmuted/60;
+}
+
+.safe-bottom { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+@keyframes pulse-rec { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.rec-pulse { animation: pulse-rec 1.2s ease-in-out infinite; }

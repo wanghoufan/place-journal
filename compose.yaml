@@ -1,0 +1,33 @@
+# 个人打卡小工具 · Mac Mini 自托管（Docker 规范 V1.0）
+# project_slug = personal-checkin；同一标识贯穿 Services/DockerData/DockerBackups。
+# 部署副本位置：/Users/zzymima0000/Services/personal-checkin/
+# 构建/启动（--env-file 同时供构建期 VITE_* 与运行期私密变量）：
+#   docker compose --env-file docker/.env.local build
+#   docker compose --env-file docker/.env.local up -d
+name: ${COMPOSE_PROJECT_NAME:-personal-checkin}
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        # 构建期公开变量：只放 URL + publishable key，绝不放服务端私密 Key
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
+        VITE_AMAP_KEY: ${VITE_AMAP_KEY:-}
+        VITE_AMAP_SECURITY_JSCODE: ${VITE_AMAP_SECURITY_JSCODE:-}
+    image: personal-checkin:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - docker/.env.local   # 仅存在于部署副本；模板见 docker/env.template，绝不提交 Git
+    environment:
+      PORT: 3000
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-}
+    ports:
+      - "${APP_PORT:-8081}:3000"
+    # 本应用无服务端业务文件、无本地数据库容器：
+    # - 业务数据在浏览器 IndexedDB + Supabase 云端主库（数据库规范 V1.2 §3）
+    # - Supabase 备份由宿主机导出至 DockerBackups/personal-checkin/，不经容器写入
+    # 因此暂无 Named Volume 与 DockerData bind mount。未来若新增文件持久化，
+    # 必须以 bind mount 挂到 DockerData/personal-checkin/ 的明确子目录，
+    # 且宿主机目录需预先存在（规范 V1.0 §4.3）。

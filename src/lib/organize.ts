@@ -1,0 +1,76 @@
+// 客户端 AI 适配：优先调用服务端 /api/*（密钥只存在服务端）；
+// 服务端未配置或失败时，降级为「本地推测」并明确标注，用户始终在确认页手动修正。
+import type { AiOrganizeResult } from './types'
+import { toWav16k } from './audio'
+
+export interface OrganizeInput {
+  transcript: string
+  placeName?: string
+  area?: string
+  tags: { id: string; name: string; dimension: string }[]
+}
+
+export async function transcribe(blob: Blob): Promise<{ ok: true; text: string } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
+  try {
+    const wav = await toWav16k(blob)
+    const fd = new FormData()
+    fd.append('audio', wav, 'speech.wav')
+    const r = await fetch('/api/transcribe', { method: 'POST', body: fd })
+    if ((r.headers.get('content-type') ?? '').includes('text/html') || r.status === 404) return { ok: false, reason: 'not_configured' }
+    const j = await r.json().catch(() => ({}))
+    if (r.status === 501) return { ok: false, reason: 'not_configured' }
+    if (!r.ok || !j.ok) return { ok: false, reason: 'error', message: j.error || `转写失败(${r.status})` }
+    return { ok: true, text: j.text }
+  } catch (e: any) {
+    return { ok: false, reason: 'error', message: e?.message || '转写失败' }
+  }
+}
+
+export async function organize(input: OrganizeInput): Promise<{ ok: true; result: AiOrganizeResult; mock: boolean } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
+  try {
+    const r = await fetch('/api/ai-organize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if ((r.headers.get('content-type') ?? '').includes('text/html') || r.status === 404) return { ok: false, reason: 'not_configured' }
+    const j = await r.json().catch(() => ({}))
+    if (r.status === 501 || r.status === 404) return { ok: false, reason: 'not_configured' }
+    if (!r.ok || !j.ok) return { ok: false, reason: 'error', message: j.error || `AI 整理失败(${r.status})` }
+    return { ok: true, result: j.result as AiOrganizeResult, mock: false }
+  } catch (e: any) {
+    return { ok: false, reason: 'error', message: e?.message || 'AI 整理失败' }
+  }
+}
+
+// ---- 未配置时的本地推测（明确标注，仅供参考，全部可改）----
+const CN_DIGIT: Record<string, number> = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 }
+export function cnToNumber(s: string): number | undefined {
+  const t = s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248))
+  if (/^\d+$/.test(t)) return Number(t)
+  if (t.includes('百')) {
+    const [h, rest] = t.split('百')
+    const hundreds = (CN_DIGIT[h] ?? 0) * 100
+    return hundreds + (rest ? (cnToNumber(rest) ?? 0) : 0)
+  }
+  if (t.includes('十')) {
+    const [tens, ones] = t.split('十')
+    return (tens ? CN_DIGIT[tens] ?? 1 : 1) * 10 + (ones ? CN_DIGIT[ones] ?? 0 : 0)
+  }
+  if (t.length === 1 && CN_DIGIT[t] != null) return CN_DIGIT[t]
+  return undefined
+}
+
+export function localHeuristics(input: OrganizeInput): AiOrganizeResult {
+  const t = input.transcript || ''
+  const result: AiOrganizeResult = { matched_tags: [], unmatched_suggestions: [], confidence: 0.2 }
+  const budget = t.match(/(?:人均|预算|消费|花了?)\s*([0-9０-９一二三四五六七八九十百]+)/)
+  if (budget) result.budget = cnToNumber(budget[1])
+  const star = t.match(/(?:给|打|评)?\s*([0-9０-９一二三四五六七八九])\s*星/)
+  if (star) result.score = Math.min(5, Math.max(1, cnToNumber(star[1]) ?? 0))
+  for (const tag of input.tags) {
+    if (tag.name.length >= 2 && t.includes(tag.name)) result.matched_tags!.push(tag.name)
+  }
+  result.summary = t.slice(0, 40)
+  return result
+}
