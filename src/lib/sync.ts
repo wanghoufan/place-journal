@@ -7,7 +7,7 @@
 //     unique (snapshot_id, client_id)，重试不产生重复行。
 //   - pullRemote：仅「本机该行无未确认写入（sync === 'synced'）」时按
 //     revision/updated_at 刷新；冲突行（conflict）与未确认行一律不覆盖。
-import { repo, outboxAll, outboxRemove, outboxFail, getMeta, setMeta, bulkPut } from './idb'
+import { repo, outboxAll, outboxRemove, outboxFail, enqueue, getMeta, setMeta, bulkPut } from './idb'
 import { cloudConfigured } from './env'
 import { supabase, currentUserId, getSession, table, DB_SCHEMA } from './supabase'
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
@@ -158,10 +158,38 @@ async function ensureTagsInCloud(sb: SupabaseClient, owner: string, neededTagIds
   }
 }
 
+// 确保条目归属地点已在云端（QA V0.2 ENV-2）：entries_place_owner_fk 要求 place 行
+// 先存在。演示地点被选作新记录的归属时，不补推 place 会让该 entry 永远推不上去
+// （报 place_owner_fk），与 ensureTagsInCloud 对称。
+async function ensurePlacesInCloud(sb: SupabaseClient, owner: string, placeId: string): Promise<void> {
+  const p = (await repo.places()).find((x) => x.id === placeId)
+  if (!p) return
+  const { data: remote } = await table(sb, 'places').select('id').eq('id', placeId)
+  if (remote && remote.length) return
+  const r = await pushEntity(sb, 'places', placeRow(p, owner), p.baseRevision)
+  if (r.ok) await bulkPut('places', [{ ...p, revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }])
+  else if (r.conflict !== undefined) await registerConflict('place', p.id, p.baseRevision, r.conflict, { ...p }, 'places')
+  else throw new Error(r.error ?? 'unknown')
+}
+
+// 自愈清扫（QA V0.2 ENV-2 后续）：硬失败等曾把行留在 sync='local'/'failed' 且已不在
+// outbox 的状态——这些行会永远失去同步机会。每轮同步前把「本地脏但不在队列」的行
+// 重新入队；upsert_entry 分支内的 ensurePlacesInCloud 会顺带补推缺失的归属地点。
+async function sweepDirtyRows(): Promise<void> {
+  const queued = new Set((await outboxAll()).map((r) => (r.op.kind === 'upsert_tags' ? 'upsert_tags:' : `${r.op.kind}:${r.op.id}`)))
+  for (const p of await repo.places()) {
+    if ((p.sync === 'local' || p.sync === 'failed') && !queued.has(`upsert_place:${p.id}`)) await enqueue({ kind: 'upsert_place', id: p.id })
+  }
+  for (const e of await repo.entries()) {
+    if ((e.sync === 'local' || e.sync === 'failed') && !queued.has(`upsert_entry:${e.id}`)) await enqueue({ kind: 'upsert_entry', id: e.id })
+  }
+}
+
 export async function syncOnce(): Promise<{ done: number; failed: number }> {
   if (!cloudConfigured() || !(await getSession())) return { done: 0, failed: 0 }
   const owner = await currentUserId()
   const sb = supabase()
+  await sweepDirtyRows()
   const rows = (await outboxAll()).sort((a, b) => (a.seq! - b.seq!))
   let done = 0, failed = 0
   lastSyncError = ''
@@ -182,7 +210,17 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
       } else if (op.kind === 'upsert_entry') {
         const e = (await repo.entries()).find((x) => x.id === op.id)
         if (e) {
-          const r = await pushEntity(sb, 'entries', entryRow(e, owner), e.baseRevision)
+          // QA V0.2 ENV-2：归属地点缺失时先补推 place，否则 entries_place_owner_fk 拦死
+          await ensurePlacesInCloud(sb, owner, e.placeId)
+          // QA V0.2 ENV-1 连带：封面 media 未上云（如 Storage bucket 未创建）时
+          // entries_cover_owner_fk 会拦掉整条 entry。此时先置空「云端封面」推送
+          // （本地封面不动，绝不丢数据），待 upload_media 成功后回填（见该分支）。
+          const entryPayload = entryRow(e, owner)
+          if (entryPayload.cover_media_id) {
+            const { data: coverRow } = await table(sb, 'media').select('id').eq('id', entryPayload.cover_media_id)
+            if (!coverRow?.length) entryPayload.cover_media_id = null
+          }
+          const r = await pushEntity(sb, 'entries', entryPayload, e.baseRevision)
           if (!r.ok) {
             if (r.conflict !== undefined) { await registerConflict('entry', e.id, e.baseRevision, r.conflict, { ...e }, 'entries'); await outboxRemove(row.seq!); done++; continue }
             throw new Error(r.error)
@@ -265,22 +303,32 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
             throw err
           }
           await bulkPut('media', [{ ...m, remotePath: `${base}/display.jpg`, remoteThumbPath: `${base}/thumb.jpg`, sync: 'synced' as const }])
+          // 封面回填（QA V0.2）：引用此 media 作封面的 entry，此前若因 media 缺席被
+          // 置空云端封面，这里重新入队以恢复链接。
+          for (const en of await repo.entries()) {
+            if (en.coverMediaId === m.id) await enqueue({ kind: 'upsert_entry', id: en.id })
+          }
         }
       } else if (op.kind === 'create_share') {
         const s = (await repo.shares()).find((x) => x.id === op.id)
         if (s && s.status === 'active') {
           // 分享缩略图上传公开桶（仅缩略图；私有原图永远只进私有桶）
           const allMedia = await repo.media()
+          // 封面缩略图上传「尽力而为」（QA V0.2 ENV-1）：bucket 未创建时不应拦掉
+          // 整个快照上云——分享内容本身不依赖封面文件（cover_url 可为 null，
+          // bucket 建好后重新分享/再同步可补）。
           const coverUrls: Record<string, string> = {}
           for (const it of s.items) {
             if (!it.coverMediaId) continue
             const m = allMedia.find((x) => x.id === it.coverMediaId)
             if (!m?.thumb) continue
             const path = `${owner}/${s.id}/${it.clientId}.jpg`
-            const { error } = await sb.storage.from('habit-tracker-media-share').upload(path, m.thumb, { contentType: 'image/jpeg', upsert: true })
-            if (error && !error.message.includes('exists')) throw error
-            const { data } = sb.storage.from('habit-tracker-media-share').getPublicUrl(path)
-            if (data?.publicUrl) coverUrls[it.clientId] = data.publicUrl
+            try {
+              const { error } = await sb.storage.from('habit-tracker-media-share').upload(path, m.thumb, { contentType: 'image/jpeg', upsert: true })
+              if (error && !error.message.includes('exists')) throw error
+              const { data } = sb.storage.from('habit-tracker-media-share').getPublicUrl(path)
+              if (data?.publicUrl) coverUrls[it.clientId] = data.publicUrl
+            } catch { /* 封面上传失败：保持 cover_url=null，快照照常上云 */ }
           }
           const snapshotRow = {
             id: s.id, owner_user_id: owner, slug: s.slug, kind: s.kind, title: s.title,
@@ -309,16 +357,26 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
           }
         }
       } else if (op.kind === 'revoke_share') {
-        const { data, error } = await table(sb, 'share_snapshots')
-          .update({ status: 'revoked' }).eq('slug', op.id).eq('owner_user_id', owner).select('id')
+        const { error } = await table(sb, 'share_snapshots')
+          .update({ status: 'revoked' }).eq('slug', op.id).eq('owner_user_id', owner)
         if (error) throw error
-        if (!data?.length) throw new Error('撤销失败：云端不存在该 slug 的分享（可能已被删除）')
+        // 云端无此 slug = 访客本来就打不开（如快照当初因 ENV-1 未建成上云），
+        // 撤销目的已达成，视为成功，op 正常出队；不再无限重试。
       }
       await outboxRemove(row.seq!)
       done++
     } catch (err: any) {
       lastSyncError = err?.message || String(err)
-      await outboxFail(row.seq!, lastSyncError)
+      // media 上传在环境问题（如 Storage bucket 未创建，QA V0.2 ENV-1）下重试无意义：
+      // 达到上限后放弃出队并标记 sync='failed'；bucket 建好后重新保存记录即可恢复上传。
+      if (row.op.kind === 'upload_media' && (row.attempts ?? 0) >= 5) {
+        await outboxRemove(row.seq!)
+        const mediaId = row.op.kind === 'upload_media' ? row.op.id : ''
+        const m = mediaId ? (await repo.media()).find((x) => x.id === mediaId) : undefined
+        if (m) await bulkPut('media', [{ ...m, sync: 'failed' as const }])
+      } else {
+        await outboxFail(row.seq!, lastSyncError)
+      }
       failed++
       if (failed >= 5) break // 连续失败则退避，避免打爆
     }

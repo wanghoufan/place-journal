@@ -10,10 +10,11 @@ const slug = () => {
   return Array.from(a, (b) => (b % 36).toString(36)).join('')
 }
 
-function toShareItem(entry: Entry, place: Place, media: MediaItem[]): ShareItem {
+function toShareItem(entry: Entry, place: Place, media: MediaItem[], tagNames: string[] = []): ShareItem {
   // 白名单：封面展示图、名称、区域、星级、预算、公开理由、公开标签、（低精度）坐标
   // 绝不包含：原始语音、私密笔记、完整到访历史、未选照片、EXIF、精确坐标
   // clientId：share_items.client_id 稳定幂等键（审查意见 §6 方案 B）
+  // tags（QA V0.2 OBS-1）：标签 chip 属公开字段，补齐填充，分享页才渲染。
   const cover = media.find((m) => m.id === entry.coverMediaId) ?? media.find((m) => m.entryId === entry.id)
   const precision = place.coordPrecision ?? 'exact'
   return {
@@ -25,10 +26,16 @@ function toShareItem(entry: Entry, place: Place, media: MediaItem[]): ShareItem 
     budget: entry.budget,
     reason: entry.notePublic || entry.summary,
     coverUri: cover?.demoUri,
+    tags: tagNames,
     lat: precision === 'exact' || precision === 'approx' ? roundCoord(place.lat) : undefined,
     lng: precision === 'exact' || precision === 'approx' ? roundCoord(place.lng) : undefined,
     coordHidden: precision === 'hidden',
   }
+}
+// entry.tagIds → 标签名（按本地标签库映射，保持选择顺序）
+async function tagNamesOf(entry: Entry): Promise<string[]> {
+  const tags = await repo.tags()
+  return entry.tagIds.map((id) => tags.find((t) => t.id === id)?.name).filter(Boolean) as string[]
 }
 function roundCoord(v?: number) { return v == null ? undefined : Math.round(v * 100) / 100 } // ~1km 精度
 
@@ -37,7 +44,7 @@ export async function createSingleShare(entry: Entry, place: Place, ownerName?: 
   const s: ShareSnapshot = {
     id: crypto.randomUUID?.() ?? String(Date.now()),
     slug: slug(), kind: 'single', title: place.name, ownerName,
-    items: [toShareItem(entry, place, media)],
+    items: [toShareItem(entry, place, media, await tagNamesOf(entry))],
     status: 'active', createdAt: new Date().toISOString(),
   }
   await repo.saveShare(s)
@@ -49,7 +56,7 @@ export async function createListShare(title: string, pairs: { entry: Entry; plac
   const s: ShareSnapshot = {
     id: crypto.randomUUID?.() ?? String(Date.now()),
     slug: slug(), kind: 'list', title, ownerName,
-    items: pairs.map(({ entry, place }) => toShareItem(entry, place, media)),
+    items: await Promise.all(pairs.map(async ({ entry, place }) => toShareItem(entry, place, media, await tagNamesOf(entry)))),
     status: 'active', createdAt: new Date().toISOString(),
   }
   await repo.saveShare(s)

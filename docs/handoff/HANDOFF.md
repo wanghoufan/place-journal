@@ -26,15 +26,17 @@
 | 业务项目 git | ✅ 3 个 commit | `aaa178f` 全量基线 → `19eb499` 编辑功能 → `51b67d2` QA 基线文档；无 remote 未推送（push 需用户二次确认） |
 | 编辑已有记录 | ✅ 已实现+已提交 | EntryDetail「分享/编辑/删除」：评分/日期/人均/感受/公开理由/标签可改（QA 遗留事项 3）；tsc+build 通过，**未经 QA 实测** |
 | QA 基线 V0.2 | ✅ 已制定 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；**第二轮 QA 整轮回归尚未执行** |
-| 滚动异常 K1 | 🔴 用户口头报告 | 部分页面上下滚动出问题，细节未固化；已列入 QA 基线 §5-D 必测，QA 复现后按证据修 |
+| 第二轮 QA（V0.2 整轮回归） | ✅ **QA_V02_PASS（25/25）** | 报告 [docs/qa/QA-REPORT丨V0.2.md](docs/qa/QA-REPORT丨V0.2.md)（含开发侧后处理附录）；K1 滚动**未复现**（D1–D5 全过）、K2 T7/T8 **实证通过**；A 编辑 6/6 |
+| QA 后修复（第二轮） | ✅ 已实测 | ENV-2：`ensurePlacesInCloud` + `sweepDirtyRows` 自愈（万绿园 place+2 entry 实测上云）；ENV-1 连带：封面置空推送/回填、分享快照尽力而为、revoke 幂等、media ≥5 次放弃标 failed；OBS-1：toShareItem 补 tags。**全经 CDP 实测：outbox 清零、脏行 0** |
+| 遗留环境项 | ⏳ 待管理员 | ENV-1：两个 Storage bucket（media-private/media-share）未创建，属 0002 冻结范围 → 已列入管理员收口材料请求项；媒体图/分享封面在 bucket 建好后恢复 |
+| 滚动异常 K1 | ✅ 未复现 | QA D1–D5 全过（含 1661px 长页/相册横滑/键盘）；用户如再遇，按基线 §5-D 固化步骤报修 |
 
 ### 0.2 下一步任务（按优先级）
 
-1. **QA 第二轮整轮回归（V0.2 基线）**：按 `docs/qa/QA-BASELINE丨V0.2.md` §5 全部执行（重点：新编辑功能 §5-A、T7/T8 父链修复实测、K1 滚动问题固化），报告写入 `docs/qa/QA-REPORT丨V0.2.md`，结论 QA_V02_PASS / FAIL。QA 提示词已在 2026-09-03 对话中交付用户（转送 QA 智能体）。
-2. **QA 结果处理**：FAIL → 按报告清单修复（滚动 K1 大概率在此轮）；PASS → 更新 QA 基线「基线版本」列 + 归档。
-3. **管理员发布后收口核对**：准备收口材料清单（S1 线上核对 + S2 Expose 验证 + L2_PASS 证据路径），写入项目 `docs/db/` 送审清单交用户转送管理员终核；通过后数据库治理全链闭环。
-4. **可选/后续**：分享链路实测（单设备内即可做）；Storage/Realtime（`0002_storage_realtime.pending.sql`）仍冻结，须先过平台规则；Docker 化（`Services/personal-checkin/` 未创建，等用户授权）。
-5. QA/验收用的 Chrome 实例（`/tmp/l2-acceptance-chrome`，端口 9334）确认不用后关闭；如介意 3100 页面 URL 残留 token：Dashboard → Auth → Users → 该用户 → Sign out all sessions。
+1. ~~QA 第二轮~~ ✅ QA_V02_PASS（25/25）；开发侧后处理完成（见报告附录），全部 CDP 实测。
+2. **管理员发布后收口核对（当前最优先）**：收口材料已生成——见 `docs/db/送审材料清单丨habit_tracker丨发布后收口核对.md`（含 S1 线上核对 + S2 验证 + L2/QA 证据 + ENV-1 bucket 创建请求）。交用户转送管理员终核；通过即数据库治理全链闭环。
+3. **可选/后续**：分享链路快照级实测（OBS-1 修复后重新生成一次分享，确认标签 chip 显示）；Storage/Realtime（`0002_storage_realtime.pending.sql`）冻结待平台规则（bucket 创建请求已并入收口材料）；Docker 化等用户授权。
+4. QA/验收 Chrome 实例（/tmp/l2-acceptance-chrome，CDP 9334，已登录）保留可复用；确认不用后关闭。
 
 ### 0.3 注意事项及相关规矩
 
