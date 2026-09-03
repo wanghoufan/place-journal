@@ -23,14 +23,17 @@
 | 标签丢失 bug | ✅ **TAG_FIX_PASS**（2026-09-03 18:00 复核通过） | 根因：演示标签从未上云 → entry_tags 外键失败 + pullRemote 硬编码 `tagIds: []` 覆盖本地。修复：`src/lib/sync.ts` 新增 `ensureTagsInCloud` + merge 保留本地 tagIds。QA 6/6 通过（T1–T6 全 PASS）；观察项 T2-B「父链补推」**已修复**（ensureTagsInCloud 沿 parent_id 递归展开整链、父先于叶推送，tsc+build 通过；注意该修复在 QA 通过之后，未做云端实测，下次联网同步观察含父链标签即可）；证据 `docs/acceptance-l2/L2-REPORT.md`「标签同步修复回归验收」section |
 | 单设备定位 | ✅ 用户决定 | **不做双设备/并发/断线重连验收（L3 取消）**；乐观锁与 Mine 页冲突裁决 UI 仅作兜底 |
 | 平台仓库 | ✅ 基线 commit `efddca5` | 无 remote 未推送；prompt_manager 未推送 Migration `20260901163555` 原样保留（任何 db push 会连带推送它，⚠️ 需 prompt_manager 项目决策） |
-| 业务项目 git | ⚠️ 未 commit | 本轮 sync.ts/Mine.tsx/ui.tsx/HANDOFF.md 等改动全部未提交（等用户确认） |
+| 业务项目 git | ✅ 3 个 commit | `aaa178f` 全量基线 → `19eb499` 编辑功能 → `51b67d2` QA 基线文档；无 remote 未推送（push 需用户二次确认） |
+| 编辑已有记录 | ✅ 已实现+已提交 | EntryDetail「分享/编辑/删除」：评分/日期/人均/感受/公开理由/标签可改（QA 遗留事项 3）；tsc+build 通过，**未经 QA 实测** |
+| QA 基线 V0.2 | ✅ 已制定 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；**第二轮 QA 整轮回归尚未执行** |
+| 滚动异常 K1 | 🔴 用户口头报告 | 部分页面上下滚动出问题，细节未固化；已列入 QA 基线 §5-D 必测，QA 复现后按证据修 |
 
 ### 0.2 下一步任务（按优先级）
 
-1. ✅ **QA 复核标签修复已完成**（TAG_FIX_PASS，6/6 用例全过；2026-09-03 18:00）；报告两项遗留已修复（`ensureTagsInCloud` 递归展开父链 + 父先于叶推送；`upsert_tags` 全量推送按父链深度排序，outbox 不再被父链卡批。tsc 通过；均晚于 QA 实测，下次联网同步顺带观察含父链标签即可）。
-2. **管理员发布后收口核对**：准备收口材料清单（S1 线上核对 + S2 Expose 验证 + L2_PASS 证据路径），写入项目 `docs/db/` 交用户转送管理员终核；管理员确认后数据库治理全链闭环。
-3. **业务项目 git commit**（等用户确认后执行；push 需二次确认）。
-4. **可选/后续**：~~「编辑已有记录」UI 缺失~~ ✅ **已实现**（2026-09-03：EntryDetail 详情页新增「编辑」按钮——评分/日期/人均/感受/公开理由/标签全部可改，保存走 repo.saveEntry 自动 revision+1 + 入 outbox 云同步；tsc+build 通过）；分享链路实测（单设备内即可做）；Storage/Realtime（`0002_storage_realtime.pending.sql`）仍冻结，须先过平台规则；Docker 化（`Services/personal-checkin/` 未创建，等用户授权）。
+1. **QA 第二轮整轮回归（V0.2 基线）**：按 `docs/qa/QA-BASELINE丨V0.2.md` §5 全部执行（重点：新编辑功能 §5-A、T7/T8 父链修复实测、K1 滚动问题固化），报告写入 `docs/qa/QA-REPORT丨V0.2.md`，结论 QA_V02_PASS / FAIL。QA 提示词已在 2026-09-03 对话中交付用户（转送 QA 智能体）。
+2. **QA 结果处理**：FAIL → 按报告清单修复（滚动 K1 大概率在此轮）；PASS → 更新 QA 基线「基线版本」列 + 归档。
+3. **管理员发布后收口核对**：准备收口材料清单（S1 线上核对 + S2 Expose 验证 + L2_PASS 证据路径），写入项目 `docs/db/` 送审清单交用户转送管理员终核；通过后数据库治理全链闭环。
+4. **可选/后续**：分享链路实测（单设备内即可做）；Storage/Realtime（`0002_storage_realtime.pending.sql`）仍冻结，须先过平台规则；Docker 化（`Services/personal-checkin/` 未创建，等用户授权）。
 5. QA/验收用的 Chrome 实例（`/tmp/l2-acceptance-chrome`，端口 9334）确认不用后关闭；如介意 3100 页面 URL 残留 token：Dashboard → Auth → Users → 该用户 → Sign out all sessions。
 
 ### 0.3 注意事项及相关规矩
