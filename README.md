@@ -4,19 +4,22 @@
 
 规格来源：`docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md`（SSOT，V1.0）。视觉基准：`docs/visuals/01–07`。
 
-## 当前状态
+## 当前状态（2026-09-03 快照，权威状态见 `docs/handoff/HANDOFF.md` §0）
 
-✅ **全部页面与流程已实现**：画廊（按记录/按地点）、记录（多图+按住说话+手动）、AI 确认、记录详情、地点时间线归档、找地点（自然语言+结构化筛选）、标签与维度（父→子两层）、我的（导出/同步/隐私）、单地点分享页、多地点清单分享、地图总览（编号名牌）、本地 IndexedDB + Supabase 同步引擎、图片压缩上传、PWA 安装。
+✅ **全部页面与流程已实现**：画廊（按记录/按地点）、记录（多图+按住说话+手动）、AI 确认、记录详情（含编辑）、地点时间线归档、找地点（自然语言+结构化筛选）、标签与维度（父→子两层，含父链补推）、我的（导出/同步/隐私/冲突裁决）、单地点分享页、多地点清单分享、地图总览（编号名牌）、本地 IndexedDB + Supabase 同步引擎（含 `ensureTagsInCloud`/`ensurePlacesInCloud`/`sweepDirtyRows` 自愈）、图片压缩上传、PWA 安装。`tsc && vite build` 通过（PWA precache 7 entries / 504KB）。
 
-⚠️ **外部能力待填 Key 即启用**（均带「未配置」降级状态，不阻塞使用）：
+✅ **Supabase 云端已打通**（`yacgnikzvutbpoqvokth` / `habit_tracker`）：Migration `20260903141849` 已发布并线上核对（8 表 RLS、策略 32、anon 零表权限）、Expose 已勾选；L2 真实写入验收 **L2_PASS**（Google OAuth → POST 201 → 重登 7/7 回读）、标签同步回归 **TAG_FIX_PASS**（6/6）、QA V0.2 整轮回归 **QA_V02_PASS**（25/25）。证据见 `docs/acceptance-l2/` 与 `docs/qa/`。单设备定位，不做双设备/并发验收。
 
-| 能力 | 环境变量 | 未配置时 |
+⚠️ **仍待 Key 即启用（均带「未配置」降级，不阻塞使用）**：
+
+| 能力 | 环境变量 | 状态 |
 |---|---|---|
-| Supabase 云端 | `VITE_SUPABASE_URL` `VITE_SUPABASE_PUBLISHABLE_KEY` | 本地模式，数据仅存本机，可导出 |
-| Google 登录 | Supabase Dashboard 配置（见方案 7.4） | 登录按钮提示不可用 |
-| 腾讯 ASR | `TENCENT_ASR_SECRET_ID` `TENCENT_ASR_SECRET_KEY` | 录音提示未配置 → 手动填写 |
-| AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | 本地推测预填 → 确认页手动修正 |
-| 高德地图 | `VITE_AMAP_KEY` `VITE_AMAP_SECURITY_JSCODE` | 分享地图用示意底图（真实坐标相对位置） |
+| Supabase 云端 | `VITE_SUPABASE_URL` `VITE_SUPABASE_PUBLISHABLE_KEY` | 已填 `.env.local` 并验证 Expose/RLS；Publishable key 可进前端 |
+| Google 登录 | Supabase Dashboard 配置（见方案 7.4） | 已验证真登录；Redirect 白名单含 `http://localhost:5173` |
+| 腾讯 ASR | `TENCENT_ASR_SECRET_ID` `TENCENT_ASR_SECRET_KEY` | 未配置 → 录音提示未配置 → 手动填写 |
+| AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | 未配置 → 本地推测预填 → 确认页手动修正 |
+| 高德地图 | `VITE_AMAP_KEY` `VITE_AMAP_SECURITY_JSCODE` | 未配置 → 分享地图用示意底图（真实坐标相对位置） |
+| Storage buckets | — | ⏳ 待管理员创建 `habit-tracker-media-private` / `habit-tracker-media-share`（`0003_storage_buckets.pending.sql` 待增量复审） |
 
 ## 本地开发
 
@@ -56,13 +59,15 @@ npm run dev        # http://localhost:5173
 - 公开分享只读字段白名单快照（`habit_tracker.share_snapshots`），绝不通过把私人记录设为 public 实现。
 - 分享页已设 `X-Robots-Tag: noindex` 与页面 meta，防止搜索引擎收录。
 
-## 待真实验收（保留接口位置）
+## 待办 / 待真实验收
 
-- Google 真登录、腾讯 ASR / 大模型真实调用、高德真实瓦片与点位、连接真实 Supabase 写数据、Vercel 正式部署、用真实照片确认压缩质量 —— 均需产品所有者配置 Key 后联调。
+- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）。
+- ⏳ 待管理员：Storage 两个 bucket 创建（媒体图与分享封面在 bucket 建好后恢复）；Realtime 其余部分冻结；0003 待增量复审与解冻批准。
+- ⏳ 待 Key 联调：腾讯 ASR / 大模型真实调用、高德真实瓦片、Vercel 正式部署、用真实照片确认压缩质量。
 
 ## 共享 Supabase 数据库管理员角色交接（2026-09-03）
 
-> 本节不是本项目功能说明，而是“共享 Supabase 数据库管理员”这一角色的职责、边界和后续工作规范。当前数据库方案尚未批准，后续接替该角色的智能体必须先阅读本节和数据库管理公共文件夹中的审查意见（见下方路径）。
+> 本节不是本项目功能说明，而是“共享 Supabase 数据库管理员”这一角色的职责、边界和后续工作规范。当前 `habit_tracker` 已通过 R2 增量复审 **APPROVED_FOR_EXECUTION** 并完成 S1/S2/L2，仍有 Storage 0003 待增量复审。后续接替者以本文档 + `alw丨数据库管理专家/` 权威材料为准。
 
 ### 角色定位
 
@@ -78,12 +83,12 @@ npm run dev        # http://localhost:5173
 - 本项目目标 Schema：`habit_tracker`。
 - 数据库管理公共文件夹（2026-09-03 迁入，含规范 V1.2、审查意见、Migration 草案与平台仓库）：
   `/Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/`
-- 当前方案：`alw丨数据库管理专家/项目审查丨habit_tracker/写入方案丨数据库管理员审查丨V1.0.md`。
-- 当前审查意见：`alw丨数据库管理专家/项目审查丨habit_tracker/个人打卡小工具丨habit_tracker丨数据库管理员完整审查意见丨V1.0.md`。
-- 当前结论：`CHANGES_REQUIRED`，即“修改后重新审核”。
-- 当前没有生产数据库发布授权。
-- 当前不得执行生产 `supabase db push`，不得修改 Dashboard、Expose、RLS、Storage 或 Realtime。
-- Migration 草案（现位于 `alw丨数据库管理专家/项目审查丨habit_tracker/`）只是草案，正式 Migration 必须由共享平台仓库管理。
+- 当前方案：`alw丨数据库管理专家/项目审查丨habit_tracker/数据写入方案丨个人打卡小工具（habit_tracker）丨V1.1.md`（含 R2 增量 §13/§13.1）。
+- 当前审查意见：`alw丨数据库管理专家/项目审查丨habit_tracker/个人打卡小工具丨habit_tracker丨数据库管理员完整审查意见丨V1.0.md`（V1.0 CHANGES_REQUIRED → V1.1 R2 增量复审 APPROVED_FOR_EXECUTION）。
+- 当前结论：**`APPROVED_FOR_EXECUTION`**（R2 增量复审，2026-09-03），允许 S1/S2/L2 已执行；**0003 Storage 待增量复审与解冻批准**。
+- 已发布 Migration：`20260903141849_create_habit_tracker_schema.sql`（md5 1ce6ae9482cb8515aedce6a4ad73b53c）经平台仓库 `supabase db push` 发布至 `yacgnikzvutbpoqvokth`，线上核对 8 表 RLS / 策略 32 / anon 零表权限一致。
+- Expose 已由用户在 Dashboard 勾选 `habit_tracker` 并经 REST 验证（anon 读表 42501 拒绝、RPC 200/null 不可枚举）。
+- 未批准范围仍冻结：`0003_storage_buckets.pending.sql`（Storage buckets）、`0002_storage_realtime.pending.sql` 剩余 Realtime 部分；任何范围外 `supabase db push`、Dashboard 变更、bucket/Realtime 需重新提审。
 
 ### 数据库管理员必须履行的职责
 
@@ -277,26 +282,18 @@ npm run dev        # http://localhost:5173
 - 未解决风险；
 - 是否需要重新提交新版本。
 
-### 生产数据库发布边界
+### 生产数据库发布边界（2026-09-03 已部分批准）
 
-在明确出现 `APPROVED_FOR_EXECUTION` 之前：
-
-- 不得执行生产 `supabase db push`；
-- 不得在 Dashboard 或 SQL Editor 中做结构、权限、Storage 或 Realtime 变更；
-- 不得配置 Exposed schemas；
-- 不得把业务项目的 Migration 草案当作正式 Migration；
-- 不得导入真实生产数据进行试验。
-
-获得批准后，也只能执行批准文件中明确的对象和范围。新增表、字段、Function、Trigger、Policy、Storage、Realtime 或数据迁移，必须重新提交审核。
-
-正式生产发布由共享平台仓库的唯一发布人或唯一 CI 流程执行；审核人与发布人必须可追溯。项目接入智能体不能因为拿到“修改后通过”就自行扩大权限或范围。
+- **V1.1 已获 `APPROVED_FOR_EXECUTION`**：S1 Migration 发布与 S2 Expose 已在批准范围内执行完成（见上）。超出批准的任何新增表/字段/Function/Policy/Storage/Realtime/数据迁移，必须重新提审。
+- **仍冻结**：`0003_storage_buckets.pending.sql`（Storage buckets）与 `0002_storage_realtime.pending.sql` 剩余部分；在明确出现增量 `APPROVED_FOR_EXECUTION` 前，不得执行对应的 `supabase db push`、Dashboard bucket 创建、或把草案当正式 Migration。
+- 正式发布仍由共享平台仓库的唯一发布人或唯一 CI 流程执行；审核人与发布人必须可追溯。项目接入智能体不得因“修改后通过”自行扩大权限或范围。
 
 ### 本次角色交接完成标准
 
 下一位数据库管理员接替本角色后，应能够：
 
 1. 直接读取本 README（交接节）和 `alw丨数据库管理专家/` 下的审查材料；
-2. 知道当前 `habit_tracker` 方案尚未批准；
+2. 知道当前 `habit_tracker` V1.1 已获 `APPROVED_FOR_EXECUTION`（S1/S2/L2 已完成），仅 0003 Storage 待审；
 3. 按本节流程审查以后所有项目；
 4. 对每个问题给出路径、原因、修改方式和验收标准；
 5. 使用明确的三态审核结论；

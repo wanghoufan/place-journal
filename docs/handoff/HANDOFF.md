@@ -25,10 +25,10 @@
 | 平台仓库 | ✅ 基线 commit `efddca5` | 无 remote 未推送；prompt_manager 未推送 Migration `20260901163555` 原样保留（任何 db push 会连带推送它，⚠️ 需 prompt_manager 项目决策） |
 | 业务项目 git | ✅ 3 个 commit | `aaa178f` 全量基线 → `19eb499` 编辑功能 → `51b67d2` QA 基线文档；无 remote 未推送（push 需用户二次确认） |
 | 编辑已有记录 | ✅ 已实现+已提交 | EntryDetail「分享/编辑/删除」：评分/日期/人均/感受/公开理由/标签可改（QA 遗留事项 3）；tsc+build 通过，**未经 QA 实测** |
-| QA 基线 V0.2 | ✅ 已制定 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；**第二轮 QA 整轮回归尚未执行** |
+| QA 基线 V0.2 | ✅ 已执行 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；整轮回归已完成见下 |
 | 第二轮 QA（V0.2 整轮回归） | ✅ **QA_V02_PASS（25/25）** | 报告 [docs/qa/QA-REPORT丨V0.2.md](docs/qa/QA-REPORT丨V0.2.md)（含开发侧后处理附录）；K1 滚动**未复现**（D1–D5 全过）、K2 T7/T8 **实证通过**；A 编辑 6/6 |
 | QA 后修复（第二轮） | ✅ 已实测 | ENV-2：`ensurePlacesInCloud` + `sweepDirtyRows` 自愈（万绿园 place+2 entry 实测上云）；ENV-1 连带：封面置空推送/回填、分享快照尽力而为、revoke 幂等、media ≥5 次放弃标 failed；OBS-1：toShareItem 补 tags。**全经 CDP 实测：outbox 清零、脏行 0** |
-| 遗留环境项 | ⏳ 待管理员 | ENV-1：两个 Storage bucket（media-private/media-share）未创建，属 0002 冻结范围 → 已列入管理员收口材料请求项；媒体图/分享封面在 bucket 建好后恢复 |
+| 遗留环境项 | ⏳ 待管理员 | ENV-1：两个 Storage bucket（media-private/media-share）未创建，属 0003 pending 冻结范围 → 已列入管理员收口材料请求项 |
 | 滚动异常 K1 | ✅ 未复现 | QA D1–D5 全过（含 1661px 长页/相册横滑/键盘）；用户如再遇，按基线 §5-D 固化步骤报修 |
 
 ### 0.2 下一步任务（按优先级）
@@ -54,14 +54,16 @@
 
 | 顺序 | 文档 | 作用 |
 |---|---|---|
-| 1 | 本文档 | 当前进展、下一步、规矩 |
-| 2 | 项目根 `HANDOFF.md` | V1.0 开发全量状态 + 踩坑记录（仍有效） |
+| 1 | 本文档 §0 | 现役收工快照（唯一权威） |
+| 2 | 项目根 `HANDOFF.md` | 入口指针（已瘦身，详见本文 §0） |
 | 3 | `docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md` | SSOT 产品与技术方案（M0–M6），需求以此为准 |
-| 4 | `.workbuddy/memory/2026-09-01.md`、`2026-09-02.md` | 开发全程日志 |
-| 5 | `~/Downloads/大模型 HANDOFF/2026-09-02 丨 共享 Supabase 项目与独立 Schema 数据库规范 丨 V1.2.md` | 数据库规范（迁移 SQL、同步、验收必须符合它） |
-| 6 | `~/Downloads/大模型 HANDOFF/2026-09-02 丨 Mac Mini 本地项目自托管 Docker 规范 丨 V1.0.md` | Docker Runtime 规范（Dockerfile/Compose/目录/备份必须符合它） |
+| 4 | `.workbuddy/memory/2026-09-03.md`、`2026-09-02.md`、`2026-09-01.md` | 开发全程日志（09-03 含 L2/QA 实测细节） |
+| 5 | `alw丨数据库管理专家/2026-09-03 丨 共享 Supabase 项目与独立 Schema 数据库规范 丨 V1.4.md` | 数据库规范（当前生效 V1.4；迁移 SQL 必须符合它） |
+| 6 | `alw丨数据库管理专家/平台丨共享 Supabase 数据库/` | 正式 Migration 仓库与 DATABASE_CATALOG |
 
-## 2. 当前工作进展
+> 以下 §1–§4 为 2026-09-02 前的历史记录，已被 §0 收工快照取代，仅保留作追溯；现役状态一律以 §0 为准。
+
+## 2. 当前工作进展（历史，2026-09-02 快照，已被 §0 取代）
 
 ### 2.1 已完成（三轮阶段）
 
@@ -72,13 +74,13 @@
    - Docker 产物齐备（project_slug = `personal-checkin`）：`Dockerfile`（多阶段：vite build + esbuild 打包 `api/*.ts`）、`server.mjs`（node:http 静态 dist + 与 Vercel Functions 同一实现的 `/api` + `/healthz`）、`compose.yaml`、`.dockerignore`、`docker/env.template`。无本地数据库/服务端文件 → 暂无 Named Volume 与 DockerData bind mount（compose 内有注释边界）。
    - 全仓规范引用 V1.1 → V1.2（env.ts、.env.example、迁移 SQL 头部、README、根 HANDOFF.md）。
 
-### 2.2 验证状态（规范 V1.2 §11 分层）
+### 2.2 验证状态（规范 V1.2 §11 分层，2026-09-02 历史）
 
 - ✅ **L0**：`tsc -b && vite build` 通过；`server.mjs` 冒烟通过（/healthz、静态、SPA fallback、/api 501 降级）。
-- ✅ **L1（本地持久化，2026-09-02 CDP 无头 Chrome 实测 PASS）**：完整保存流程（选地点 → 填感受 → AI 确认 → 入库）走通；IndexedDB 升 v2；刷新/重开详情页数据完好；应用级 console error = 0。画廊按地点卡片聚合展示（不含记录全文），测试时勿以画廊全文判定。
-- ✅ **L2（真实云端写入，2026-09-03 独立浏览器实例验收 L2_PASS）**：Google OAuth 登录 → 新建地点+打卡（POST places/entries 均 201）→ 云朵「已同步」→ 清 localStorage 重登后 7/7 数据完整回读。云端 places/entries 各 1 行、revision=1、RLS 按用户隔离生效。证据：`docs/acceptance-l2/`（L2-REPORT.md、脱敏 l2-sync.har、截图 10 张）。
-- ❌ **L3–L5 全部未做**：双设备 CRUD、并发冲突、断线重连、备份恢复（L2 已解锁，可按序开始）。
-- ❌ **业务项目 git 未 commit/push**（等用户明确确认）；平台仓库已建基线 commit `efddca5`（2026-09-03，无 remote 未推送）。❌ Docker 镜像未构建、`Services/personal-checkin/` 未创建（等用户明确授权）。
+- ✅ **L1（本地持久化，2026-09-02 CDP 无头 Chrome 实测 PASS）**：完整保存流程（选地点 → 填感受 → AI 确认 → 入库）走通；IndexedDB 升 v2；刷新/重开详情页数据完好；应用级 console error = 0。
+- ✅ **L2**：历史快照中为“待做”；**现役结论见 §0：L2_PASS、TAG_FIX_PASS、QA_V02_PASS 均已通过（2026-09-03）**。
+- ⏳ **L3–L5（历史标注“全部未做”）→ 现役：单设备定位，L3 已取消（用户决定，见 §0.1）；Storage/Realtime 冻结待平台规则**。
+- **Git/Docker（历史）**：当时“业务项目 git 未 commit”；**现役：业务项目 `aaa178f`→`86f01ac` 共 6 commit，平台仓库 `efddca5` 基线，无 remote 未推送，push 需用户二次确认；Docker 仍待授权未创建（见 §0）**。
 
 ### 2.3 本轮修复（2026-09-02 L1 验收时）
 
@@ -86,17 +88,17 @@
 2. IndexedDB `outbox` store 补开 `autoIncrement`（v1 缺陷：`enqueue` 的 `add` 无 seq 必 DataError，是潜在 L2 阻断点），DB_VERSION 1→2 自动重建队列（临时数据，安全）。见 `src/lib/idb.ts`。
 3. **已建好 `.env.local`**（被 .gitignore 忽略；普通 `.env` 未被忽略，真实 Key 绝不放 `.env`）：全部占位符就位，每段注释写明获取地址。**只差用户填 `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` 两行**（Dashboard → Project Settings → API → Project URL / Project API Keys → Publishable key；禁 service_role）。填好后需重启 vite。
 
-## 3. 下一步任务（建议顺序）
+## 3. 下一步任务（历史，2026-09-02 建议顺序，已被 §0 取代）
 
-| # | 谁 | 任务 |
-|---|---|---|
-| 1 | 用户/管理员 | **先交审查**：把 [docs/db/写入方案丨数据库管理员审查丨V1.0.md](../db/写入方案丨数据库管理员审查丨V1.0.md)（附 0001_init.sql）交【平台丨共享 Supabase 数据库】管理员审批；通过后发布迁移，并 Dashboard → API Settings → Data API → Exposed schemas 勾选 `habit_tracker`。**审查通过前不得开始任何 L2 写入验收** |
-| 2 | 用户 | 填 `.env.local` 的 `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` 两行（文件已建好、注释含获取路径；其余 ASR/大模型/高德 Key 可后补，均有降级）。**智能体注意：填好后必须重启 vite 才生效** |
-| 3 | 用户确认后 | 智能体执行 **git commit/push**（推送需二次确认） |
-| 4 | 智能体 | 逐项打通并单独验证：登录 → 同步（L2 单设备持久化：写入后刷新仍在）→ ASR → 大模型 → 高德；Realtime 通知与重连补读实测 |
-| 5 | 用户确认后 | Docker 部署：复制 `docker/env.template` → `docker/.env.local`，`docker compose --env-file docker/.env.local build && up -d`，部署副本同步到 `Services/personal-checkin/`；验证 `/healthz`（仅 Runtime 层） |
-| 6 | 用户确认后 | Vercel 部署（`vercel.json` 已备好）作为云端入口；或二选一定为正式 Runtime，另一方停用 |
-| 7 | 智能体 | 观察项更新：FAB 挡表单已修复（见 §2.3）；「找地点」列表中段与 FAB 的视觉重叠为 FAB 固有行为（底部已有 safe-bottom 140px 让位），如需彻底解决需改设计，待用户定夺 |
+| # | 谁 | 任务 | 现役状态 |
+|---|---|---|---|
+| 1 | 用户/管理员 | **先交审查**：把写入方案交管理员审批并发布迁移、Expose | ✅ 已完成（V1.1 R2 APPROVED_FOR_EXECUTION → S1 已发布 `20260903141849`，S2 已勾选） |
+| 2 | 用户 | 填 `.env.local` 的 `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ 已完成（L2 已用真 Key 验证通过） |
+| 3 | 用户确认后 | 智能体执行 **git commit/push** | ✅ 业务项目已 6 commit，待 push 需二次确认；平台仓库 `efddca5` |
+| 4 | 智能体 | 逐项打通：登录 → 同步 → ASR → 大模型 → 高德 | ✅ 登录/同步已 L2_PASS；ASR/大模型/高德保持降级可用，待 Key |
+| 5 | 用户确认后 | Docker 部署 | ⏳ 待授权（产物齐备，未创建 `Services/personal-checkin/`） |
+| 6 | 用户确认后 | Vercel 部署 | ⏳ 待确认（`vercel.json` 已备好） |
+| 7 | 智能体 | 观察项：FAB 视觉重叠 | 已修复挡表单；列表/FAB 重叠为设计固有，待用户定夺 |
 
 ## 4. 注意事项及相关规矩（必须遵守）
 
@@ -135,9 +137,9 @@
 
 ---
 
-## 5. 开发暂停后的最新交接（2026-09-03，当前唯一有效入口）
+## 5. 开发暂停后的最新交接（2026-09-03 历史，**已被 §0 收工快照取代**）
 
-> 用户已明确要求开发先暂停。本节覆盖前面旧的“当前状态”和“下一步”表述；更早内容保留为历史记录。后续智能体恢复前必须先阅读本节和数据库管理员完整审查意见。
+> 本节为 2026-09-03 开发暂停时的阶段性交接（当时 S2 待勾选、L2 刚通过）。**2026-09-03 晚收工后，权威状态已迁移至 §0**；本节仅保留作追溯，行内“当前”指当时当刻。
 
 ### 5.1 当前工作进展
 
@@ -149,14 +151,14 @@
 | 数据库写入方案 | ✅ 已通过 | V1.1 经 R2 增量复审 `APPROVED_FOR_EXECUTION`（§13.1）；0002 Storage/Realtime 仍冻结待平台规则。 |
 | Migration | ✅ 已发布 | 平台仓库 `supabase/migrations/20260903141849_create_habit_tracker_schema.sql` 已 db push 至共享项目并完成线上只读核对（8 表 RLS、策略 32、anon 零表权限）。 |
 | Supabase 真实写入 | ✅ L2_PASS | 真登录、云端写入回执（201+revision）、清 localStorage 重登重读、RLS 按用户隔离全部通过（2026-09-03，证据 `docs/acceptance-l2/`）。 |
-| 双设备 / 冲突 / 重连 / 恢复 | ⏳ 未验证 | L3–L5 尚未开始（L2 已通过解锁，可按序进行）。 |
-| Docker | 📝 产物已准备 | Dockerfile、Compose、server.mjs 等已具备；尚未创建 `Services/personal-checkin/`，也未创建生产容器。 |
-| Key 与环境 | ✅ 已配置 | `.env.local` 已填 `VITE_SUPABASE_URL` + publishable key（仅前端 anon 凭据；service_role 等服务端密钥未入库未入前端）。 |
-| Git | ⚠️ 未提交 | 代码和文档存在未提交/未跟踪内容；未经用户明确确认不得 commit，push 还需要二次确认。 |
+| 双设备 / 冲突 / 重连 / 恢复 | ⏳ 单设备定位 | **L3 已取消**（用户决定，见 §0）；乐观锁与冲突 UI 仅作兜底 |
+| Docker | 📝 产物已准备 | Dockerfile、Compose、server.mjs 等已具备；尚未创建 `Services/personal-checkin/`（待授权） |
+| Key 与环境 | ✅ 已配置 | `.env.local` 已填 `VITE_SUPABASE_URL` + publishable key（L2 已验证，仅 anon 凭据） |
+| Git | ⚠️ 部分已提交 | 业务项目 `aaa178f`→`86f01ac` 共 6 commit（1 个未提交 `.workbuddy/memory`）；push 需二次确认 |
 
-### 5.2 数据库管理员已经指出的必须修复项
+### 5.2 数据库管理员已经指出的必须修复项（V1.0 阶段历史，已在 V1.1 中全部修复并获 APPROVED）
 
-以下问题不是可选优化，全部必须处理后才能重新申请审核：
+> 以下 11 项为 V1.0 审查意见当时指出的阻断项；V1.1 已逐项修复并通过 R2 增量复审。保留清单作追溯，新智能体以 `alw丨数据库管理专家/项目审查丨habit_tracker/` 权威材料为准：
 
 1. 删除 `tags_two_levels` 中包含子查询的 CHECK，改用触发器；当前写法会导致 PostgreSQL Migration 执行失败。
 2. 为 `tags`、`entries`、`media`、`entry_tags` 等关联关系增加 `(id, owner_user_id)` 复合唯一键和复合外键，确保不同用户的数据不能互相串联。
@@ -203,16 +205,16 @@
 11. **验证记录**：没有真实环境和操作证据就写“待验证”；静态检查不能替代真实 Supabase、RLS、双设备、断网、恢复验收。
 12. **文档归属**：数据库方案继续维护原方案文件；完整审查意见只维护本目录下的数据库审查意见文件；本 HANDOFF 只维护阶段入口、状态和恢复规则，不新建重复报告。
 
-### 5.5 暂停阶段完成标准
+### 5.5 暂停阶段完成标准（历史，2026-09-03 当时）
 
-当前不是“数据库接入完成”，而是“安全暂停并可恢复”：
+> 以下为暂停当时的判定（CHANGES_REQUIRED / 未执行生产变更 / 未开始 L2）。**现役判定见 §0**：已获 `APPROVED_FOR_EXECUTION`，S1/S2/L2/QA 均已完成，仅 0003 Storage 待审：
 
-- 最新审查结论已记录为 `CHANGES_REQUIRED`；
-- 没有执行生产数据库变更；
-- 没有开始 L2–L5 云端验收；
-- 没有创建生产 Docker 目录或容器；
+- 当时最新审查结论为 `CHANGES_REQUIRED`（后已修复为 `APPROVED_FOR_EXECUTION`）；
+- 当时没有执行生产数据库变更（后 S1 已发布）；
+- 当时没有开始 L2–L5 云端验收（后 L2_PASS / TAG_FIX_PASS / QA_V02_PASS 均已完成）；
+- 当时没有创建生产 Docker 目录或容器（仍待授权）；
 - 所有待修复项、恢复顺序和权限边界已有明确记录；
-- 下一个智能体可以直接使用下方提示词恢复工作。
+- 下一个智能体可以直接使用下方提示词恢复工作（提示词本身仍有效，但“当前真实状态”段落以 §0 为准）。
 
 ### 5.6 下一个智能体接续恢复提示词
 
@@ -355,9 +357,9 @@
 
 材料不完整时，数据库管理员应返回 `BLOCKED` 或 `CHANGES_REQUIRED`，不能先批准再补材料。
 
-### 5.8 2026-09-03 修订轮完成情况（已进入发布阶段；§5.1 相关行以本节为准）
+### 5.8 2026-09-03 修订轮完成情况（已进入发布阶段；现役状态以 §0 为准）
 
-> 进度：V1.1 正式复审 CHANGES_REQUIRED（R2-1～R2-4）→ 增量材料补齐（54/54 + 备份演练 15/15）→ **R2 增量复审 APPROVED_FOR_EXECUTION（§13.1，管理员独立复跑确认）→ S1 已发布 → S2 待用户 Dashboard 勾选**。
+> 进度：V1.1 正式复审 CHANGES_REQUIRED（R2-1～R2-4）→ 增量材料补齐（54/54 + 备份演练 15/15）→ **R2 增量复审 APPROVED_FOR_EXECUTION（§13.1，管理员独立复跑确认）→ S1 已发布 → S2 已完成并验证 → L2_PASS → TAG_FIX_PASS → QA_V02_PASS**。
 
 **R2 增量材料补齐（全部完成并经管理员独立复跑确认）**
 
