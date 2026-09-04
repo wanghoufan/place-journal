@@ -27,11 +27,16 @@ export async function transcribe(blob: Blob): Promise<{ ok: true; text: string }
 }
 
 export async function organize(input: OrganizeInput): Promise<{ ok: true; result: AiOrganizeResult; mock: boolean } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
+  // 12s 超时：大模型免费档偶发 60s+ 慢响应，与其让用户干等「整理中…」，
+  // 不如快速降级到本地推测（确认页会明确标注，全部可手动修改）
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), 12000)
   try {
     const r = await fetch('/api/ai-organize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
+      signal: ac.signal,
     })
     if ((r.headers.get('content-type') ?? '').includes('text/html') || r.status === 404) return { ok: false, reason: 'not_configured' }
     const j = await r.json().catch(() => ({}))
@@ -39,7 +44,10 @@ export async function organize(input: OrganizeInput): Promise<{ ok: true; result
     if (!r.ok || !j.ok) return { ok: false, reason: 'error', message: j.error || `AI 整理失败(${r.status})` }
     return { ok: true, result: j.result as AiOrganizeResult, mock: false }
   } catch (e: any) {
+    if (ac.signal.aborted) return { ok: false, reason: 'error', message: 'AI 响应超时(12秒)' }
     return { ok: false, reason: 'error', message: e?.message || 'AI 整理失败' }
+  } finally {
+    clearTimeout(timer)
   }
 }
 

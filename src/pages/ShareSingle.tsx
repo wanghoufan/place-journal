@@ -37,8 +37,9 @@ export default function ShareSingle() {
       <div className="relative -mt-8 bg-paper rounded-t-3xl px-5 pt-6 pb-8 min-h-[46vh]">
         <h1 className="journal-title !text-[30px]">{it.placeName}<span className="text-terra align-super text-sm ml-0.5">✦</span></h1>
         <div className="flex items-center justify-between mt-5">
-          <Stars value={it.rating} size={22} />
-          <span className="text-sm">{it.budget != null ? <>人均 <b className="text-terra text-lg">¥{it.budget}</b></> : '—'}</span>
+          {/* 无评分/无人均时隐藏占位，避免全空星和孤零零的「—」 */}
+          {it.rating != null ? <Stars value={it.rating} size={22} /> : <span />}
+          {it.budget != null && <span className="text-sm">人均 <b className="text-terra text-lg">¥{it.budget}</b></span>}
         </div>
         <p className="mt-3 text-[16px] leading-relaxed border-b border-dashed border-line pb-4">{it.reason ?? '朋友觉得很棒'}</p>
         <div className="flex flex-wrap gap-2 mt-4">

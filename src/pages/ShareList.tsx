@@ -98,7 +98,7 @@ function BottomCard({ item, index }: { item: ShareItem; index: number }) {
       {item.coverUri && <img src={item.coverUri} className="w-24 h-24 rounded-xl object-cover" alt="" />}
       <div className="min-w-0 flex-1">
         <p className="font-bold truncate">{index + 1}. {item.placeName}</p>
-        <Stars value={item.rating} size={12} />
+        {item.rating != null && <Stars value={item.rating} size={12} />}
         <p className="text-xs text-inkmuted mt-0.5 truncate">{item.reason ?? '—'}</p>
         <button className="tag-chip mt-1.5" onClick={async () => { await copyText(searchLine(item)); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>
           {copied ? '已复制 ✓' : `📋 复制店名`}

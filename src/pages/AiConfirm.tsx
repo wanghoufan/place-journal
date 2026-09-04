@@ -189,6 +189,9 @@ export default function AiConfirm() {
           </div>
         </div>
 
+        {loading && (
+          <div className="rounded-xl bg-terrasoft text-terradeep text-xs px-3 py-2 mb-2 text-center">AI 思考中，一般几秒；稍等会先给本地推测结果，可逐项修改。</div>
+        )}
         <button className="btn-primary w-full py-3.5 text-lg" disabled={saving || loading} onClick={confirm}>
           {loading ? '整理中…' : saving ? '保存中…' : '确认保存'}
         </button>
