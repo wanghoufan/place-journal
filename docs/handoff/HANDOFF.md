@@ -39,8 +39,9 @@
 1. ~~ENV1 实测报告落盘~~ ✅ 2026-09-04 完成（含截图 4 张）；~~Chrome 环境修复~~ ✅（优雅退出 + 清 IDB 目录后恢复）；~~outbox 修复回归~~ ✅ PASS；~~清单 ENV-1 状态~~ ✅ 已更新。
 2. ~~git commit~~ ✅ **已提交 `41ebe90`**（outbox 时序 + 匿名分享映射 + 重复标签合并 + ENV1 报告/截图；未 push）。**另修：Find 页重复标签 bug（2026-09-04 用户报）**——根因：清验收环境后本地重播种 demo 标签 + pullRemote 拉回云端套，同名两套并存（55 标签/8 维度）；已合并（55→30，entries 引用重映射，云端本无重复）+ Find.tsx 同名去重兜底，实测 PASS。遗留：QA 验收临时标签（验收T3/T7 等）仍在标签库，可手动删或待用户示下。
 3. ~~真 Key 联调~~ ✅ **2026-09-04 全通**：① 腾讯 ASR SentenceRecognition 真实转写 PASS（「今天下午去了万绿园散步…」逐字一致）；② AI 整理 OpenCode Go（`glm-5.3-flash`）结构化 JSON PASS（score/budget/summary/tags 合同全对）。**Docker 自托管已上线**：规范副本 `Developer/coding/docker/personal-checkin/`（deploy.sh 流程），`http://localhost:8081`（Mac）/ `http://192.168.31.60:8081`（局域网）。**部署中修 4 个自托管 bug**（均在 server.mjs/api 层，已 push）：处理器 esbuild 双层 default 解包、res.status().json() shim、腾讯 TC3 头 `X-TC-Timestamp` 笔误、opencode 端点自动补 `/chat/completions`。腾讯 ASR 曾报 not authorized（用户控制台开通后自愈）。
-4. **下一步**：Tailscale 穿透（手机外网 HTTPS 访问——手机语音录音必须 HTTPS，局域网 http 下拍照/打字可用）；高德 Key 联调（VITE_AMAP_* 已填，分享页地图待验）；QA 验收临时标签清理待用户示下。
-5. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
+4. ~~自验收~~ ✅ 2026-09-04 SELF_CHECK_PASS（8081 生产版：首页/三tab/详情/控制台全净；子代理浏览器无登录态属环境因素）。**已交付两份转交提示词（对话内）**：QA 回归测试（R1-R5 今日修复回归 + B1-B5 基线回归）与产品视觉验收（8 屏走查），报告落点 docs/qa/QA回归报告丨2026-09-04.md 与 docs/qa/视觉验收报告丨2026-09-04.md，均未执行。
+5. **下一步（按优先级）**：① 用户把 QA 回归提示词转交执行→看 R1-R5 是否全 PASS；② 视觉验收提示词转交→P0/P1 必修、P2 攒版；③ Tailscale 穿透（用户 Mac/手机装 Tailscale 同账号登录后，配 tailscale serve HTTPS → 手机外网访问 + 解锁手机语音录音）；④ 高德 Key 联调（VITE_AMAP_* 已填，分享页地图待验）；⑤ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策（当前只有自托管）。
+6. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩
 
