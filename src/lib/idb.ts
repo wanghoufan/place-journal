@@ -13,8 +13,9 @@ export type OutboxOp =
   | { kind: 'upload_media'; id: string }
   | { kind: 'upsert_tags' }
   | { kind: 'delete_tags'; ids: string[] }
+  | { kind: 'delete_place'; id: string }
   | { kind: 'create_share'; id: string }
-  | { kind: 'revoke_share'; id: string }
+  | { kind: 'revoke_share'; id: string } // id = slug（修复：此前传 snapshot uuid 当 slug，云端撤销静默失效）
 
 export interface OutboxRow { seq?: number; op: OutboxOp; createdAt: string; attempts: number; lastError?: string }
 
@@ -158,10 +159,13 @@ export const repo = {
     await put('shares', s)
     if (syncQueue) await enqueue({ kind: 'create_share', id: s.id })
   },
-  async revokeShare(id: string) {
-    const d = await db(); const s = await d.get('shares', id)
+  // idOrSlug 兼容：Mine 页传 snapshot.id，deleteEntry 级联传 slug；出队一律用 slug（sync eq('slug')）
+  async revokeShare(idOrSlug: string) {
+    const d = await db()
+    const all = (await d.getAll('shares')) as ShareSnapshot[]
+    const s = all.find((x) => x.id === idOrSlug || x.slug === idOrSlug)
     if (s) { s.status = 'revoked'; await d.put('shares', s); bump() }
-    await enqueue({ kind: 'revoke_share', id })
+    await enqueue({ kind: 'revoke_share', id: s?.slug ?? idOrSlug })
   },
   async clearDemo() {
     const d = await db()

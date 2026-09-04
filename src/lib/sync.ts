@@ -374,6 +374,12 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
         if (error) throw error
         // 云端无此 slug = 访客本来就打不开（如快照当初因 ENV-1 未建成上云），
         // 撤销目的已达成，视为成功，op 正常出队；不再无限重试。
+        // （op.id 语义 2026-09-04 修复为 slug：此前传 snapshot uuid，eq('slug') 永远 0 行，
+        //  手动撤销在云端静默失效——RQA-V-02 底层根因。）
+      } else if (op.kind === 'delete_place') {
+        // RQA-V-03：记录删空后级联清理空地点。行不存在（从未上云/已删）= 目的已达成，正常出队。
+        const { error } = await table(sb, 'places').delete().eq('id', op.id).eq('owner_user_id', owner)
+        if (error) throw error
       }
       await outboxRemove(row.seq!)
       done++

@@ -38,13 +38,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const messages: ChatMsg[] = [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }]
 
+  // OBS-V2（真机QA Vercel 2026-09-04）：上游无单次超时，偶发慢撞 Vercel 15s 上限直接 504。
+  // 策略：单 provider 最多 9s；全局 13s deadline（留 2s 余量），超时快速 failover 下一个。
+  const UPSTREAM_TIMEOUT_MS = 9000
+  const DEADLINE_MS = 13000
+  const t0 = Date.now()
+
   let lastErr = ''
   for (const p of ps) {
+    const remain = DEADLINE_MS - (Date.now() - t0)
+    if (remain < 1000) { lastErr = `${lastErr ? lastErr + '; ' : ''}deadline reached`; break }
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), Math.min(UPSTREAM_TIMEOUT_MS, remain))
     try {
       const r = await fetch(p.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
         body: JSON.stringify({ model: p.model, messages, temperature: 0.2, response_format: { type: 'json_object' } }),
+        signal: ctl.signal,
       })
       if (!r.ok) { lastErr = `${p.name} HTTP ${r.status}`; continue }
       const j = await r.json()
@@ -61,7 +72,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       return res.status(200).json({ ok: true, result, provider: p.name })
     } catch (e: any) {
-      lastErr = `${p.name}: ${e?.message || 'failed'}`
+      lastErr = `${p.name}: ${e?.name === 'AbortError' ? 'timeout' : e?.message || 'failed'}`
+    } finally {
+      clearTimeout(timer)
     }
   }
   return res.status(502).json({ ok: false, error: lastErr || 'all providers failed' })

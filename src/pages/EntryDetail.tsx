@@ -27,6 +27,9 @@ export default function EntryDetail() {
   const [fNotePublic, setFNotePublic] = useState('')
   const [fTagIds, setFTagIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  // RQA-V-01：删除走应用内确认弹窗（原生 confirm 会被部分浏览器拦截，项目既有规矩）
+  const [confirmDel, setConfirmDel] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   if (!data) return null
   const entry = data.entries.find((e) => e.id === id)
   if (!entry) return <div className="p-8 text-center text-inkmuted">记录不存在或已被删除。<Link to="/" className="underline text-terra">回画廊</Link></div>
@@ -212,6 +215,31 @@ export default function EntryDetail() {
             </>
           )}
           {copied && <p className="text-moss text-xs">{copied}</p>}
+        </div>
+      </Sheet>
+
+      {/* RQA-V-01：删除二次确认（应用内弹窗）；RQA-V-02：级联撤销该记录分享 */}
+      <Sheet open={confirmDel} onClose={() => !deleting && setConfirmDel(false)} title="删除这条记录？">
+        <div className="space-y-3 text-sm">
+          <p className="leading-relaxed text-inkmuted">
+            将删除 <b className="text-ink">{place?.name ?? '该记录'}</b> 的照片、感受与标签，
+            且该记录的分享链接会<b className="text-ink">一并撤销失效</b>。删除后不可恢复。
+          </p>
+          <div className="flex gap-3">
+            <button className="flex-1 py-3 rounded-full border-2 border-line text-inkmuted font-bold" disabled={deleting} onClick={() => setConfirmDel(false)}>再想想</button>
+            <button
+              className="flex-1 py-3 rounded-full bg-[#b3421f] text-white font-bold disabled:opacity-60"
+              disabled={deleting}
+              onClick={async () => {
+                if (!entry || deleting) return
+                setDeleting(true)
+                try { await repo.deleteEntry(entry.id); nav('/', { replace: true }) }
+                finally { setDeleting(false) }
+              }}
+            >
+              {deleting ? '删除中…' : '确认删除'}
+            </button>
+          </div>
         </div>
       </Sheet>
     </div>

@@ -64,6 +64,7 @@ export interface Tag { id: string; dimensionId: string; parentId?: string | null
 
 export interface ShareItem {
   clientId: string             // 稳定幂等键：创建时生成，重试/补传不变（share_items.client_id）
+  entryId?: string             // 来源记录 id（RQA-V-02：删记录级联撤销分享用；云端 payload 白名单自动剔除）
   coverMediaId?: string        // 封面媒体 id（同步时据此上传分享缩略图到公开桶）
   placeName: string
   area?: string

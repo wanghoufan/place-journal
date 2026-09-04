@@ -26,6 +26,7 @@ function toShareItem(entry: Entry, place: Place, media: MediaItem[], tagNames: s
   ].map((m) => (m.display ? URL.createObjectURL(m.display) : m.demoUri!)).filter(Boolean)
   return {
     clientId: uuid() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    entryId: entry.id, // RQA-V-02：删记录级联撤销分享的定位键（云端白名单剔除，不出现在匿名 payload）
     coverMediaId: cover?.id,
     placeName: place.name,
     area: place.area,
