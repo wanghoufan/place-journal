@@ -12,6 +12,10 @@ export default function TagsPage() {
   const [newDimName, setNewDimName] = useState('')
   const [editing, setEditing] = useState<{ dimId: string; parent?: Tag } | null>(null)
   const [newTagName, setNewTagName] = useState('')
+  // 改名/删除走应用内 Sheet：window.prompt/confirm 被浏览器「阻止此页面创建更多对话框」后静默失效（返回 null/false），表现为点了没反应
+  const [renameTarget, setRenameTarget] = useState<Tag | null>(null)
+  const [renameName, setRenameName] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null)
 
   if (!data) return null
   const dims = [...data.dimensions].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -31,15 +35,19 @@ export default function TagsPage() {
     await repo.saveTags(dims, [...allTags, t])
     setNewTagName(''); setEditing(null)
   }
-  async function renameTag(t: Tag) {
-    const name = window.prompt('改名', t.name)
-    if (name && name.trim()) await repo.saveTags(dims, allTags.map((x) => (x.id === t.id ? { ...x, name: name.trim() } : x)))
+  function askRename(t: Tag) { setRenameTarget(t); setRenameName(t.name) }
+  async function confirmRename() {
+    const name = renameName.trim()
+    if (renameTarget && name) await repo.saveTags(dims, allTags.map((x) => (x.id === renameTarget.id ? { ...x, name } : x)))
+    setRenameTarget(null)
   }
-  async function deleteTag(t: Tag) {
-    const children = allTags.filter((x) => x.parentId === t.id)
-    if (!window.confirm(children.length ? `删除「${t.name}」及其 ${children.length} 个子标签？` : `删除「${t.name}」？`)) return
-    const removeIds = new Set([t.id, ...children.map((c) => c.id)])
+  function askDelete(t: Tag) { setDeleteTarget(t) }
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const children = allTags.filter((x) => x.parentId === deleteTarget.id)
+    const removeIds = new Set([deleteTarget.id, ...children.map((c) => c.id)])
     await repo.saveTags(dims, allTags.filter((x) => !removeIds.has(x.id)))
+    setDeleteTarget(null)
   }
 
   return (
@@ -63,8 +71,8 @@ export default function TagsPage() {
                     <div key={p.id}>
                       <div className="flex items-center gap-2">
                         <span className="tag-chip">{p.name}</span>
-                        <button className="text-xs text-inkmuted underline" onClick={() => renameTag(p)}>改名</button>
-                        <button className="text-xs text-[#a03c2a] underline" onClick={() => deleteTag(p)}>删除</button>
+                        <button className="text-xs text-inkmuted underline" onClick={() => askRename(p)}>改名</button>
+                        <button className="text-xs text-[#a03c2a] underline" onClick={() => askDelete(p)}>删除</button>
                         <button className="text-xs text-terra underline" onClick={() => { setEditing({ dimId: d.id, parent: p }); setNewTagName('') }}>＋子标签</button>
                       </div>
                       {children.length > 0 && (
@@ -72,8 +80,8 @@ export default function TagsPage() {
                           {children.map((c) => (
                             <span key={c.id} className="inline-flex items-center gap-1 chip !py-1">
                               {c.name}
-                              <button className="text-inkmuted" onClick={() => renameTag(c)}>✎</button>
-                              <button className="text-[#a03c2a]" onClick={() => deleteTag(c)}>✕</button>
+                              <button className="text-inkmuted" onClick={() => askRename(c)}>✎</button>
+                              <button className="text-[#a03c2a]" onClick={() => askDelete(c)}>✕</button>
                             </span>
                           ))}
                         </div>
@@ -94,6 +102,18 @@ export default function TagsPage() {
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.parent ? `给「${editing.parent.name}」加子标签` : '新增标签'}>
         <input className="field-input" placeholder="标签名称" value={newTagName} onChange={(e) => setNewTagName(e.target.value)} autoFocus />
         <button className="btn-primary w-full py-3 mt-3" onClick={addTag}>添加</button>
+      </Sheet>
+      <Sheet open={!!renameTarget} onClose={() => setRenameTarget(null)} title={`改名：${renameTarget?.name ?? ''}`}>
+        <input className="field-input" placeholder="新名称" value={renameName} onChange={(e) => setRenameName(e.target.value)} autoFocus
+          onKeyDown={(e) => e.key === 'Enter' && confirmRename()} />
+        <button className="btn-primary w-full py-3 mt-3" disabled={!renameName.trim()} onClick={confirmRename}>保存</button>
+      </Sheet>
+      <Sheet open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={`删除「${deleteTarget?.name ?? ''}」？`}>
+        {deleteTarget && allTags.filter((x) => x.parentId === deleteTarget.id).length > 0 && (
+          <p className="text-sm text-[#a03c2a]">将连同 {allTags.filter((x) => x.parentId === deleteTarget.id).length} 个子标签一起删除。</p>
+        )}
+        <p className="text-xs text-inkmuted mt-1">已有记录若引用此标签，记录上的引用会保留失效，不影响记录本身。</p>
+        <button className="w-full py-3 mt-3 rounded-full bg-[#a03c2a] text-white font-bold" onClick={confirmDelete}>确认删除</button>
       </Sheet>
     </div>
   )
