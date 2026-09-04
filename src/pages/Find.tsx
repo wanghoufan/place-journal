@@ -32,7 +32,14 @@ export default function Find() {
   // 结构化筛选 chips（点击追加到自然语言里，简单直接）
   const sceneDim = data.dimensions.find((d) => d.kind === 'scene')
   const scenes = data.tags.filter((t) => t.dimensionId === sceneDim?.id)
-  const toggleScene = (name: string) => setQ((cur) => (cur.includes(name) ? cur : (cur ? cur + ' ' : '') + name))
+  const toggleScene = (name: string) =>
+    setQ((cur) => {
+      const parts = cur.split(/\s+/).filter(Boolean)
+      // 再点已选 chip = 取消（此前只加不减，选中后无法移除）
+      return parts.includes(name) ? parts.filter((n) => n !== name).join(' ') : [...parts, name].join(' ')
+    })
+  // 按整词匹配判断选中态，避免「咖啡」误匹配「咖啡茶饮」这类包含关系
+  const hasScene = (name: string) => q.split(/\s+/).includes(name)
 
   async function makeList() {
     const db = data!
