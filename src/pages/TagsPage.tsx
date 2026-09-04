@@ -46,7 +46,11 @@ export default function TagsPage() {
     if (!deleteTarget) return
     const children = allTags.filter((x) => x.parentId === deleteTarget.id)
     const removeIds = new Set([deleteTarget.id, ...children.map((c) => c.id)])
-    await repo.saveTags(dims, allTags.filter((x) => !removeIds.has(x.id)))
+    // 快照父子深度，子标签排前（云端 FK 要求先删子）；本地真删除 + outbox 云端删除
+    const byId = new Map(allTags.map((t) => [t.id, t]))
+    const depth = (t?: Tag): number => { let n = 0, cur = t; while (cur?.parentId) { n++; cur = byId.get(cur.parentId) } return n }
+    const ordered = [...removeIds].sort((a, b) => depth(byId.get(b)) - depth(byId.get(a)))
+    await repo.deleteTags(ordered)
     setDeleteTarget(null)
   }
 

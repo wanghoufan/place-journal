@@ -12,6 +12,7 @@ export type OutboxOp =
   | { kind: 'upsert_entry'; id: string }
   | { kind: 'upload_media'; id: string }
   | { kind: 'upsert_tags' }
+  | { kind: 'delete_tags'; ids: string[] }
   | { kind: 'create_share'; id: string }
   | { kind: 'revoke_share'; id: string }
 
@@ -132,6 +133,26 @@ export const repo = {
     await bulkPut('dimensions', dimensions)
     await bulkPut('tags', tags)
     await enqueue({ kind: 'upsert_tags' })
+  },
+  // 真删除：bulkPut 是 upsert 语义（只写不删），此前 TagsPage 删除传「缺失后的全量数组」等于没删
+  // ids 顺序由调用方保证「子标签在前、父标签在后」（云端 tags_parent_owner_fk 要求先删子）
+  async deleteTags(ids: string[]) {
+    if (!ids.length) return
+    const idSet = new Set(ids)
+    const d = await db()
+    // 同步清理 entry.tagIds 悬空引用：否则 ensureTagsInCloud 的 rescue 会在该记录
+    // 下次重推时按旧 id 把标签重建回云端（复活）。仅改本地行，不 enqueue（避免整条记录重推 bump revision）
+    const entries = (await d.getAll('entries')) as Entry[]
+    const tx = d.transaction(['entries', 'tags'], 'readwrite')
+    for (const e of entries) {
+      if (e.tagIds?.some((t) => idSet.has(t))) {
+        await tx.objectStore('entries').put({ ...e, tagIds: e.tagIds.filter((t) => !idSet.has(t)) })
+      }
+    }
+    for (const id of ids) await tx.objectStore('tags').delete(id)
+    await tx.done
+    await enqueue({ kind: 'delete_tags', ids: [...ids] })
+    bump()
   },
   async saveShare(s: ShareSnapshot, syncQueue = true) {
     await put('shares', s)

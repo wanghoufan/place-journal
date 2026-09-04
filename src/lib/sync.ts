@@ -272,6 +272,18 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
           else hardErr = r.error ?? 'unknown'
         }
         if (hardErr) throw new Error(hardErr)
+      } else if (op.kind === 'delete_tags') {
+        // 删除语义：先清 entry_tags 关联（entry_tags_tag_fk），再按「子先父后」顺序删 tags
+        // （tags_parent_owner_fk 要求父删除前其子行已不存在；ids 顺序由调用方快照给定）
+        const ids = op.ids ?? []
+        if (ids.length) {
+          const { error: eAssoc } = await table(sb, 'entry_tags').delete().in('tag_id', ids).eq('owner_user_id', owner)
+          if (eAssoc) throw eAssoc
+          for (const id of ids) {
+            const { error } = await table(sb, 'tags').delete().eq('id', id).eq('owner_user_id', owner)
+            if (error) throw error
+          }
+        }
       } else if (op.kind === 'upload_media') {
         const m = (await repo.media()).find((x) => x.id === op.id)
         if (m && (m.display || m.thumb)) {
