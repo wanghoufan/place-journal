@@ -18,6 +18,12 @@ function toShareItem(entry: Entry, place: Place, media: MediaItem[], tagNames: s
   // tags（QA V0.2 OBS-1）：标签 chip 属公开字段，补齐填充，分享页才渲染。
   const cover = media.find((m) => m.id === entry.coverMediaId) ?? media.find((m) => m.entryId === entry.id)
   const precision = place.coordPrecision ?? 'exact'
+  // photos（本地长图用）：该记录全部照片，封面第一、其余按 order——云端 shareItemPayload 白名单会自动剔除
+  const own = media.filter((m) => m.entryId === entry.id).sort((a, b) => a.order - b.order)
+  const photos = [
+    ...(cover ? [cover] : []),
+    ...own.filter((m) => m.id !== cover?.id),
+  ].map((m) => (m.display ? URL.createObjectURL(m.display) : m.demoUri!)).filter(Boolean)
   return {
     clientId: uuid() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     coverMediaId: cover?.id,
@@ -27,6 +33,7 @@ function toShareItem(entry: Entry, place: Place, media: MediaItem[], tagNames: s
     budget: entry.budget,
     reason: entry.notePublic || entry.summary,
     coverUri: cover?.demoUri,
+    photos,
     tags: tagNames,
     lat: precision === 'exact' || precision === 'approx' ? roundCoord(place.lat) : undefined,
     lng: precision === 'exact' || precision === 'approx' ? roundCoord(place.lng) : undefined,

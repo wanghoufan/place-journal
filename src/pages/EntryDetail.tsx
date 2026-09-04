@@ -4,6 +4,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet } from '../components/ui'
 import { repo } from '../lib/idb'
 import { createSingleShare, shareUrl, copyText } from '../lib/shares'
+import { renderShareCard, saveOrShareBlob, THEMES } from '../lib/shareCard'
+import type { CardTheme } from '../lib/shareCard'
 import type { MediaItem, ShareSnapshot } from '../lib/types'
 
 export default function EntryDetail() {
@@ -14,6 +16,7 @@ export default function EntryDetail() {
   const [shareLink, setShareLink] = useState<string | null>(null)
   const [shareSnap, setShareSnap] = useState<ShareSnapshot | null>(null)
   const [cardHint, setCardHint] = useState('')
+  const [cardTheme, setCardTheme] = useState<CardTheme>('warm')
   const [copied, setCopied] = useState('')
   // 编辑态：仅覆盖可编辑字段（地点归属/照片/摘要不在此改）
   const [editing, setEditing] = useState(false)
@@ -65,14 +68,14 @@ export default function EntryDetail() {
     setShareOpen(true)
   }
 
-  // 分享卡片图：微信等平台拦截外链时，保存图片直接发微信
+  // 分享卡片图：微信等平台拦截外链时，保存图片直接发微信（长图含全部照片+标签+公开理由）
   async function saveCard() {
     if (!shareSnap) return
     setCardHint('生成中…')
     try {
-      const { renderShareCard, saveOrShareBlob } = await import('../lib/shareCard')
-      const blob = await renderShareCard(shareSnap, shareSnap.items[0])
-      const r = await saveOrShareBlob(blob, `打卡分享·${shareSnap.items[0]?.placeName ?? '地点'}.jpg`)
+      const it = shareSnap.items[0]
+      const blob = await renderShareCard(shareSnap, it, cardTheme, it.photos ?? [])
+      const r = await saveOrShareBlob(blob, `打卡分享·${it.placeName ?? '地点'}.jpg`)
       setCardHint(r === 'shared' ? '已唤起分享面板，选微信发送即可' : '已保存/下载，可直接发微信')
     } catch { setCardHint('生成失败，请重试') }
     setTimeout(() => setCardHint(''), 3500)
@@ -189,6 +192,15 @@ export default function EntryDetail() {
         <div className="space-y-3 text-sm">
           {shareLink && (
             <>
+              <div className="flex gap-2">
+                {(Object.keys(THEMES) as CardTheme[]).map((k) => (
+                  <button key={k} onClick={() => setCardTheme(k)}
+                    className={`flex-1 py-2 rounded-xl border-2 text-xs font-bold ${cardTheme === k ? 'border-terra text-terra' : 'border-line text-inkmuted'}`}>
+                    <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{ background: THEMES[k].swatch }} />
+                    {THEMES[k].name}
+                  </button>
+                ))}
+              </div>
               <button className="btn-primary w-full py-3.5 text-base" onClick={saveCard}>📸 保存分享图（发微信用）</button>
               {cardHint && <p className="text-moss text-xs">{cardHint}</p>}
               <div className="bg-carddeep rounded-xl px-3 py-2.5 break-all text-xs">{shareLink}</div>

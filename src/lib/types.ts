@@ -72,6 +72,7 @@ export interface ShareItem {
   reason?: string
   tags?: string[]
   coverUri?: string            // 公开桶 URL 或 data URI（本地快照）
+  photos?: string[]            // 本地快照专用：该记录全部照片（封面第一，blob URL）——仅用于本地生成分享长图，云端 payload 白名单不含此字段
   lat?: number
   lng?: number
   coordHidden?: boolean

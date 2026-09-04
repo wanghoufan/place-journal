@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Stars, useDBData } from '../components/ui'
 import { copyText, searchLine } from '../lib/shares'
+import { renderShareCard, saveOrShareBlob, THEMES } from '../lib/shareCard'
+import type { CardTheme } from '../lib/shareCard'
 import type { ShareSnapshot, ShareItem } from '../lib/types'
 
 export default function ShareSingle() {
@@ -12,6 +14,7 @@ export default function ShareSingle() {
   const [copied, setCopied] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
   const [cardHint, setCardHint] = useState('')
+  const [cardTheme, setCardTheme] = useState<CardTheme>('warm')
 
   useEffect(() => {
     if (!data) return
@@ -34,8 +37,7 @@ export default function ShareSingle() {
     if (!snap || snap === 'notfound' || !it) return
     setCardHint('生成中…')
     try {
-      const { renderShareCard, saveOrShareBlob } = await import('../lib/shareCard')
-      const blob = await renderShareCard(snap, it)
+      const blob = await renderShareCard(snap, it, cardTheme, it.photos ?? [])
       const r = await saveOrShareBlob(blob, `打卡分享·${it.placeName}.jpg`)
       setCardHint(r === 'shared' ? '已唤起分享面板' : '已保存/下载，可直接发微信')
     } catch { setCardHint('生成失败，请重试') }
@@ -65,6 +67,15 @@ export default function ShareSingle() {
           <button className="btn-primary w-full py-3.5 mt-4 text-lg" onClick={async () => { await copyText(searchLine(it)); setCopied('已复制，去任意 App 粘贴搜索即可'); setTimeout(() => setCopied(''), 2500) }}>
             复制店名去搜索
           </button>
+          <div className="flex gap-2 mt-4">
+            {(Object.keys(THEMES) as CardTheme[]).map((k) => (
+              <button key={k} onClick={() => setCardTheme(k)}
+                className={`flex-1 py-2 rounded-xl border-2 text-xs font-bold ${cardTheme === k ? 'border-terra text-terra' : 'border-line text-inkmuted'}`}>
+                <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{ background: THEMES[k].swatch }} />
+                {THEMES[k].name}
+              </button>
+            ))}
+          </div>
           <button className="w-full py-3 mt-3 rounded-full border-2 border-terra/40 text-terra font-bold active:scale-[0.98] transition" onClick={saveCard}>
             📸 保存分享图（发微信用）
           </button>
