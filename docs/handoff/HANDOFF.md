@@ -38,8 +38,9 @@
 
 1. ~~ENV1 实测报告落盘~~ ✅ 2026-09-04 完成（含截图 4 张）；~~Chrome 环境修复~~ ✅（优雅退出 + 清 IDB 目录后恢复）；~~outbox 修复回归~~ ✅ PASS；~~清单 ENV-1 状态~~ ✅ 已更新。
 2. ~~git commit~~ ✅ **已提交 `41ebe90`**（outbox 时序 + 匿名分享映射 + 重复标签合并 + ENV1 报告/截图；未 push）。**另修：Find 页重复标签 bug（2026-09-04 用户报）**——根因：清验收环境后本地重播种 demo 标签 + pullRemote 拉回云端套，同名两套并存（55 标签/8 维度）；已合并（55→30，entries 引用重映射，云端本无重复）+ Find.tsx 同名去重兜底，实测 PASS。遗留：QA 验收临时标签（验收T3/T7 等）仍在标签库，可手动删或待用户示下。
-3. **可选/后续**：真 Key 联调（腾讯 ASR/大模型/高德，需用户确认 Key 与环境）；Docker/Vercel 部署待授权。
-4. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
+3. ~~真 Key 联调~~ ✅ **2026-09-04 全通**：① 腾讯 ASR SentenceRecognition 真实转写 PASS（「今天下午去了万绿园散步…」逐字一致）；② AI 整理 OpenCode Go（`glm-5.3-flash`）结构化 JSON PASS（score/budget/summary/tags 合同全对）。**Docker 自托管已上线**：规范副本 `Developer/coding/docker/personal-checkin/`（deploy.sh 流程），`http://localhost:8081`（Mac）/ `http://192.168.31.60:8081`（局域网）。**部署中修 4 个自托管 bug**（均在 server.mjs/api 层，已 push）：处理器 esbuild 双层 default 解包、res.status().json() shim、腾讯 TC3 头 `X-TC-Timestamp` 笔误、opencode 端点自动补 `/chat/completions`。腾讯 ASR 曾报 not authorized（用户控制台开通后自愈）。
+4. **下一步**：Tailscale 穿透（手机外网 HTTPS 访问——手机语音录音必须 HTTPS，局域网 http 下拍照/打字可用）；高德 Key 联调（VITE_AMAP_* 已填，分享页地图待验）；QA 验收临时标签清理待用户示下。
+5. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩
 
