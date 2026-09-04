@@ -35,7 +35,8 @@
 | 滚动异常 K1 | ✅ 未复现 | QA D1–D5 全过（含 1661px 长页/相册横滑/键盘）；用户如再遇，按基线 §5-D 固化步骤报修 |
 | 近期功能批次 | ✅ 已提交（`168ef9b`→`5f99891` 共 9 commit） | 标签管理重设计（底部弹窗菜单+使用计数）、Find 标签筛选交集+按频次、语音超短按友好提示、标签真删 deleteTags（清 entry_tags/子先父后/防复活）、**uuid polyfill（修手机局域网 http 下 crypto.randomUUID 缺失致新建全挂）**、分享卡片图 canvas（微信拦外链场景）、Find 筛选条按维度分组、创建分享弹层主按钮=保存分享图、分享长图重构（全部照片+标签+公开理由入卡，票根/竹青主题）、全站主题系统（暖纸/暖票/竹青 CSS 变量切换+我的页选择）。以 git log 为权威 |
 | QA 回归+视觉验收报告 | ✅ 已执行并甄别 | [docs/qa/QA回归报告丨2026-09-04.md](docs/qa/QA回归报告丨2026-09-04.md)、[docs/qa/视觉验收报告丨2026-09-04.md](docs/qa/视觉验收报告丨2026-09-04.md)（均含截图，commit `5f99891`）；8 个 FAIL 甄别后真问题仅 2 个且已修（Find 标签 toggle 取消 `b819931`、8081 OAuth 白名单用户已在 Dashboard 补），其余为伪 bug（详见 0.2 第 5 条） |
-| Record 页三项修复（本轮 2026-09-04 晚） | ⚠️ **已改未提交** | 手机（192.168.31.60:8081）实测发现 3 问题：① 封面不能切换 → 已修：非封面照片左上角新增「设为封面」按钮，点击即移到第一位（封面=photos[0] 语义不变，AiConfirm 无需改）；② 手机系统浏览器不能录音 → 根因是浏览器硬限制（HTTP 非安全上下文 `navigator.mediaDevices` 为 undefined，代码无法绕过），已把提示文案改为准确说明+指向 HTTPS，**真正解锁需 Tailscale HTTPS**；③ 填文字后「交给 AI 整理」点不动 → 根因：地点未选中（canNext 需 地点+内容），已改按钮文案明示缺失项（「先选择地点，再交给 AI 整理 →」）。改动仅 `src/pages/Record.tsx`，tsc+build 通过；**待授权 commit + 重建 8081 镜像后才在手机生效** |
+| Record 页三项修复（本轮 2026-09-04 晚） | ✅ 已入库 `35538b8` | 手机（192.168.31.60:8081）实测发现 3 问题：① 封面不能切换 → 已修：非封面照片左上角新增「设为封面」按钮，点击即移到第一位（封面=photos[0] 语义不变，AiConfirm 无需改）；② 手机系统浏览器不能录音 → 根因是浏览器硬限制（HTTP 非安全上下文 `navigator.mediaDevices` 为 undefined，代码无法绕过），已把提示文案改为准确说明+指向 HTTPS，**真正解锁需 Tailscale HTTPS**；③ 填文字后「交给 AI 整理」点不动 → 根因：地点未选中（canNext 需 地点+内容），已改按钮文案明示缺失项（「先选择地点，再交给 AI 整理 →」）。改动仅 `src/pages/Record.tsx`，tsc+build 通过；**8081 镜像仍为旧版，手机复测需重建** |
+| Record 修复 QA 验收（2026-09-04 下午） | ✅ 双报告通过 | 自动化 QA [QA回归报告丨Record修复](docs/qa/QA回归报告丨Record修复丨2026-09-04.md)：**QA_PASS_WITH_BLOCKED**，Total 11 / PASS 9 / FAIL 0 / BLOCKED 2——R1 封面切换（顺序交换实证）、R2 录音降级（fake device 短按友好提示）、R3 按钮三态、B1–B5 基线全过；BLOCKED=R2-HTTP 提示（桌面恒安全上下文，待手机）+ B6 云同步（自动化无登录态，真机侧已覆盖）。真机 QA [真机QA报告](docs/qa/真机QA报告丨2026-09-04.md)：**PASS**，Total 18 / PASS 14 / FAIL 0 / Pending 4——Happy Path 全链跑通（登录/记录/AI确认/保存/编辑/分享长图/分享链接/Find/三主题），未发现 P0/P1。**甄别**：RQA-OBS-01（5173 AI/ASR 未配置）为伪 bug——dev 下 /api 404 降级是设计（organize.ts 判 404 走本地推测），8081 已实测真 Key；OBS-1（P3）Gallery `validateDOMNesting` button 嵌套（ui.tsx Stars 嵌于 EntryCard button，Gallery.tsx:217）为真问题但功能无影响，待用户示下是否顺手修 |
 | 暂停原因 | 📌 2026-09-04 晚收工 | 用户 VPN 暂不可用（Tailscale 计划受阻），主动暂停；恢复入口见 0.2 优先级清单 |
 
 ### 0.2 下一步任务（按优先级）
@@ -46,11 +47,13 @@
 4. ~~自验收~~ ✅ 2026-09-04 SELF_CHECK_PASS（8081 生产版：首页/三tab/详情/控制台全净；子代理浏览器无登录态属环境因素）。**已交付两份转交提示词（对话内）**：QA 回归测试（R1-R5 今日修复回归 + B1-B5 基线回归）与产品视觉验收（8 屏走查），报告落点 docs/qa/QA回归报告丨2026-09-04.md 与 docs/qa/视觉验收报告丨2026-09-04.md，均未执行。
 5. **验收报告甄别（2026-09-04 上午）**：QA 回归（QA_FAIL）与视觉验收（VA_FAIL）两份报告经复核，8 个 FAIL 项真问题仅 2 个——① Find 标签选中后无法取消（toggleScene 只加不减）**已修**（`b819931`，含整词匹配防「咖啡」误亮「咖啡茶饮」，8081 重建后复测 PASS）；② 8081 OAuth 被 Supabase Redirect 白名单挡（只登记了 5173）→ 用户已在 Dashboard 补 `localhost:8081` + `192.168.31.60:8081`，登录复测 PASS（免密回跳，云端已连接）。**伪 bug 更正**：VA-02 我方提示词链接格式写错（真实 `/s/p/:slug`）；VA-03 首页=相册双列是设计，基线描述对应 Find 页；VA-06 绿野书屋 entry 本身无评分标签；R2 智能体等待 5.5s 不足 + 一轮未选地点（实测 UI 全链 PASS：OpenCode 64s 慢响应，前端 ~30s 降级 localHeuristics 并有提示条）。R3 语音=桌面无真实音频输入的环境限制。
 6. ~~三项体验优化~~ ✅ **2026-09-04 完成并上线（`90fdff9`，8081 已重建，浏览器复测 3/3 PASS）**：① AI 整理 12s 超时降级（organize.ts AbortController）+ 等待预告文案（复测实战触发降级：上游 OpenCode 免费档偶发 fetch failed，降级机制按设计兜底）；② 录音脉冲环视觉增强（pulse-rec 原 scale1.06 几乎不可见，改为 scale1.08+陶土色环外扩）；③ 分享页空评分/预算隐藏（ShareSingle + ShareList 列表小星同改）。**AI 模型已切换**：`OPENCODE_MODEL` 由 glm-5.3-flash → **deepseek-v4-flash**（用户 OpenCode Go 付费套餐；glm-5.3-flash 实测 64s 慢+偶发失败系该模型已知特性，deepseek 同题实测 1~2s 稳定、结构化合同/中文摘要质量持平，配额更高）。12s 降级机制保留作保险。
-7. **下一步（按优先级，2026-09-04 晚更新）**：
-   ① **授权后提交 Record 页三项修复**（工作区仅 `M src/pages/Record.tsx`：封面切换/录音提示/AI 按钮明示原因；commit 需用户确认，push 需二次确认），随后**同步部署副本并重建 8081 镜像**（代码变更必须重建，仅重启无效），手机复测三项；
-   ② **Tailscale HTTPS 穿透**（用户网络/VPN 恢复后）：Mac+手机装 Tailscale 同账号 → 配 tailscale serve HTTPS → 解锁手机录音（浏览器硬限制：HTTP 页面无麦克风，代码无法绕过）+ 外网访问；
-   ③ 高德 Key 联调（`VITE_AMAP_*` 已填，分享页地图待验，需重建镜像）；
-   ④ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
+7. **下一步（按优先级，2026-09-04 QA 验收后更新）**：
+   ① **QA 测试数据清理（待用户确认后执行）**：真机 QA 留下「QA测-真机咖啡馆」地点 +「QA验收保存链…」记录（entry `803845a5`）+ 本地分享 `/s/p/4dolpwxzkm4dwblr` + outbox 残留 1 条，应通过产品界面删除；
+   ② **OBS-1 顺手修（待用户示下）**：Gallery React button 嵌套警告（ui.tsx Stars 嵌于 EntryCard button），P3 功能无影响；
+   ③ **同步 8081 部署版**：`35538b8`（Record 三项修复）未进镜像，需重建后手机复测（push 需二次确认，或直接同步副本重建）；
+   ④ **Tailscale HTTPS 穿透**（用户网络/VPN 恢复后）：Mac+手机装 Tailscale 同账号 → 配 tailscale serve HTTPS → 解锁手机录音（浏览器硬限制）+ 外网访问，并补 R2-HTTP 提示文案真机验证；
+   ⑤ 高德 Key 联调（`VITE_AMAP_*` 已填，分享页地图待验，需重建镜像）；
+   ⑥ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
 8. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩

@@ -53,17 +53,22 @@ export function PageHeader({ title, back, onClose, right }: { title: string; bac
 
 // ---- 星级 ----
 export function Stars({ value, size = 16, editable, onChange }: { value?: number; size?: number; editable?: boolean; onChange?: (v: number) => void }) {
+  // 只读模式渲染 span 而非 button：卡片本身常是 button，避免 button 嵌套 button（React validateDOMNesting）
   return (
     <span className="inline-flex items-center gap-0.5" role={editable ? 'radiogroup' : undefined}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <button key={i} type="button" disabled={!editable} onClick={() => onChange?.(i)}
-          className={editable ? 'active:scale-90 transition' : 'pointer-events-none'} aria-label={`${i} 星`}>
+      {[1, 2, 3, 4, 5].map((i) => {
+        const star = (
           <svg width={size} height={size} viewBox="0 0 24 24"
             fill={value != null && i <= value ? '#e8971e' : 'none'} stroke={value != null && i <= value ? '#e8971e' : '#c9b9a0'} strokeWidth="1.8">
             <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z" strokeLinejoin="round" />
           </svg>
-        </button>
-      ))}
+        )
+        return editable ? (
+          <button key={i} type="button" onClick={() => onChange?.(i)} className="active:scale-90 transition" aria-label={`${i} 星`}>{star}</button>
+        ) : (
+          <span key={i} aria-hidden>{star}</span>
+        )
+      })}
     </span>
   )
 }
