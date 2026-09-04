@@ -3,8 +3,8 @@
 > **本文件为入口指针，权威收工快照在 `docs/handoff/HANDOFF.md` §0。** 2026-09-04 快照后，根目录本文件不再维护详细状态，避免两处真相。
 
 - **一句话**：移动优先的地点手账 PWA——拍照/语音记录 → AI 整理入库 → 按地点/标签/时间回顾 → 自然语言找地点 → 分享快照。本地优先（IndexedDB）+ Supabase 云同步。
-- **当前状态（2026-09-04）**：M0–M6 + 主题/分享长图/标签真删/Find 分离完成；S1（`20260903141849`）/S2/L2_PASS/TAG_FIX_PASS/QA_V02_PASS；ENV-1 已关闭（0003 上线 + 9 项实测 + 管理员复审通过）；ASR 真转写 + AI（`deepseek-v4-flash`）全通；Docker 8081 已上线。详见 `docs/handoff/HANDOFF.md` §0。
-- **下一步**：Tailscale 穿透；高德 Key 联调（需重建镜像）；Vercel 决策；QA 临时标签清理待示下。
+- **当前状态（2026-09-04 深夜）**：M0–M6 + 主题/分享长图/标签真删/Find 分离完成；S1（`20260903141849`）/S2/L2_PASS/TAG_FIX_PASS/QA_V02_PASS；ENV-1 已关闭（0003 上线 + 9 项实测 + 管理员复审通过）；ASR 真转写 + AI（`deepseek-v4-flash`）全通；Docker 8081 已上线；Record 三项修复 + OBS-1 已修并推送（HEAD=origin/master=`ab1086e`）；Vercel 生产 `https://place-journal-xi.vercel.app` 已上线+验收。详见 `docs/handoff/HANDOFF.md` §0。
+- **下一步**：用户亲手 Google 登录 + 手机 HTTPS 验录音（已成功一次）；高德 Key 联调（两端补变量）；历史验收标签清理待示下。
 - **路径变更**：数据库治理材料已迁至 `/Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/`（`项目审查丨habit_tracker/` 与 `平台丨共享 Supabase 数据库/`），本文与 `docs/db/…`、`supabase/migrations/…` 旧路径一律以 alw 为准。
 
 ## 恢复工作步骤（智能体照做）
