@@ -28,7 +28,7 @@
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/数据写入方案丨个人打卡小工具（habit_tracker）丨V1.1.md（§13.1 各阶段记录）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0001_init.sql（已发布版本）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0002_storage_realtime.pending.sql（Realtime 部分继续冻结；Storage 部分已拆出至 0003）
-- /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0003_storage_buckets.pending.sql（**ENV-1 正式送审版**，项目方已确认，待增量复审+解冻批准）
+- /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/0003_storage_buckets.pending.sql（**ENV-1 正式送审版**，项目方已确认；已于 2026-09-04 上线并关闭，见本清单 §三 ENV-1 行与 `docs/db/ENV1-实测记录丨2026-09-04.md`）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/项目审查丨habit_tracker/verify_result.txt（隔离验证 54/54）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/平台丨共享 Supabase 数据库/docs/DATABASE_CATALOG.md（habit_tracker 台账已登记）
 - /Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/平台丨共享 Supabase 数据库/supabase/migrations/（发布仓库，prompt_manager 未推送迁移在此，勿连带）

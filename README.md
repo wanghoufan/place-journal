@@ -4,7 +4,7 @@
 
 规格来源：`docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md`（SSOT，V1.0）。视觉基准：`docs/visuals/01–07`。
 
-## 当前状态（2026-09-03 快照，权威状态见 `docs/handoff/HANDOFF.md` §0）
+## 当前状态（2026-09-04 快照，权威状态见 `docs/handoff/HANDOFF.md` §0）
 
 ✅ **全部页面与流程已实现**：画廊（按记录/按地点）、记录（多图+按住说话+手动）、AI 确认、记录详情（含编辑）、地点时间线归档、找地点（自然语言+结构化筛选）、标签与维度（父→子两层，含父链补推）、我的（导出/同步/隐私/冲突裁决）、单地点分享页、多地点清单分享、地图总览（编号名牌）、本地 IndexedDB + Supabase 同步引擎（含 `ensureTagsInCloud`/`ensurePlacesInCloud`/`sweepDirtyRows` 自愈）、图片压缩上传、PWA 安装。`tsc && vite build` 通过（PWA precache 7 entries / 504KB）。
 
@@ -16,10 +16,10 @@
 |---|---|---|
 | Supabase 云端 | `VITE_SUPABASE_URL` `VITE_SUPABASE_PUBLISHABLE_KEY` | 已填 `.env.local` 并验证 Expose/RLS；Publishable key 可进前端 |
 | Google 登录 | Supabase Dashboard 配置（见方案 7.4） | 已验证真登录；Redirect 白名单含 `http://localhost:5173` |
-| 腾讯 ASR | `TENCENT_ASR_SECRET_ID` `TENCENT_ASR_SECRET_KEY` | 未配置 → 录音提示未配置 → 手动填写 |
-| AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | 未配置 → 本地推测预填 → 确认页手动修正 |
-| 高德地图 | `VITE_AMAP_KEY` `VITE_AMAP_SECURITY_JSCODE` | 未配置 → 分享地图用示意底图（真实坐标相对位置） |
-| Storage buckets | — | ⏳ 待管理员创建 `habit-tracker-media-private` / `habit-tracker-media-share`（`0003_storage_buckets.pending.sql` 待增量复审） |
+| 腾讯 ASR | `TENCENT_ASR_SECRET_ID` `TENCENT_ASR_SECRET_KEY` | ✅ 2026-09-04 真转写 PASS；未配置时降级手动填写 |
+| AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | ✅ 2026-09-04 全通，当前 `OPENCODE_MODEL=deepseek-v4-flash`（12s 超时降级保留）；未配置时本地推测预填 |
+| 高德地图 | `VITE_AMAP_KEY` `VITE_AMAP_SECURITY_JSCODE` | 已填待联调（分享页地图待验，需重建镜像）；未配置时示意底图 |
+| Storage buckets | — | ✅ ENV-1 已关闭（2026-09-04）：两桶已上线 + 9 项实测 + 管理员复审通过，证据 `docs/db/ENV1-实测记录丨2026-09-04.md` |
 
 ## 本地开发
 
@@ -61,9 +61,9 @@ npm run dev        # http://localhost:5173
 
 ## 待办 / 待真实验收
 
-- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）。
-- ⏳ 待管理员：Storage 两个 bucket 创建（媒体图与分享封面在 bucket 建好后恢复）；Realtime 其余部分冻结；0003 待增量复审与解冻批准。
-- ⏳ 待 Key 联调：腾讯 ASR / 大模型真实调用、高德真实瓦片、Vercel 正式部署、用真实照片确认压缩质量。
+- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）；ENV-1 九项实测（ENV-1 关闭）；ASR 真转写 + AI 全通；Docker 8081 上线（healthy）。
+- ⏳ 待办：Tailscale 穿透；高德 Key 联调（需重建镜像）；Vercel 云端决策；QA 验收临时标签清理待示下；Realtime 其余部分冻结。
+- ⚠️ 09-04 新增原始报告 `docs/qa/QA回归报告丨2026-09-04.md`（QA_FAIL）与 `docs/qa/视觉验收报告丨2026-09-04.md`（VA_FAIL）为执行快照，甄别结论以 `docs/handoff/HANDOFF.md` §0.5 为准（真问题 2 个已修）。
 
 ## 共享 Supabase 数据库管理员角色交接（2026-09-03）
 
@@ -85,10 +85,10 @@ npm run dev        # http://localhost:5173
   `/Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/`
 - 当前方案：`alw丨数据库管理专家/项目审查丨habit_tracker/数据写入方案丨个人打卡小工具（habit_tracker）丨V1.1.md`（含 R2 增量 §13/§13.1）。
 - 当前审查意见：`alw丨数据库管理专家/项目审查丨habit_tracker/个人打卡小工具丨habit_tracker丨数据库管理员完整审查意见丨V1.0.md`（V1.0 CHANGES_REQUIRED → V1.1 R2 增量复审 APPROVED_FOR_EXECUTION）。
-- 当前结论：**`APPROVED_FOR_EXECUTION`**（R2 增量复审，2026-09-03），允许 S1/S2/L2 已执行；**0003 Storage 待增量复审与解冻批准**。
+- 当前结论：**`APPROVED_FOR_EXECUTION`**（R2 增量复审，2026-09-03），允许 S1/S2/L2 已执行；**0003 Storage 已增量复审通过并于 2026-09-04 上线，ENV-1 关闭**（证据 `docs/db/ENV1-实测记录丨2026-09-04.md` + alw 终态归档复审）。
 - 已发布 Migration：`20260903141849_create_habit_tracker_schema.sql`（md5 1ce6ae9482cb8515aedce6a4ad73b53c）经平台仓库 `supabase db push` 发布至 `yacgnikzvutbpoqvokth`，线上核对 8 表 RLS / 策略 32 / anon 零表权限一致。
 - Expose 已由用户在 Dashboard 勾选 `habit_tracker` 并经 REST 验证（anon 读表 42501 拒绝、RPC 200/null 不可枚举）。
-- 未批准范围仍冻结：`0003_storage_buckets.pending.sql`（Storage buckets）、`0002_storage_realtime.pending.sql` 剩余 Realtime 部分；任何范围外 `supabase db push`、Dashboard 变更、bucket/Realtime 需重新提审。
+- 未批准范围仍冻结：`0002_storage_realtime.pending.sql` 剩余 Realtime 部分；任何范围外 `supabase db push`、Dashboard 变更、Realtime 需重新提审（0003 已执行完毕，不再是冻结项）。
 
 ### 数据库管理员必须履行的职责
 

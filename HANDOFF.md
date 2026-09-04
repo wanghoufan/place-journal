@@ -1,10 +1,10 @@
 # HANDOFF 丨 个人打卡小工具（地点手账 PWA）
 
-> **本文件为入口指针，权威收工快照在 `docs/handoff/HANDOFF.md` §0。** 2026-09-03 快照后，根目录本文件不再维护详细状态，避免两处真相。
+> **本文件为入口指针，权威收工快照在 `docs/handoff/HANDOFF.md` §0。** 2026-09-04 快照后，根目录本文件不再维护详细状态，避免两处真相。
 
 - **一句话**：移动优先的地点手账 PWA——拍照/语音记录 → AI 整理入库 → 按地点/标签/时间回顾 → 自然语言找地点 → 分享快照。本地优先（IndexedDB）+ Supabase 云同步。
-- **当前状态（2026-09-03）**：M0–M6 全量完成；Migration `20260903141849` 已发布至 `yacgnikzvutbpoqvokth`；Expose 已验证；L2 真实写入 **L2_PASS**、标签修复 **TAG_FIX_PASS**、QA V0.2 **QA_V02_PASS**（25/25）；Storage buckets 待管理员创建（0003 pending）。详见 `docs/handoff/HANDOFF.md` §0。
-- **下一步最优先**：管理员 `发布后收口核对`（清单 `docs/db/送审材料清单丨habit_tracker丨发布后收口核对.md`）。
+- **当前状态（2026-09-04）**：M0–M6 + 主题/分享长图/标签真删/Find 分离完成；S1（`20260903141849`）/S2/L2_PASS/TAG_FIX_PASS/QA_V02_PASS；ENV-1 已关闭（0003 上线 + 9 项实测 + 管理员复审通过）；ASR 真转写 + AI（`deepseek-v4-flash`）全通；Docker 8081 已上线。详见 `docs/handoff/HANDOFF.md` §0。
+- **下一步**：Tailscale 穿透；高德 Key 联调（需重建镜像）；Vercel 决策；QA 临时标签清理待示下。
 - **路径变更**：数据库治理材料已迁至 `/Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/`（`项目审查丨habit_tracker/` 与 `平台丨共享 Supabase 数据库/`），本文与 `docs/db/…`、`supabase/migrations/…` 旧路径一律以 alw 为准。
 
 ## 恢复工作步骤（智能体照做）
@@ -18,7 +18,7 @@ npm run build && npm run preview -- --port 4175   # 生产预览用 4175（4173 
 
 - 端口：5173=dev，4175=preview，8081=Docker 宿主机；勿占 3000/3001/3100。
 - Node：`/Users/zzymima0000/.workbuddy/binaries/node/versions/22.22.2-2/bin/node`。
-- 必读顺序：`docs/handoff/HANDOFF.md` §0 → `README.md` → `docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md` → `.workbuddy/memory/2026-09-03.md` → `alw丨数据库管理专家/项目审查丨habit_tracker/`。
+- 必读顺序：`docs/handoff/HANDOFF.md` §0（2026-09-04 现役）→ `README.md` → `docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md` → `.workbuddy/memory/2026-09-03.md`（09-04 无新增记忆文件，只读）→ `alw丨数据库管理专家/项目审查丨habit_tracker/`。
 
 ## 关键文件地图（精简）
 
@@ -26,11 +26,13 @@ npm run build && npm run preview -- --port 4175   # 生产预览用 4175（4173 
 src/lib/supabase.ts   DB_SCHEMA='habit_tracker' + table() helper，查询必走它
 src/lib/sync.ts       同步引擎：revision 乐观锁、owner_user_id、ensureTags/PlacesInCloud、sweepDirtyRows、pullRemote 保护 outbox
 src/lib/idb.ts        IndexedDB（idb）+ outbox，savePlace/saveEntry 时 revision+1
-docs/handoff/HANDOFF.md  唯一收工快照（§0 为现役，§1-§5 为历史）
-docs/acceptance-l2/   L2_PASS + TAG_FIX_PASS 证据（HAR 已脱敏，截图 10+ 张）
-docs/qa/              QA 基线 V0.2 + 报告 QA_V02_PASS（25/25，含 D1-D5 滚动未复现）
-api/                  transcribe.ts / ai-organize.ts（Vercel Functions，Docker 由 server.mjs 复用）
-Dockerfile / compose.yaml / server.mjs / docker/env.template  project_slug=personal-checkin
+src/lib/theme.ts / shareCard.ts / uuid.ts  主题 / 分享长图（感受永不出卡）/ http 局域网 uuid polyfill
+scripts/deploy.sh     规范部署（Docker V1.1，先 commit+push 后快进拉取）
+docs/handoff/HANDOFF.md  唯一收工快照（§0 为现役 09-04，§1-§5 为历史）
+docs/acceptance-l2/ + docs/db/ENV1-实测记录丨2026-09-04.md  L2_PASS + TAG_FIX_PASS + ENV-1 九项实测证据
+docs/qa/              QA 基线 V0.2 + QA_V02_PASS（25/25）；09-04 新增 QA回归（QA_FAIL）与视觉验收（VA_FAIL）两份原始报告，经 §0.5 甄别后真问题 2 个已修
+api/                  transcribe.ts / ai-organize.ts（Vercel Functions，Docker 由 server.mjs 复用；含 TC3 头与 /chat/completions 补齐修复）
+Dockerfile / compose.yaml / server.mjs / docker/env.template  project_slug=personal-checkin；部署副本 Developer/coding/docker/personal-checkin/
 ```
 
 ## 踩坑（勿重蹈）

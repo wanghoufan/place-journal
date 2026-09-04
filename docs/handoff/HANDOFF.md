@@ -1,4 +1,4 @@
-# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-04 快照（ENV-1 Storage 实测通过 + 管理员复审关闭后收工）
+# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-04 晚快照（主题/分享长图批次已提交 + Record 页三项修复待提交 + 暂停收工）
 
 > 用途：新智能体接续恢复开发的**唯一入口文档**。先读本文，再按「必读文档」顺序补齐上下文。
 > 项目路径：`/Users/zzymima0000/Developer/coding/1.Active/ing 丨0831个人打卡小工具 MACMINI GL`
@@ -23,7 +23,7 @@
 | 标签丢失 bug | ✅ **TAG_FIX_PASS**（2026-09-03 18:00 复核通过） | 根因：演示标签从未上云 → entry_tags 外键失败 + pullRemote 硬编码 `tagIds: []` 覆盖本地。修复：`src/lib/sync.ts` 新增 `ensureTagsInCloud` + merge 保留本地 tagIds。QA 6/6 通过（T1–T6 全 PASS）；观察项 T2-B「父链补推」**已修复**（ensureTagsInCloud 沿 parent_id 递归展开整链、父先于叶推送，tsc+build 通过；注意该修复在 QA 通过之后，未做云端实测，下次联网同步观察含父链标签即可）；证据 `docs/acceptance-l2/L2-REPORT.md`「标签同步修复回归验收」section |
 | 单设备定位 | ✅ 用户决定 | **不做双设备/并发/断线重连验收（L3 取消）**；乐观锁与 Mine 页冲突裁决 UI 仅作兜底 |
 | 平台仓库 | ✅ 基线 commit `efddca5` | 无 remote 未推送；prompt_manager 未推送 Migration `20260901163555` 原样保留（任何 db push 会连带推送它，⚠️ 需 prompt_manager 项目决策） |
-| 业务项目 git | ✅ 3 个 commit | `aaa178f` 全量基线 → `19eb499` 编辑功能 → `51b67d2` QA 基线文档；无 remote 未推送（push 需用户二次确认） |
+| 业务项目 git | ✅ 已同步 `5f99891`（origin/master 一致） | `cfef1cd` 洁癖收尾 → 09-04 功能批次 `168ef9b`→`5f99891`（主题/分享长图/标签真删/Find 分离等）；本地仅 `src/pages/Record.tsx` 未提交（见本表“Record 页三项修复”行）；push 仍需用户二次确认 |
 | 编辑已有记录 | ✅ 已实现+已提交 | EntryDetail「分享/编辑/删除」：评分/日期/人均/感受/公开理由/标签可改（QA 遗留事项 3）；tsc+build 通过，**未经 QA 实测** |
 | QA 基线 V0.2 | ✅ 已执行 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；整轮回归已完成见下 |
 | 第二轮 QA（V0.2 整轮回归） | ✅ **QA_V02_PASS（25/25）** | 报告 [docs/qa/QA-REPORT丨V0.2.md](docs/qa/QA-REPORT丨V0.2.md)（含开发侧后处理附录）；K1 滚动**未复现**（D1–D5 全过）、K2 T7/T8 **实证通过**；A 编辑 6/6 |
@@ -33,16 +33,24 @@
 | 匿名分享页 bug 修复 | ✅ 已修复+实测（2026-09-04） | `src/lib/shares.ts fetchCloudShare`：RPC items 为嵌套结构（item jsonb 列），原按扁平读致匿名访客分享页丢字段（无店名/封面，`📍 undefined`）。修复解嵌套；无痕视角实测封面（公开桶 640px）+字段完整渲染，tsc 通过 |
 | ENV1 实测报告 | ✅ 已落盘 | [docs/db/ENV1-实测记录丨2026-09-04.md](docs/db/ENV1-实测记录丨2026-09-04.md)（9 项数据 + 截图 4 张于 docs/db/env1-evidence/）；收口清单 ENV-1 行已更新 ✅ |
 | 滚动异常 K1 | ✅ 未复现 | QA D1–D5 全过（含 1661px 长页/相册横滑/键盘）；用户如再遇，按基线 §5-D 固化步骤报修 |
+| 近期功能批次 | ✅ 已提交（`168ef9b`→`5f99891` 共 9 commit） | 标签管理重设计（底部弹窗菜单+使用计数）、Find 标签筛选交集+按频次、语音超短按友好提示、标签真删 deleteTags（清 entry_tags/子先父后/防复活）、**uuid polyfill（修手机局域网 http 下 crypto.randomUUID 缺失致新建全挂）**、分享卡片图 canvas（微信拦外链场景）、Find 筛选条按维度分组、创建分享弹层主按钮=保存分享图、分享长图重构（全部照片+标签+公开理由入卡，票根/竹青主题）、全站主题系统（暖纸/暖票/竹青 CSS 变量切换+我的页选择）。以 git log 为权威 |
+| QA 回归+视觉验收报告 | ✅ 已执行并甄别 | [docs/qa/QA回归报告丨2026-09-04.md](docs/qa/QA回归报告丨2026-09-04.md)、[docs/qa/视觉验收报告丨2026-09-04.md](docs/qa/视觉验收报告丨2026-09-04.md)（均含截图，commit `5f99891`）；8 个 FAIL 甄别后真问题仅 2 个且已修（Find 标签 toggle 取消 `b819931`、8081 OAuth 白名单用户已在 Dashboard 补），其余为伪 bug（详见 0.2 第 5 条） |
+| Record 页三项修复（本轮 2026-09-04 晚） | ⚠️ **已改未提交** | 手机（192.168.31.60:8081）实测发现 3 问题：① 封面不能切换 → 已修：非封面照片左上角新增「设为封面」按钮，点击即移到第一位（封面=photos[0] 语义不变，AiConfirm 无需改）；② 手机系统浏览器不能录音 → 根因是浏览器硬限制（HTTP 非安全上下文 `navigator.mediaDevices` 为 undefined，代码无法绕过），已把提示文案改为准确说明+指向 HTTPS，**真正解锁需 Tailscale HTTPS**；③ 填文字后「交给 AI 整理」点不动 → 根因：地点未选中（canNext 需 地点+内容），已改按钮文案明示缺失项（「先选择地点，再交给 AI 整理 →」）。改动仅 `src/pages/Record.tsx`，tsc+build 通过；**待授权 commit + 重建 8081 镜像后才在手机生效** |
+| 暂停原因 | 📌 2026-09-04 晚收工 | 用户 VPN 暂不可用（Tailscale 计划受阻），主动暂停；恢复入口见 0.2 优先级清单 |
 
 ### 0.2 下一步任务（按优先级）
 
 1. ~~ENV1 实测报告落盘~~ ✅ 2026-09-04 完成（含截图 4 张）；~~Chrome 环境修复~~ ✅（优雅退出 + 清 IDB 目录后恢复）；~~outbox 修复回归~~ ✅ PASS；~~清单 ENV-1 状态~~ ✅ 已更新。
-2. ~~git commit~~ ✅ **已提交 `41ebe90`**（outbox 时序 + 匿名分享映射 + 重复标签合并 + ENV1 报告/截图；未 push）。**另修：Find 页重复标签 bug（2026-09-04 用户报）**——根因：清验收环境后本地重播种 demo 标签 + pullRemote 拉回云端套，同名两套并存（55 标签/8 维度）；已合并（55→30，entries 引用重映射，云端本无重复）+ Find.tsx 同名去重兜底，实测 PASS。遗留：QA 验收临时标签（验收T3/T7 等）仍在标签库，可手动删或待用户示下。
+2. ~~git commit~~ ✅ **已同步至 `5f99891`（HEAD == origin/master，2026-09-04 晚验证）**；此前 `41ebe90` 未 push 状态已取代。**另修：Find 页重复标签 bug（2026-09-04 用户报）**——根因：清验收环境后本地重播种 demo 标签 + pullRemote 拉回云端套，同名两套并存（55 标签/8 维度）；已合并（55→30，entries 引用重映射，云端本无重复）+ Find.tsx 同名去重兜底，实测 PASS。遗留：QA 验收临时标签（验收T3/T7 等）仍在标签库，可手动删或待用户示下；另 `src/pages/Record.tsx` 三项修复已改未提交（见 §0.1 末行）。
 3. ~~真 Key 联调~~ ✅ **2026-09-04 全通**：① 腾讯 ASR SentenceRecognition 真实转写 PASS（「今天下午去了万绿园散步…」逐字一致）；② AI 整理 OpenCode Go（`glm-5.3-flash`）结构化 JSON PASS（score/budget/summary/tags 合同全对）。**Docker 自托管已上线**：规范副本 `Developer/coding/docker/personal-checkin/`（deploy.sh 流程），`http://localhost:8081`（Mac）/ `http://192.168.31.60:8081`（局域网）。**部署中修 4 个自托管 bug**（均在 server.mjs/api 层，已 push）：处理器 esbuild 双层 default 解包、res.status().json() shim、腾讯 TC3 头 `X-TC-Timestamp` 笔误、opencode 端点自动补 `/chat/completions`。腾讯 ASR 曾报 not authorized（用户控制台开通后自愈）。
 4. ~~自验收~~ ✅ 2026-09-04 SELF_CHECK_PASS（8081 生产版：首页/三tab/详情/控制台全净；子代理浏览器无登录态属环境因素）。**已交付两份转交提示词（对话内）**：QA 回归测试（R1-R5 今日修复回归 + B1-B5 基线回归）与产品视觉验收（8 屏走查），报告落点 docs/qa/QA回归报告丨2026-09-04.md 与 docs/qa/视觉验收报告丨2026-09-04.md，均未执行。
 5. **验收报告甄别（2026-09-04 上午）**：QA 回归（QA_FAIL）与视觉验收（VA_FAIL）两份报告经复核，8 个 FAIL 项真问题仅 2 个——① Find 标签选中后无法取消（toggleScene 只加不减）**已修**（`b819931`，含整词匹配防「咖啡」误亮「咖啡茶饮」，8081 重建后复测 PASS）；② 8081 OAuth 被 Supabase Redirect 白名单挡（只登记了 5173）→ 用户已在 Dashboard 补 `localhost:8081` + `192.168.31.60:8081`，登录复测 PASS（免密回跳，云端已连接）。**伪 bug 更正**：VA-02 我方提示词链接格式写错（真实 `/s/p/:slug`）；VA-03 首页=相册双列是设计，基线描述对应 Find 页；VA-06 绿野书屋 entry 本身无评分标签；R2 智能体等待 5.5s 不足 + 一轮未选地点（实测 UI 全链 PASS：OpenCode 64s 慢响应，前端 ~30s 降级 localHeuristics 并有提示条）。R3 语音=桌面无真实音频输入的环境限制。
 6. ~~三项体验优化~~ ✅ **2026-09-04 完成并上线（`90fdff9`，8081 已重建，浏览器复测 3/3 PASS）**：① AI 整理 12s 超时降级（organize.ts AbortController）+ 等待预告文案（复测实战触发降级：上游 OpenCode 免费档偶发 fetch failed，降级机制按设计兜底）；② 录音脉冲环视觉增强（pulse-rec 原 scale1.06 几乎不可见，改为 scale1.08+陶土色环外扩）；③ 分享页空评分/预算隐藏（ShareSingle + ShareList 列表小星同改）。**AI 模型已切换**：`OPENCODE_MODEL` 由 glm-5.3-flash → **deepseek-v4-flash**（用户 OpenCode Go 付费套餐；glm-5.3-flash 实测 64s 慢+偶发失败系该模型已知特性，deepseek 同题实测 1~2s 稳定、结构化合同/中文摘要质量持平，配额更高）。12s 降级机制保留作保险。
-7. **下一步（按优先级）**：① Tailscale 穿透（用户 Mac/手机装 Tailscale 同账号后配 tailscale serve HTTPS，解锁手机外网+语音）；② 高德 Key 联调（VITE_AMAP_* 已填，分享页地图待验，需重建镜像）；③ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
+7. **下一步（按优先级，2026-09-04 晚更新）**：
+   ① **授权后提交 Record 页三项修复**（工作区仅 `M src/pages/Record.tsx`：封面切换/录音提示/AI 按钮明示原因；commit 需用户确认，push 需二次确认），随后**同步部署副本并重建 8081 镜像**（代码变更必须重建，仅重启无效），手机复测三项；
+   ② **Tailscale HTTPS 穿透**（用户网络/VPN 恢复后）：Mac+手机装 Tailscale 同账号 → 配 tailscale serve HTTPS → 解锁手机录音（浏览器硬限制：HTTP 页面无麦克风，代码无法绕过）+ 外网访问；
+   ③ 高德 Key 联调（`VITE_AMAP_*` 已填，分享页地图待验，需重建镜像）；
+   ④ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
 8. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩
@@ -55,6 +63,7 @@
 6. **验证纪律**：云端写入验收以 REST 回执/云端直读为准，页面显示≠同步成功；RLS 验证必须用 authenticated/anon 角色（superuser 绕过 RLS）。
 7. **prompt_manager 是相邻项目**：共用 Supabase 但互不归属；本项目的 bug 不要顺手改它（2026-09-03 曾发生两项目交叉混淆，用户已叫停）。
 8. **Chrome 验收自动化坑（2026-09-04）**：QA Chrome 启动参数 `--user-data-dir=/tmp/chrome-cdp-profile --remote-debugging-port=9334`；TRAE 沙箱会拦 Chrome 的系统访问（Crashpad/Keychain），Chrome 相关命令需 `dangerouslyDisableSandbox`；**强杀（pkill -9）Chrome 会挂死该 profile 的 IndexedDB**（`ensureSeeded` 永不落地 → 应用白屏且零 console 报错），退出尽量走优雅路径；Google OAuth 登录不得代输凭据，必须用户亲自完成；复用同一 profile 免重复登录。
+9. **手机局域网实测坑（2026-09-04）**：`http://192.168.31.60:8081` 是非安全上下文——① `navigator.mediaDevices` 为 undefined，录音直接不可用（浏览器硬限制，只能靠 HTTPS 解锁，代码提示已改准确）；② `crypto.randomUUID` 不存在（已修：`src/lib/uuid.ts` polyfill，commit `6fc3cd5`）。手机验证一律用 8081 部署版，**改代码后必须重建镜像**（仅重启容器不生效）。
 
 ---
 

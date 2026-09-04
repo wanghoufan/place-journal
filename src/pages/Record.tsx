@@ -34,7 +34,19 @@ export default function Record() {
   }, [data, placeQuery])
 
   const selectedPlace = data?.places.find((p) => p.id === placeId)
-  const canNext = (selectedPlace || (newMode && newName.trim())) && (transcript.trim() || photos.length)
+  const hasPlace = !!(selectedPlace || (newMode && newName.trim()))
+  const hasContent = !!(transcript.trim() || photos.length)
+  const canNext = hasPlace && hasContent
+
+  // 设为封面：把选中的照片移到第一位（第一张即封面）
+  function setCover(localId: string) {
+    setPhotos((ps) => {
+      const i = ps.findIndex((x) => x.localId === localId)
+      if (i <= 0) return ps
+      const p = ps[i]
+      return [p, ...ps.slice(0, i), ...ps.slice(i + 1)]
+    })
+  }
 
   async function pickFiles(files: FileList | null) {
     if (!files?.length) return
@@ -54,7 +66,13 @@ export default function Record() {
   }
 
   async function startRec() {
-    if (!(await VoiceRecorder.supported())) { setAsrNote('当前浏览器不支持录音，请手动填写感受。'); return }
+    if (!(await VoiceRecorder.supported())) {
+      // 非安全上下文（HTTP）下浏览器不暴露麦克风，与浏览器本身是否支持无关
+      setAsrNote(window.isSecureContext
+        ? '当前浏览器不支持录音，请手动填写感受。'
+        : '浏览器要求 HTTPS 地址才能录音，当前地址不可用。可先手动填写感受，语音请改用 HTTPS 访问。')
+      return
+    }
     try {
       recorder.current = new VoiceRecorder()
       await recorder.current.start()
@@ -96,7 +114,7 @@ export default function Record() {
         {/* 照片 */}
         <div className="card-paper p-3">
           <div className="grid grid-cols-3 gap-2">
-            {photos.map((p, i) => <DraftThumb key={p.localId} photo={p} onRemove={() => { setPhotos((ps) => ps.filter((x) => x.localId !== p.localId)) }} first={i === 0} />)}
+            {photos.map((p, i) => <DraftThumb key={p.localId} photo={p} onRemove={() => { setPhotos((ps) => ps.filter((x) => x.localId !== p.localId)) }} onSetCover={() => setCover(p.localId)} first={i === 0} />)}
             {photos.length < 9 && (
               <button onClick={() => fileRef.current?.click()} className="aspect-[3/4] rounded-xl border-2 border-dashed border-line flex flex-col items-center justify-center text-inkmuted text-xs gap-1 active:bg-carddeep">
                 <span className="text-2xl">＋</span>添加照片
@@ -159,19 +177,21 @@ export default function Record() {
         </div>
 
         <button className="btn-primary w-full py-3.5 text-lg" disabled={!canNext || busy} onClick={next}>
-          {busy ? '处理照片中…' : '交给 AI 整理 →'}
+          {busy ? '处理照片中…' : !hasPlace ? '先选择地点，再交给 AI 整理 →' : !hasContent ? '添加照片或说说感受' : '交给 AI 整理 →'}
         </button>
       </div>
     </div>
   )
 }
 
-function DraftThumb({ photo, onRemove, first }: { photo: DraftPhoto; onRemove: () => void; first: boolean }) {
+function DraftThumb({ photo, onRemove, onSetCover, first }: { photo: DraftPhoto; onRemove: () => void; onSetCover: () => void; first: boolean }) {
   const url = useMemo(() => (photo.display ? URL.createObjectURL(photo.display) : photo.demoUri), [photo.display])
   return (
     <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
       {url && <img src={url} className="w-full h-full object-cover" alt="" />}
-      {first && <span className="absolute top-1 left-1 bg-terra text-white text-[10px] px-1.5 py-0.5 rounded-full">封面</span>}
+      {first
+        ? <span className="absolute top-1 left-1 bg-terra text-white text-[10px] px-1.5 py-0.5 rounded-full">封面</span>
+        : <button onClick={onSetCover} aria-label="设为封面" className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full">设为封面</button>}
       <button onClick={onRemove} aria-label="移除" className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-[11px] leading-none">✕</button>
     </div>
   )
