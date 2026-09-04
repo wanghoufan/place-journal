@@ -11,6 +11,7 @@ export default function ShareSingle() {
   const [snap, setSnap] = useState<ShareSnapshot | null | 'notfound'>(null)
   const [copied, setCopied] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
+  const [cardHint, setCardHint] = useState('')
 
   useEffect(() => {
     if (!data) return
@@ -27,6 +28,19 @@ export default function ShareSingle() {
   if (!it) return <div className="p-10 text-center text-inkmuted">快照内容为空。</div>
 
   const go = (host: string) => window.open(`https://${host}/search?q=${encodeURIComponent(searchLine(it))}`, '_blank', 'noopener')
+
+  // 分享卡片图：微信等平台拦截外链时，保存图片直接发微信
+  async function saveCard() {
+    if (!snap || snap === 'notfound' || !it) return
+    setCardHint('生成中…')
+    try {
+      const { renderShareCard, saveOrShareBlob } = await import('../lib/shareCard')
+      const blob = await renderShareCard(snap, it)
+      const r = await saveOrShareBlob(blob, `打卡分享·${it.placeName}.jpg`)
+      setCardHint(r === 'shared' ? '已唤起分享面板' : '已保存/下载，可直接发微信')
+    } catch { setCardHint('生成失败，请重试') }
+    setTimeout(() => setCardHint(''), 3000)
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#efe7d7' }}>
@@ -51,6 +65,10 @@ export default function ShareSingle() {
           <button className="btn-primary w-full py-3.5 mt-4 text-lg" onClick={async () => { await copyText(searchLine(it)); setCopied('已复制，去任意 App 粘贴搜索即可'); setTimeout(() => setCopied(''), 2500) }}>
             复制店名去搜索
           </button>
+          <button className="w-full py-3 mt-3 rounded-full border-2 border-terra/40 text-terra font-bold active:scale-[0.98] transition" onClick={saveCard}>
+            📸 保存分享图（发微信用）
+          </button>
+          {cardHint && <p className="text-center text-xs text-moss mt-2">{cardHint}</p>}
           <div className="flex justify-center gap-4 mt-3 text-sm">
             <button className="text-terra underline" onClick={() => go('amap.com')}>高德</button>
             <button className="text-terra underline" onClick={() => go('map.baidu.com')}>百度地图</button>

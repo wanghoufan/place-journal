@@ -12,6 +12,7 @@ export default function ShareList() {
   const [view, setView] = useState<'list' | 'map'>('list')
   const [active, setActive] = useState(0)
   const [copied, setCopied] = useState('')
+  const [cardHint, setCardHint] = useState('')
 
   // 本地快照（未配置云端时）或云端快照
   const [snap, setSnap] = useState<ShareSnapshot | null | 'notfound'>(null)
@@ -29,6 +30,19 @@ export default function ShareList() {
 
   const items = snap.items
   const copyAll = () => copyText(items.map(searchLine).join('\n'))
+
+  // 分享卡片图：微信等平台拦截外链时，保存图片直接发微信
+  async function saveCard() {
+    if (!snap || snap === 'notfound') return
+    setCardHint('生成中…')
+    try {
+      const { renderShareListCard, saveOrShareBlob } = await import('../lib/shareCard')
+      const blob = await renderShareListCard(snap)
+      const r = await saveOrShareBlob(blob, `打卡清单·${snap.title}.jpg`)
+      setCardHint(r === 'shared' ? '已唤起分享面板' : '已保存/下载，可直接发微信')
+    } catch { setCardHint('生成失败，请重试') }
+    setTimeout(() => setCardHint(''), 3000)
+  }
 
   return (
     <div className="min-h-screen pb-8" style={{ background: 'linear-gradient(#f7f1e5, #f3ead8)' }}>
@@ -70,6 +84,10 @@ export default function ShareList() {
               </div>
             ))}
             <button className="btn-primary w-full py-3.5 text-lg" onClick={copyAll}>📋 复制全部店名</button>
+            <button className="w-full py-3 rounded-full border-2 border-terra/40 text-terra font-bold active:scale-[0.98] transition" onClick={saveCard}>
+              📸 保存清单图（发微信用）
+            </button>
+            {cardHint && <p className="text-center text-xs text-moss">{cardHint}</p>}
             {copied && <p className="text-center text-xs text-moss">{copied}</p>}
             <p className="text-center text-xs text-inkmuted">🌿 来自 {snap.ownerName || '朋友'} 的私藏地点</p>
           </div>
