@@ -47,13 +47,14 @@
 4. ~~自验收~~ ✅ 2026-09-04 SELF_CHECK_PASS（8081 生产版：首页/三tab/详情/控制台全净；子代理浏览器无登录态属环境因素）。**已交付两份转交提示词（对话内）**：QA 回归测试（R1-R5 今日修复回归 + B1-B5 基线回归）与产品视觉验收（8 屏走查），报告落点 docs/qa/QA回归报告丨2026-09-04.md 与 docs/qa/视觉验收报告丨2026-09-04.md，均未执行。
 5. **验收报告甄别（2026-09-04 上午）**：QA 回归（QA_FAIL）与视觉验收（VA_FAIL）两份报告经复核，8 个 FAIL 项真问题仅 2 个——① Find 标签选中后无法取消（toggleScene 只加不减）**已修**（`b819931`，含整词匹配防「咖啡」误亮「咖啡茶饮」，8081 重建后复测 PASS）；② 8081 OAuth 被 Supabase Redirect 白名单挡（只登记了 5173）→ 用户已在 Dashboard 补 `localhost:8081` + `192.168.31.60:8081`，登录复测 PASS（免密回跳，云端已连接）。**伪 bug 更正**：VA-02 我方提示词链接格式写错（真实 `/s/p/:slug`）；VA-03 首页=相册双列是设计，基线描述对应 Find 页；VA-06 绿野书屋 entry 本身无评分标签；R2 智能体等待 5.5s 不足 + 一轮未选地点（实测 UI 全链 PASS：OpenCode 64s 慢响应，前端 ~30s 降级 localHeuristics 并有提示条）。R3 语音=桌面无真实音频输入的环境限制。
 6. ~~三项体验优化~~ ✅ **2026-09-04 完成并上线（`90fdff9`，8081 已重建，浏览器复测 3/3 PASS）**：① AI 整理 12s 超时降级（organize.ts AbortController）+ 等待预告文案（复测实战触发降级：上游 OpenCode 免费档偶发 fetch failed，降级机制按设计兜底）；② 录音脉冲环视觉增强（pulse-rec 原 scale1.06 几乎不可见，改为 scale1.08+陶土色环外扩）；③ 分享页空评分/预算隐藏（ShareSingle + ShareList 列表小星同改）。**AI 模型已切换**：`OPENCODE_MODEL` 由 glm-5.3-flash → **deepseek-v4-flash**（用户 OpenCode Go 付费套餐；glm-5.3-flash 实测 64s 慢+偶发失败系该模型已知特性，deepseek 同题实测 1~2s 稳定、结构化合同/中文摘要质量持平，配额更高）。12s 降级机制保留作保险。
-7. **下一步（按优先级，2026-09-04 QA 验收后更新）**：
-   ① **QA 测试数据清理（待用户确认后执行）**：真机 QA 留下「QA测-真机咖啡馆」地点 +「QA验收保存链…」记录（entry `803845a5`）+ 本地分享 `/s/p/4dolpwxzkm4dwblr` + outbox 残留 1 条，应通过产品界面删除；
-   ② **OBS-1 顺手修（待用户示下）**：Gallery React button 嵌套警告（ui.tsx Stars 嵌于 EntryCard button），P3 功能无影响；
-   ③ **同步 8081 部署版**：`35538b8`（Record 三项修复）未进镜像，需重建后手机复测（push 需二次确认，或直接同步副本重建）；
-   ④ **Tailscale HTTPS 穿透**（用户网络/VPN 恢复后）：Mac+手机装 Tailscale 同账号 → 配 tailscale serve HTTPS → 解锁手机录音（浏览器硬限制）+ 外网访问，并补 R2-HTTP 提示文案真机验证；
-   ⑤ 高德 Key 联调（`VITE_AMAP_*` 已填，分享页地图待验，需重建镜像）；
-   ⑥ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
+7. **下一步（按优先级，2026-09-04 QA 验收后执行更新）**：
+   ① ~~QA 测试数据清理~~ 🔄 真机 QA 智能体执行中（用户已在其会话确认，通过 5173 产品界面删除「QA测-」前缀数据）；
+   ② ~~OBS-1 顺手修~~ ✅ **完成（`d95aa04`）**：Stars 只读模式改渲染 span（editable 表单保留 button），消除 Gallery/PlaceDetail/分享页卡片嵌套警告，tsc+build 通过；
+   ③ ~~同步 8081 部署版~~ ✅ **完成**：deploy.sh 拉取 `d95aa04` 重建镜像（首次 build 因网络 DeadlineExceeded，重试 + 基础镜像预拉后成功），healthz 200，bundle 实证含「设为封面/先选择地点/浏览器要求 HTTPS」三项修复，**手机可直接复测**；
+   ④ ~~git push~~ ✅ **完成**：`5f99891..d95aa04` 已推送 GitHub（含 Record 修复 `35538b8`、OBS-1 修复、QA 双报告归档）；
+   ⑤ **Tailscale HTTPS 穿透**（用户网络/VPN 恢复后）：Mac+手机装 Tailscale 同账号 → 配 tailscale serve HTTPS → 解锁手机录音 + 外网访问，并补 R2-HTTP 提示文案真机验证；
+   ⑥ 高德 Key 联调（`VITE_AMAP_*` 已填，分享页地图待验，需重建镜像）；
+   ⑦ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
 8. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩
