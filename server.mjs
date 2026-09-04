@@ -72,6 +72,9 @@ const server = http.createServer(async (req, res) => {
   if (url.startsWith('/api/')) {
     const h = handlers[url]
     if (!h) return sendJson(res, 501, { ok: false, reason: 'not_configured' })
+    // Vercel Functions 风格响应 shim：res.status(code).json(obj)（处理器与 Vercel 同一实现）
+    res.status = (code) => { res.statusCode = code; return res }
+    res.json = (obj) => { sendJson(res, res.statusCode, obj); return res }
     try {
       if (url === '/api/ai-organize') await readJsonBody(req)
       await h(req, res)
