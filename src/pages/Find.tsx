@@ -10,6 +10,7 @@ export default function Find() {
   const data = useDBData()
   const nav = useNavigate()
   const [q, setQ] = useState('')
+  const [pickedTags, setPickedTags] = useState<Set<string>>(new Set())
   const [view, setView] = useState<'gallery' | 'list'>('list')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [listOpen, setListOpen] = useState(false)
@@ -24,22 +25,24 @@ export default function Find() {
 
   const hits = useMemo(() => {
     if (!data || !parsed) return []
-    return matchEntries(parsed, data.entries, data.places, data.tags, data.media)
-  }, [data, parsed])
+    const base = matchEntries(parsed, data.entries, data.places, data.tags, data.media)
+    // 标签 chips = 独立交集过滤：地点须同时带有全部选中标签（与自然语言搜索叠加）
+    if (!pickedTags.size) return base
+    return base.filter((h) => [...pickedTags].every((id) => h.best.tagIds?.includes(id)))
+  }, [data, parsed, pickedTags])
 
   if (!data || !parsed) return null
 
-  // 结构化筛选 chips（点击追加到自然语言里，简单直接）
-  const sceneDim = data.dimensions.find((d) => d.kind === 'scene')
-  const scenes = data.tags.filter((t) => t.dimensionId === sceneDim?.id)
-  const toggleScene = (name: string) =>
-    setQ((cur) => {
-      const parts = cur.split(/\s+/).filter(Boolean)
-      // 再点已选 chip = 取消（此前只加不减，选中后无法移除）
-      return parts.includes(name) ? parts.filter((n) => n !== name).join(' ') : [...parts, name].join(' ')
-    })
-  // 按整词匹配判断选中态，避免「咖啡」误匹配「咖啡茶饮」这类包含关系
-  const hasScene = (name: string) => q.split(/\s+/).includes(name)
+  // 标签筛选 chips（独立交集过滤，见 toggleTag）
+  // 筛选 chips：展示全部「已录入、非空」的标签（至少被一条记录引用），按使用次数降序
+  const useCount = new Map<string, number>()
+  for (const e of data.entries) for (const id of e.tagIds ?? []) useCount.set(id, (useCount.get(id) ?? 0) + 1)
+  const filterTags = data.tags
+    .filter((t) => (useCount.get(t.id) ?? 0) > 0)
+    .sort((a, b) => (useCount.get(b.id) ?? 0) - (useCount.get(a.id) ?? 0))
+  // 勾选走独立集合（不进搜索框），再点取消；选中态按 id 判断，子串标签名不会互相误亮
+  const toggleTag = (id: string) =>
+    setPickedTags((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   async function makeList() {
     const db = data!
@@ -64,11 +67,11 @@ export default function Find() {
           <span className="text-terra">✦</span>
         </div>
 
-        {/* 场景快捷 chips */}
+        {/* 标签筛选 chips：全部已使用标签按频次排序；多选取交集，再点取消 */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {scenes.map((s) => (
-            <button key={s.id} className={`chip ${q.includes(s.name) ? 'chip-active' : ''}`} onClick={() => toggleScene(s.name)}>
-              {s.name} {q.includes(s.name) ? '✓' : ''}
+          {filterTags.map((t) => (
+            <button key={t.id} className={`chip ${pickedTags.has(t.id) ? 'chip-active' : ''}`} onClick={() => toggleTag(t.id)}>
+              {t.name} {pickedTags.has(t.id) ? '✓' : ''}
             </button>
           ))}
         </div>
