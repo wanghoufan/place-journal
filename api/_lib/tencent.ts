@@ -30,7 +30,7 @@ export function tc3SignatureHeaders(o: Tc3Options): Record<string, string> {
     Host: o.host,
     'X-TC-Action': o.action,
     'X-TC-Version': o.version,
-    'X-Timestamp': String(ts),
+    'X-TC-Timestamp': String(ts),
     Authorization: auth,
   }
 }

@@ -9,7 +9,8 @@ function providers(): { name: string; url: string; key: string; model: string }[
   const list: Record<string, { url: string; key?: string; model?: string }> = {
     openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions', key: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL || 'openrouter/auto' },
     deepseek: { url: 'https://api.deepseek.com/chat/completions', key: process.env.DEEPSEEK_API_KEY, model: process.env.DEEPSEEK_MODEL || 'deepseek-chat' },
-    opencode: { url: process.env.OPENCODE_BASE_URL || '', key: process.env.OPENCODE_API_KEY, model: process.env.OPENCODE_MODEL || '' },
+    // OPENCODE_BASE_URL 允许填 base（如 https://opencode.ai/zen/go/v1）或完整端点，统一补齐 /chat/completions
+    opencode: { url: (process.env.OPENCODE_BASE_URL || '').replace(/\/+$/, '') + '/chat/completions', key: process.env.OPENCODE_API_KEY, model: process.env.OPENCODE_MODEL || '' },
   }
   return order
     .map((name) => ({ name, ...list[name] }))
