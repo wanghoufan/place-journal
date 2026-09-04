@@ -67,13 +67,28 @@ export default function Find() {
           <span className="text-terra">✦</span>
         </div>
 
-        {/* 标签筛选 chips：全部已使用标签按频次排序；多选取交集，再点取消 */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {filterTags.map((t) => (
-            <button key={t.id} className={`chip ${pickedTags.has(t.id) ? 'chip-active' : ''}`} onClick={() => toggleTag(t.id)}>
-              {t.name} {pickedTags.has(t.id) ? '✓' : ''}
-            </button>
-          ))}
+        {/* 标签筛选：按维度分组（同类一组内换行、不同类另起一行），组内按使用频次排序；多选取交集，再点取消 */}
+        <div className="space-y-2.5">
+          {(() => {
+            const groups = [...data.dimensions]
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((d) => ({ key: d.id, label: d.name, tags: filterTags.filter((t) => t.dimensionId === d.id) }))
+              .filter((g) => g.tags.length > 0)
+            const orphans = filterTags.filter((t) => !data.dimensions.some((d) => d.id === t.dimensionId))
+            if (orphans.length) groups.push({ key: '_other', label: '其他', tags: orphans })
+            return groups.map((g) => (
+              <div key={g.key}>
+                <div className="text-[11px] text-inkmuted mb-1.5 ml-0.5">{g.label}</div>
+                <div className="flex flex-wrap gap-2">
+                  {g.tags.map((t) => (
+                    <button key={t.id} className={`chip ${pickedTags.has(t.id) ? 'chip-active' : ''}`} onClick={() => toggleTag(t.id)}>
+                      {t.name} {pickedTags.has(t.id) ? '✓' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          })()}
         </div>
 
         {/* 已解析条件（同名标签去重展示：防止同名不同 id 的标签重复成对出现） */}
