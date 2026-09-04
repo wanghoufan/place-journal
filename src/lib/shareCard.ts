@@ -170,8 +170,8 @@ export async function renderShareCard(
   const ctx = c.getContext('2d')!
   ctx.fillStyle = p.bg; ctx.fillRect(0, 0, W, h)
 
-  // ── 头部：店名 + ✦ + 区域；星 + 人均 ──
-  let y = 128
+  // ── 头部：店名 + ✦ + 区域；星 + 人均（宽松行距，避免与照片贴挤）──
+  let y = 152
   ctx.fillStyle = p.ink; ctx.font = 'bold 64px system-ui, sans-serif'
   const name = it.placeName.length > 13 ? it.placeName.slice(0, 12) + '…' : it.placeName
   const nameX = theme === 'sage' ? PAD + 76 : PAD
@@ -180,14 +180,14 @@ export async function renderShareCard(
   ctx.fillStyle = p.accent; ctx.font = '32px system-ui'
   ctx.fillText('✦', nameX + ctx.measureText(name).width + 14, y - 40)
 
-  y += 52
-  ctx.font = '30px system-ui, sans-serif'; ctx.fillStyle = p.inkMuted
+  y += 64
+  ctx.font = '33px system-ui, sans-serif'; ctx.fillStyle = p.inkMuted
   const metaBits = [it.area, it.budget != null ? `人均 ¥${it.budget}` : ''].filter(Boolean)
   if (metaBits.length) ctx.fillText(metaBits.join(' · '), nameX, y)
   if (it.rating != null) drawStars(ctx, W - PAD - 5 * 48, y, 40, it.rating, p)
 
-  y += 56
-  if (theme === 'ticket') { drawPerforation(ctx, y, p); y += 30 }
+  y += 72
+  if (theme === 'ticket') { drawPerforation(ctx, y, p); y += 34 }
 
   // ── 照片流：全部照片自上而下，等比全宽 ──
   for (const b of bmps) {
@@ -195,9 +195,11 @@ export async function renderShareCard(
     drawCoverFit(ctx, b, PAD, y, iw, ph, 28)
     y += ph + GAP
   }
+  if (bmps.length) y += 14
 
   // ── 标签 ──
   if (it.tags?.length) {
+    y += 10
     ctx.font = '28px system-ui, sans-serif'
     let x = PAD
     for (const t of it.tags.slice(0, 5)) {
@@ -214,11 +216,12 @@ export async function renderShareCard(
       ctx.fillStyle = p.chipInk; ctx.fillText(t, x + 20, y)
       x += tw + 14
     }
-    y += 96
+    y += 108
   }
 
   // ── 公开推荐理由（「我的感受」永不入卡）──
   if (reasonLines.length) {
+    y += 14
     ctx.fillStyle = p.accent
     roundRect(ctx, PAD, y - 6, 6, reasonLines.length * 46 + 18, 3); ctx.fill()
     ctx.fillStyle = p.ink; ctx.font = '32px system-ui, sans-serif'

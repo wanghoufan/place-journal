@@ -8,6 +8,7 @@ import { autoSync, listConflicts, resolveConflict, type ConflictRecord } from '.
 import { exportJson, exportCsv, storageUsage } from '../lib/exporter'
 import { copyText, shareUrl } from '../lib/shares'
 import { amapConfigured, cloudConfigured } from '../lib/env'
+import { applyTheme, APP_THEMES, type AppTheme } from '../lib/theme'
 
 export default function Mine() {
   const data = useDBData()
@@ -18,6 +19,8 @@ export default function Mine() {
   const [usage, setUsage] = useState('—')
   const [copiedId, setCopiedId] = useState('')
   const [conflicts, setConflicts] = useState<ConflictRecord[]>([])
+  const [theme, setThemeState] = useState<AppTheme>(() => ((localStorage.getItem('app-theme') as AppTheme) || 'warm'))
+  const [sharesOpen, setSharesOpen] = useState(false)
 
   useEffect(() => {
     getMeta<string>('last_sync').then((v) => v && setLastSync(new Date(v).toLocaleString('zh-CN')))
@@ -129,36 +132,63 @@ export default function Mine() {
           </div>
         </div>
 
-        {/* 我的分享 */}
+        {/* 外观主题 */}
+        <div className="card-paper p-4 space-y-2.5 text-sm">
+          <p className="font-bold text-base">🎨 外观主题</p>
+          <div className="flex gap-2">
+            {APP_THEMES.map((t) => (
+              <button key={t.id}
+                onClick={() => { setThemeState(t.id); applyTheme(t.id) }}
+                className={`flex-1 py-2.5 rounded-xl border-2 text-xs font-bold transition ${theme === t.id ? 'border-terra text-terra' : 'border-line text-inkmuted'}`}>
+                <span className="block w-6 h-6 rounded-full mx-auto mb-1 border border-line" style={{ background: t.swatch }} />
+                {t.name}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-inkmuted">切换立即生效，全站配色与分享图同步换装。</p>
+        </div>
+
+        {/* 我的分享（默认折叠，点开管理） */}
         {activeShares.length > 0 && (
           <div className="card-paper p-4 space-y-3 text-sm">
-            <p className="font-bold text-base">🔗 我的分享（{activeShares.length}）</p>
-            {activeShares.map((s) => (
-              <div key={s.id} className="border-b border-dashed border-line pb-3 last:border-0 last:pb-0 space-y-2">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-bold truncate">{s.kind === 'single' ? '📍' : '📋'} {s.title}</span>
-                  <span className="text-xs text-inkmuted shrink-0">{new Date(s.createdAt).toLocaleDateString('zh-CN')}</span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="chip flex-1 justify-center"
-                    onClick={async () => { await copyText(shareUrl(s)); setCopiedId(s.id); setTimeout(() => setCopiedId(''), 2000) }}
-                  >
-                    {copiedId === s.id ? '已复制 ✓' : '复制链接'}
-                  </button>
-                  <button
-                    className="chip flex-1 justify-center !text-terradeep"
-                    onClick={async () => {
-                      if (!window.confirm(`撤销「${s.title}」的分享？撤销后原链接立即失效，不可恢复。`)) return
-                      await repo.revokeShare(s.id)
-                    }}
-                  >
-                    撤销分享
-                  </button>
-                </div>
-              </div>
-            ))}
-            <p className="text-xs text-inkmuted leading-relaxed">撤销后访问者会看到「链接已失效或被撤销」。撤销操作会在云端配置后自动同步。</p>
+            <button className="w-full flex items-center justify-between" onClick={() => setSharesOpen((v) => !v)}>
+              <span className="font-bold text-base">🔗 我的分享（{activeShares.length}）</span>
+              <span className="text-xs text-inkmuted">{sharesOpen ? '收起 ▲' : '查看 ›'}</span>
+            </button>
+            {!sharesOpen ? (
+              <p className="text-xs text-inkmuted">
+                最近：{activeShares[0]?.kind === 'single' ? '📍' : '📋'} {activeShares[0]?.title}（{new Date(activeShares[0]?.createdAt).toLocaleDateString('zh-CN')}）
+              </p>
+            ) : (
+              <>
+                {activeShares.map((s) => (
+                  <div key={s.id} className="border-b border-dashed border-line pb-3 last:border-0 last:pb-0 space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-bold truncate">{s.kind === 'single' ? '📍' : '📋'} {s.title}</span>
+                      <span className="text-xs text-inkmuted shrink-0">{new Date(s.createdAt).toLocaleDateString('zh-CN')}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="chip flex-1 justify-center"
+                        onClick={async () => { await copyText(shareUrl(s)); setCopiedId(s.id); setTimeout(() => setCopiedId(''), 2000) }}
+                      >
+                        {copiedId === s.id ? '已复制 ✓' : '复制链接'}
+                      </button>
+                      <button
+                        className="chip px-3 text-xs !text-inkmuted"
+                        onClick={async () => {
+                          if (!window.confirm(`撤销「${s.title}」的分享？撤销后原链接立即失效，不可恢复。`)) return
+                          await repo.revokeShare(s.id)
+                        }}
+                      >
+                        撤销
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-inkmuted leading-relaxed">撤销后访问者会看到「链接已失效或被撤销」。撤销操作会在云端配置后自动同步。</p>
+              </>
+            )}
           </div>
         )}
 

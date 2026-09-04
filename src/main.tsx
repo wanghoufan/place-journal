@@ -7,6 +7,9 @@ import { ensureSeeded } from './lib/demo'
 import { autoSync, startRealtime, stopRealtime } from './lib/sync'
 import { onAuthChange } from './lib/supabase'
 import { cloudConfigured } from './lib/env'
+import { initTheme } from './lib/theme'
+
+initTheme()
 
 // 首屏：播种默认标签与演示数据（可一键清除），随后尝试自动同步
 ensureSeeded().finally(() => {

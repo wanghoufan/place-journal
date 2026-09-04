@@ -4,6 +4,48 @@
 
 :root {
   color-scheme: light;
+  /* 暖纸手账（默认）：RGB 三元组供 tailwind rgb(var()/alpha) 使用 */
+  --c-paper: 247 241 229;
+  --c-card: 253 248 238;
+  --c-carddeep: 243 234 216;
+  --c-ink: 61 74 62;
+  --c-inkmuted: 138 127 109;
+  --c-terra: 198 93 33;
+  --c-terradeep: 169 78 24;
+  --c-terrasoft: 246 227 211;
+  --c-moss: 92 111 88;
+  --c-line: 231 220 198;
+  --c-dot: 120 90 50;
+}
+
+/* 票根台账：牛皮纸底 + 邮戳红主色 */
+[data-theme='ticket'] {
+  --c-paper: 233 218 192;
+  --c-card: 250 246 236;
+  --c-carddeep: 236 223 197;
+  --c-ink: 74 59 40;
+  --c-inkmuted: 133 116 88;
+  --c-terra: 194 69 45;
+  --c-terradeep: 166 56 36;
+  --c-terrasoft: 242 227 205;
+  --c-moss: 106 122 88;
+  --c-line: 205 184 147;
+  --c-dot: 120 95 60;
+}
+
+/* 竹青园林：月白底 + 竹青主色 */
+[data-theme='sage'] {
+  --c-paper: 244 246 240;
+  --c-card: 251 252 248;
+  --c-carddeep: 231 239 231;
+  --c-ink: 47 59 51;
+  --c-inkmuted: 118 132 121;
+  --c-terra: 74 124 89;
+  --c-terradeep: 58 104 71;
+  --c-terrasoft: 223 236 224;
+  --c-moss: 74 124 89;
+  --c-line: 212 224 213;
+  --c-dot: 74 124 89;
 }
 
 html, body, #root {
@@ -12,13 +54,13 @@ html, body, #root {
 
 body {
   @apply bg-paper text-ink font-hand;
-  background-image: radial-gradient(rgba(120, 90, 50, 0.045) 1px, transparent 1px);
+  background-image: radial-gradient(rgb(var(--c-dot) / 0.045) 1px, transparent 1px);
   background-size: 22px 22px;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
 
-/* 手账风标题：下方陶土色手绘感短线 */
+/* 手账风标题：下方主题色手绘感短线 */
 .journal-title {
   @apply relative inline-block text-[28px] leading-tight font-bold tracking-wide;
 }
@@ -28,7 +70,7 @@ body {
   left: 2px; right: -6px; bottom: -6px;
   height: 7px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(198, 93, 33, 0.55), rgba(198, 93, 33, 0.18));
+  background: linear-gradient(90deg, rgb(var(--c-terra) / 0.55), rgb(var(--c-terra) / 0.18));
   transform: rotate(-0.6deg);
 }
 
@@ -57,10 +99,10 @@ body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* 录音中：按钮呼吸 + 陶土色脉冲环外扩，确保「正在录音」一眼可见 */
+/* 录音中：按钮呼吸 + 主题色脉冲环外扩，确保「正在录音」一眼可见 */
 @keyframes pulse-rec {
-  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(198, 93, 33, 0.5); }
-  70%  { transform: scale(1.08); box-shadow: 0 0 0 18px rgba(198, 93, 33, 0); }
-  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(198, 93, 33, 0); }
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgb(var(--c-terra) / 0.5); }
+  70%  { transform: scale(1.08); box-shadow: 0 0 0 18px rgb(var(--c-terra) / 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgb(var(--c-terra) / 0); }
 }
 .rec-pulse { animation: pulse-rec 1.1s ease-out infinite; }

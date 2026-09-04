@@ -4,16 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#f7f1e5',
-        card: '#fdf8ee',
-        carddeep: '#f3ead8',
-        ink: '#3d4a3e',
-        inkmuted: '#8a7f6d',
-        terra: '#c65d21',
-        terradeep: '#a94e18',
-        terrasoft: '#f6e3d3',
-        moss: '#5c6f58',
-        line: '#e7dcc6',
+        // 主题化：具体色值在 src/styles/index.css 的 CSS 变量（:root / [data-theme=...]），
+        // RGB 三元组 + <alpha-value> 支持 text-terra/40 之类透明度写法
+        paper: 'rgb(var(--c-paper) / <alpha-value>)',
+        card: 'rgb(var(--c-card) / <alpha-value>)',
+        carddeep: 'rgb(var(--c-carddeep) / <alpha-value>)',
+        ink: 'rgb(var(--c-ink) / <alpha-value>)',
+        inkmuted: 'rgb(var(--c-inkmuted) / <alpha-value>)',
+        terra: 'rgb(var(--c-terra) / <alpha-value>)',
+        terradeep: 'rgb(var(--c-terradeep) / <alpha-value>)',
+        terrasoft: 'rgb(var(--c-terrasoft) / <alpha-value>)',
+        moss: 'rgb(var(--c-moss) / <alpha-value>)',
+        line: 'rgb(var(--c-line) / <alpha-value>)',
       },
       fontFamily: {
         hand: ['"LXGW WenKai"', '"Kaiti SC"', 'STKaiti', '"Noto Serif SC"', 'Songti SC', 'serif'],
