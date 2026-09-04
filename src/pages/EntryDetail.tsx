@@ -4,7 +4,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet } from '../components/ui'
 import { repo } from '../lib/idb'
 import { createSingleShare, shareUrl, copyText } from '../lib/shares'
-import type { MediaItem } from '../lib/types'
+import type { MediaItem, ShareSnapshot } from '../lib/types'
 
 export default function EntryDetail() {
   const { id } = useParams()
@@ -12,6 +12,8 @@ export default function EntryDetail() {
   const data = useDBData()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareLink, setShareLink] = useState<string | null>(null)
+  const [shareSnap, setShareSnap] = useState<ShareSnapshot | null>(null)
+  const [cardHint, setCardHint] = useState('')
   const [copied, setCopied] = useState('')
   // 编辑态：仅覆盖可编辑字段（地点归属/照片/摘要不在此改）
   const [editing, setEditing] = useState(false)
@@ -58,8 +60,22 @@ export default function EntryDetail() {
   }
   async function doShare() {
     const s = await createSingleShare(entry!, place!, '我')
+    setShareSnap(s)
     setShareLink(shareUrl(s))
     setShareOpen(true)
+  }
+
+  // 分享卡片图：微信等平台拦截外链时，保存图片直接发微信
+  async function saveCard() {
+    if (!shareSnap) return
+    setCardHint('生成中…')
+    try {
+      const { renderShareCard, saveOrShareBlob } = await import('../lib/shareCard')
+      const blob = await renderShareCard(shareSnap, shareSnap.items[0])
+      const r = await saveOrShareBlob(blob, `打卡分享·${shareSnap.items[0]?.placeName ?? '地点'}.jpg`)
+      setCardHint(r === 'shared' ? '已唤起分享面板，选微信发送即可' : '已保存/下载，可直接发微信')
+    } catch { setCardHint('生成失败，请重试') }
+    setTimeout(() => setCardHint(''), 3500)
   }
 
   return (
@@ -173,8 +189,10 @@ export default function EntryDetail() {
         <div className="space-y-3 text-sm">
           {shareLink && (
             <>
+              <button className="btn-primary w-full py-3.5 text-base" onClick={saveCard}>📸 保存分享图（发微信用）</button>
+              {cardHint && <p className="text-moss text-xs">{cardHint}</p>}
               <div className="bg-carddeep rounded-xl px-3 py-2.5 break-all text-xs">{shareLink}</div>
-              <button className="btn-primary w-full py-3" onClick={async () => { await copyText(shareLink); setCopied('已复制链接') }}>复制链接</button>
+              <button className="w-full py-3 rounded-full border-2 border-terra/40 text-terra font-bold active:scale-[0.98] transition" onClick={async () => { await copyText(shareLink); setCopied('已复制链接') }}>复制链接</button>
               <p className="text-xs text-inkmuted leading-relaxed">
                 分享的是字段白名单快照（封面、名称、区域、星级、预算、公开理由），不含私密笔记与原始语音。
                 {!navigator.onLine || true ? '当前为本地快照：部署并配置 Supabase 后，链接可发给任何人打开。' : ''}
