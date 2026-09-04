@@ -1,6 +1,7 @@
 // 记录页：先照片和地点，再按住说感受；也可手动填写（方案 8.1 图2）
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { uuid } from '../lib/uuid'
 import { PageHeader, useDBData } from '../components/ui'
 import { compressImage, humanSize } from '../lib/image'
 import { VoiceRecorder, type Recording } from '../lib/audio'
@@ -44,7 +45,7 @@ export default function Record() {
       try {
         const c = await compressImage(f)
         est += c.bytes
-        added.push({ localId: crypto.randomUUID(), display: c.display, thumb: c.thumb, width: c.width, height: c.height })
+        added.push({ localId: uuid(), display: c.display, thumb: c.thumb, width: c.width, height: c.height })
       } catch { /* 单张失败跳过 */ }
     }
     setEstBytes(est)

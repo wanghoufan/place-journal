@@ -3,6 +3,7 @@
 // 「阻止此页面创建更多对话框」后会静默失效，故禁用原生弹窗）
 import { useState } from 'react'
 import { PageHeader, useDBData, Sheet } from '../components/ui'
+import { uuid } from '../lib/uuid'
 import { repo } from '../lib/idb'
 import type { Tag } from '../lib/types'
 
@@ -30,14 +31,14 @@ export default function TagsPage() {
   async function addDimension() {
     if (!newDimName.trim()) return
     await repo.saveTags(
-      [...dims, { id: crypto.randomUUID(), name: newDimName.trim(), kind: 'custom', sortOrder: dims.length }],
+      [...dims, { id: uuid(), name: newDimName.trim(), kind: 'custom', sortOrder: dims.length }],
       allTags,
     )
     setNewDimName(''); setDimOpen(false)
   }
   async function addTag() {
     if (!editing || !newTagName.trim()) return
-    const t: Tag = { id: crypto.randomUUID(), dimensionId: editing.dimId, parentId: editing.parent?.id ?? null, name: newTagName.trim(), sortOrder: allTags.length }
+    const t: Tag = { id: uuid(), dimensionId: editing.dimId, parentId: editing.parent?.id ?? null, name: newTagName.trim(), sortOrder: allTags.length }
     await repo.saveTags(dims, [...allTags, t])
     setNewTagName(''); setEditing(null)
   }

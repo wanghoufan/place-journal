@@ -1,9 +1,9 @@
 // 演示数据（明确标识 demo，可在“我的”一键清除）+ V1 预置默认标签（方案 3.3）
 import { getMeta, setMeta, repo } from './idb'
 import type { Dimension, Tag, Place, Entry, MediaItem } from './types'
+import { uuid } from './uuid'
 
 const now = () => new Date().toISOString()
-const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36))
 const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
 
 // ---- 预置默认标签 ----

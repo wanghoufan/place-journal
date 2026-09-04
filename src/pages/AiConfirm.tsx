@@ -1,6 +1,7 @@
 // AI 确认页：展示 AI 整理结果，所有字段可改，确认才入库（方案 8.1 图3 / 5.2）
 // 未配置 AI 时：本地推测 + 明确标注，字段全部手动可编辑
 import { useEffect, useMemo, useState } from 'react'
+import { uuid } from '../lib/uuid'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader, Stars, useDBData } from '../components/ui'
 import { organize, localHeuristics } from '../lib/organize'
@@ -74,7 +75,7 @@ export default function AiConfirm() {
     const dims = await repo.dimensions()
     let sceneDim = dims.find((d) => d.kind === 'scene')
     const tags = await repo.tags()
-    const newTag = { id: crypto.randomUUID(), dimensionId: sceneDim!.id, parentId: null as string | null, name, sortOrder: tags.length, demo: false }
+    const newTag = { id: uuid(), dimensionId: sceneDim!.id, parentId: null as string | null, name, sortOrder: tags.length, demo: false }
     await repo.saveTags(dims, [...tags, newTag])
     setSelectedTagIds((s) => [...s, newTag.id])
     setUnmatched((u) => u.filter((x) => x !== name))
@@ -86,11 +87,11 @@ export default function AiConfirm() {
       const now = new Date().toISOString()
       let placeId = draft!.placeId
       if (!placeId) {
-        placeId = crypto.randomUUID()
+        placeId = uuid()
         const p: Place = { id: placeId, name: draft!.newPlaceName!, area: draft!.newPlaceArea, sync: 'local', createdAt: now, updatedAt: now }
         await repo.savePlace(p)
       }
-      const entryId = crypto.randomUUID()
+      const entryId = uuid()
       const entry: Entry = {
         id: entryId, placeId, visitDate: new Date().toISOString().slice(0, 10),
         rating, budget, transcript: draft!.transcript, notePublic, summary,

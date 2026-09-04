@@ -1,6 +1,7 @@
 // 分享快照：字段白名单构建 + slug + 分享链接（方案 4.1/4.2）
 import type { Entry, Place, MediaItem, ShareSnapshot, ShareItem } from './types'
 import { repo } from './idb'
+import { uuid } from './uuid'
 
 // slug：22 位 base36 ≈ 114 bit 熵（审查意见 §8.2 方案 B：链接不可枚举）。
 // 与 0001_init.sql 的 CHECK（≥16 位 [A-Za-z0-9_-]）兼容。
@@ -18,7 +19,7 @@ function toShareItem(entry: Entry, place: Place, media: MediaItem[], tagNames: s
   const cover = media.find((m) => m.id === entry.coverMediaId) ?? media.find((m) => m.entryId === entry.id)
   const precision = place.coordPrecision ?? 'exact'
   return {
-    clientId: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    clientId: uuid() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     coverMediaId: cover?.id,
     placeName: place.name,
     area: place.area,
@@ -42,7 +43,7 @@ function roundCoord(v?: number) { return v == null ? undefined : Math.round(v * 
 export async function createSingleShare(entry: Entry, place: Place, ownerName?: string): Promise<ShareSnapshot> {
   const media = await repo.media()
   const s: ShareSnapshot = {
-    id: crypto.randomUUID?.() ?? String(Date.now()),
+    id: uuid() ?? String(Date.now()),
     slug: slug(), kind: 'single', title: place.name, ownerName,
     items: [toShareItem(entry, place, media, await tagNamesOf(entry))],
     status: 'active', createdAt: new Date().toISOString(),
@@ -54,7 +55,7 @@ export async function createSingleShare(entry: Entry, place: Place, ownerName?: 
 export async function createListShare(title: string, pairs: { entry: Entry; place: Place }[], ownerName?: string): Promise<ShareSnapshot> {
   const media = await repo.media()
   const s: ShareSnapshot = {
-    id: crypto.randomUUID?.() ?? String(Date.now()),
+    id: uuid() ?? String(Date.now()),
     slug: slug(), kind: 'list', title, ownerName,
     items: await Promise.all(pairs.map(async ({ entry, place }) => toShareItem(entry, place, media, await tagNamesOf(entry)))),
     status: 'active', createdAt: new Date().toISOString(),
