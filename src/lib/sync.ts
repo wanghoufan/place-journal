@@ -176,7 +176,7 @@ async function ensurePlacesInCloud(sb: SupabaseClient, owner: string, placeId: s
 // outbox 的状态——这些行会永远失去同步机会。每轮同步前把「本地脏但不在队列」的行
 // 重新入队；upsert_entry 分支内的 ensurePlacesInCloud 会顺带补推缺失的归属地点。
 async function sweepDirtyRows(): Promise<void> {
-  const queued = new Set((await outboxAll()).map((r) => (r.op.kind === 'upsert_tags' ? 'upsert_tags:' : `${r.op.kind}:${r.op.id}`)))
+  const queued = new Set((await outboxAll()).map((r) => (r.op.kind === 'upsert_tags' ? 'upsert_tags:' : r.op.kind === 'delete_tags' ? `delete_tags:${r.op.ids.join(',')}` : `${r.op.kind}:${r.op.id}`)))
   for (const p of await repo.places()) {
     if ((p.sync === 'local' || p.sync === 'failed') && !queued.has(`upsert_place:${p.id}`)) await enqueue({ kind: 'upsert_place', id: p.id })
   }
