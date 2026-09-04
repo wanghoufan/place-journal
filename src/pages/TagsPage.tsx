@@ -1,4 +1,6 @@
 // 标签与维度：父→子两层；可新增、改名、删除（方案 3.3）
+// 交互：点标签或「⋯」弹底部操作菜单——全部应用内 Sheet（window.prompt/confirm 被浏览器
+// 「阻止此页面创建更多对话框」后会静默失效，故禁用原生弹窗）
 import { useState } from 'react'
 import { PageHeader, useDBData, Sheet } from '../components/ui'
 import { repo } from '../lib/idb'
@@ -12,7 +14,7 @@ export default function TagsPage() {
   const [newDimName, setNewDimName] = useState('')
   const [editing, setEditing] = useState<{ dimId: string; parent?: Tag } | null>(null)
   const [newTagName, setNewTagName] = useState('')
-  // 改名/删除走应用内 Sheet：window.prompt/confirm 被浏览器「阻止此页面创建更多对话框」后静默失效（返回 null/false），表现为点了没反应
+  const [menuTarget, setMenuTarget] = useState<Tag | null>(null)
   const [renameTarget, setRenameTarget] = useState<Tag | null>(null)
   const [renameName, setRenameName] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null)
@@ -21,6 +23,10 @@ export default function TagsPage() {
   const dims = [...data.dimensions].sort((a, b) => a.sortOrder - b.sortOrder)
 
   const allTags = data!.tags
+  // 标签被记录引用的次数（叶子标签各自计数），用于行尾展示与删除确认文案
+  const useCount = new Map<string, number>()
+  for (const e of data.entries) for (const id of e.tagIds ?? []) useCount.set(id, (useCount.get(id) ?? 0) + 1)
+
   async function addDimension() {
     if (!newDimName.trim()) return
     await repo.saveTags(
@@ -35,13 +41,14 @@ export default function TagsPage() {
     await repo.saveTags(dims, [...allTags, t])
     setNewTagName(''); setEditing(null)
   }
-  function askRename(t: Tag) { setRenameTarget(t); setRenameName(t.name) }
+  function askRename(t: Tag) { setMenuTarget(null); setRenameTarget(t); setRenameName(t.name) }
+  function askAddChild(t: Tag) { setMenuTarget(null); setEditing({ dimId: t.dimensionId, parent: t }); setNewTagName('') }
+  function askDelete(t: Tag) { setMenuTarget(null); setDeleteTarget(t) }
   async function confirmRename() {
     const name = renameName.trim()
     if (renameTarget && name) await repo.saveTags(dims, allTags.map((x) => (x.id === renameTarget.id ? { ...x, name } : x)))
     setRenameTarget(null)
   }
-  function askDelete(t: Tag) { setDeleteTarget(t) }
   async function confirmDelete() {
     if (!deleteTarget) return
     const children = allTags.filter((x) => x.parentId === deleteTarget.id)
@@ -54,10 +61,13 @@ export default function TagsPage() {
     setDeleteTarget(null)
   }
 
+  const menuIsParent = menuTarget ? !menuTarget.parentId : false
+  const menuUse = menuTarget ? (useCount.get(menuTarget.id) ?? 0) : 0
+
   return (
     <div className="min-h-screen safe-bottom">
       <PageHeader title="标签与维度" back right={<button className="chip" onClick={() => setDimOpen(true)}>＋ 维度</button>} />
-      <p className="px-5 text-xs text-inkmuted mb-3">常规维度只有 父 → 子 两层；叶子标签才会存入记录。全部可改名、可删除。</p>
+      <p className="px-5 text-xs text-inkmuted mb-3">点标签可改名、删除；父标签还能加子标签。</p>
       <div className="px-5 space-y-4">
         {dims.map((d) => {
           const parents = data.tags.filter((t) => t.dimensionId === d.id && !t.parentId)
@@ -67,26 +77,27 @@ export default function TagsPage() {
                 <p className="font-bold">{d.name} <span className="text-xs text-inkmuted font-normal">{KIND_LABEL[d.kind]}</span></p>
                 <button className="chip" onClick={() => { setEditing({ dimId: d.id }); setNewTagName('') }}>＋ 标签</button>
               </div>
-              <div className="space-y-2">
-                {parents.length === 0 && <p className="text-xs text-inkmuted">还没有标签</p>}
+              {parents.length === 0 && <p className="text-xs text-inkmuted py-1">还没有标签</p>}
+              <div className="divide-y divide-[#e9e0cb]">
                 {parents.map((p) => {
                   const children = data.tags.filter((t) => t.parentId === p.id)
+                  const used = (useCount.get(p.id) ?? 0) + children.reduce((n, c) => n + (useCount.get(c.id) ?? 0), 0)
                   return (
-                    <div key={p.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="tag-chip">{p.name}</span>
-                        <button className="text-xs text-inkmuted underline" onClick={() => askRename(p)}>改名</button>
-                        <button className="text-xs text-[#a03c2a] underline" onClick={() => askDelete(p)}>删除</button>
-                        <button className="text-xs text-terra underline" onClick={() => { setEditing({ dimId: d.id, parent: p }); setNewTagName('') }}>＋子标签</button>
+                    <div key={p.id} className="py-2.5">
+                      <div className="flex items-center gap-1">
+                        <button className="flex-1 min-w-0 text-left active:opacity-60 transition" onClick={() => setMenuTarget(p)}>
+                          <span className="font-bold text-[15px]">{p.name}</span>
+                          <span className="text-xs text-inkmuted ml-2">{used ? `· ${used} 次使用` : '· 未使用'}</span>
+                        </button>
+                        <button aria-label={`${p.name} 更多操作`} className="w-9 h-9 rounded-full text-inkmuted text-lg leading-none hover:bg-[#f0e8d3] active:bg-[#e9e0cb] transition shrink-0"
+                          onClick={() => setMenuTarget(p)}>⋯</button>
                       </div>
                       {children.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5 pl-4">
+                        <div className="flex flex-wrap gap-1.5 mt-2 pl-1">
                           {children.map((c) => (
-                            <span key={c.id} className="inline-flex items-center gap-1 chip !py-1">
+                            <button key={c.id} className="chip !py-1 active:scale-[0.95] transition" onClick={() => setMenuTarget(c)}>
                               {c.name}
-                              <button className="text-inkmuted" onClick={() => askRename(c)}>✎</button>
-                              <button className="text-[#a03c2a]" onClick={() => askDelete(c)}>✕</button>
-                            </span>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -98,6 +109,21 @@ export default function TagsPage() {
           )
         })}
       </div>
+
+      {/* 操作菜单：改名 / ＋子标签（仅父标签） / 删除 */}
+      <Sheet open={!!menuTarget} onClose={() => setMenuTarget(null)} title={menuTarget?.name ?? ''}>
+        <p className="text-xs text-inkmuted mb-3">{menuIsParent ? '父标签' : '子标签'} · {menuUse ? `被 ${menuUse} 条记录使用` : '未被记录使用'}</p>
+        <div className="space-y-2">
+          <button className="w-full py-3 rounded-2xl bg-[#f2ead6] font-bold text-[15px] active:scale-[0.98] transition"
+            onClick={() => menuTarget && askRename(menuTarget)}>✎ 改名</button>
+          {menuIsParent && (
+            <button className="w-full py-3 rounded-2xl bg-[#f2ead6] font-bold text-[15px] text-terra active:scale-[0.98] transition"
+              onClick={() => menuTarget && askAddChild(menuTarget)}>＋ 加子标签</button>
+          )}
+          <button className="w-full py-3 rounded-2xl bg-[#f7e7e0] font-bold text-[15px] text-[#a03c2a] active:scale-[0.98] transition"
+            onClick={() => menuTarget && askDelete(menuTarget)}>删除</button>
+        </div>
+      </Sheet>
 
       <Sheet open={dimOpen} onClose={() => setDimOpen(false)} title="新增维度">
         <input className="field-input" placeholder="维度名称，如：氛围" value={newDimName} onChange={(e) => setNewDimName(e.target.value)} />
@@ -116,8 +142,8 @@ export default function TagsPage() {
         {deleteTarget && allTags.filter((x) => x.parentId === deleteTarget.id).length > 0 && (
           <p className="text-sm text-[#a03c2a]">将连同 {allTags.filter((x) => x.parentId === deleteTarget.id).length} 个子标签一起删除。</p>
         )}
-        <p className="text-xs text-inkmuted mt-1">已有记录若引用此标签，记录上的引用会保留失效，不影响记录本身。</p>
-        <button className="w-full py-3 mt-3 rounded-full bg-[#a03c2a] text-white font-bold" onClick={confirmDelete}>确认删除</button>
+        <p className="text-xs text-inkmuted mt-1">记录上对该标签的引用会一并移除，记录本身不受影响。</p>
+        <button className="w-full py-3 mt-3 rounded-full bg-[#a03c2a] text-white font-bold active:scale-[0.98] transition" onClick={confirmDelete}>确认删除</button>
       </Sheet>
     </div>
   )
