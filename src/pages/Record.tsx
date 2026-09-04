@@ -66,9 +66,11 @@ export default function Record() {
     setRecording(false)
     const rec: Recording | null = recorder.current ? await recorder.current.stop().catch(() => null) : null
     if (!rec) return
+    // 超短按：MediaRecorder 没来得及产出数据，直接提示重试，避免无意义的解码报错
+    if (rec.blob.size < 2048 || rec.seconds < 0.4) { setAsrNote('好像没录到声音，请按住按钮说完整一句话再松开。'); return }
     setAsrNote('正在转写…')
     const r = await transcribe(rec.blob)
-    if (r.ok) { setTranscript((t) => (t ? t + ' ' : '') + r.text); setAsrNote(null) }
+    if (r.ok) { if (r.text.trim()) { setTranscript((t) => (t ? t + ' ' : '') + r.text); setAsrNote(null) } else setAsrNote('没听清内容，请靠近一点大声说，或直接手动填写。') }
     else if (r.reason === 'not_configured') setAsrNote('语音转写未配置（需在部署环境填入腾讯 ASR 密钥）。可直接手动填写感受。')
     else setAsrNote(`转写失败：${r.message}。可直接手动填写感受。`)
   }

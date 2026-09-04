@@ -35,10 +35,12 @@ export class VoiceRecorder {
 
 // 任意浏览器可解码音频 → 16kHz 单声道 WAV Blob
 export async function toWav16k(blob: Blob): Promise<Blob> {
+  if (blob.size < 2048) throw new Error('录音太短，没有采到声音')
   const buf = await blob.arrayBuffer()
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
   try {
     const audio = await ctx.decodeAudioData(buf)
+      .catch(() => { throw new Error('音频解码失败，请按住按钮说完整一句话再松开') })
     const rate = 16000
     const offline = new (window.OfflineAudioContext || (window as any).webkitOfflineAudioContext)(1, Math.ceil(audio.duration * rate), rate)
     const src = offline.createBufferSource()
