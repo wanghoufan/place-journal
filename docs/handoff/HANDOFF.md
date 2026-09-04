@@ -38,7 +38,10 @@
 | Record 页三项修复（本轮 2026-09-04 晚） | ✅ 已入库 `35538b8` | 手机（192.168.31.60:8081）实测发现 3 问题：① 封面不能切换 → 已修：非封面照片左上角新增「设为封面」按钮，点击即移到第一位（封面=photos[0] 语义不变，AiConfirm 无需改）；② 手机系统浏览器不能录音 → 根因是浏览器硬限制（HTTP 非安全上下文 `navigator.mediaDevices` 为 undefined，代码无法绕过），已把提示文案改为准确说明+指向 HTTPS，真正解锁需 HTTPS（最终由 Vercel 实现，Tailscale 计划取消，见 0.2 ⑤⑥）；③ 填文字后「交给 AI 整理」点不动 → 根因：地点未选中（canNext 需 地点+内容），已改按钮文案明示缺失项（「先选择地点，再交给 AI 整理 →」）。改动仅 `src/pages/Record.tsx`，tsc+build 通过；8081 镜像已重建生效（见 0.2 ③）；录音解锁最终由 Vercel HTTPS 实现（Tailscale 计划取消，见 0.2 ⑤⑥） |
 | Record 修复 QA 验收（2026-09-04 下午） | ✅ 双报告通过 | 自动化 QA [QA回归报告丨Record修复](docs/qa/QA回归报告丨Record修复丨2026-09-04.md)：**QA_PASS_WITH_BLOCKED**，Total 11 / PASS 9 / FAIL 0 / BLOCKED 2——R1 封面切换（顺序交换实证）、R2 录音降级（fake device 短按友好提示）、R3 按钮三态、B1–B5 基线全过；BLOCKED=R2-HTTP 提示（桌面恒安全上下文，待手机）+ B6 云同步（自动化无登录态，真机侧已覆盖）。真机 QA [真机QA报告](docs/qa/真机QA报告丨2026-09-04.md)：**PASS**，Total 18 / PASS 14 / FAIL 0 / Pending 4——Happy Path 全链跑通（登录/记录/AI确认/保存/编辑/分享长图/分享链接/Find/三主题），未发现 P0/P1。**甄别**：RQA-OBS-01（5173 AI/ASR 未配置）为伪 bug——dev 下 /api 404 降级是设计（organize.ts 判 404 走本地推测），8081 已实测真 Key；OBS-1（P3）Gallery `validateDOMNesting` button 嵌套已在 `d95aa04` 修完（Stars 只读改 span，tsc+build 通过，8081/Vercel 均含） |
 | 收工状态 | 📌 2026-09-04 深夜收工 | 用户实测 **手机 Vercel HTTPS 录音成功**；Vercel 部署+验收全通过、Supabase 白名单已补；恢复入口见 0.2 ⑤–⑧ |
-| RQA-V 未提交工作（2026-09-04 深夜后） | ⏳ 已改未提交，未推送 | RQA-V 真机修复：revoke 按 slug（`idb`/`sync`）、删记录级联（`shares` entryId + `EntryDetail` 确认弹窗 + `sync` delete_place）、OBS-V2 上游 9s 超时/13s deadline（`api/ai-organize.ts`）；`tsc --noEmit` 通过（本轮验证）。另未跟踪：`docs/qa/QA回归报告丨Vercel上线丨2026-09-04.md`（PASS_WITH_BLOCKED 22/24）+ `evidence-rqa-vercel/`（8.0M）+ `evidence-vercel/`（2.7M）+ `真机QA报告丨Vercel上线丨2026-09-04.md`；`真机QA报告丨2026-09-04.md` 清理边界已更新。提交与证据是否入库待用户示下 |
+| RQA-V 四项修复（2026-09-04 深夜二次） | ✅ 已提交推送 `6705e26` 并部署三端 | 用户拍板「1修 2选A 3修 4修 5跳过」：① **OBS-V2**（P2）Vercel AI 偶发 504 → `api/ai-organize.ts` 单 provider 9s 超时 + 全局 13s deadline（<15s 上限）+ 快速 failover；② **RQA-V-02**（P2）删记录分享仍有效 → `deleteEntry` 级联撤销（`ShareItem.entryId` 新定位键 + 旧快照按 coverMediaId 反查；无照片旧快照接受边缘）；③ **RQA-V-01**（P3）删除无确认 → EntryDetail 应用内底部弹窗（「再想想/确认删除」，文案明示分享一并失效）；④ **RQA-V-03**（P3）空地点残留+计数不符 → 删空后级联删本地 place + 新增 `delete_place` outbox op 同步删云端（对齐 delete_tags 模式）。**连带修出隐藏 P1**：`revokeShare` 原传 snapshot uuid 当 slug 查云端（`sync eq('slug')` 恒 0 行），**手动撤销云端从未真正生效**（被「视为成功出队」注释掩盖）→ outbox op.id 语义改为 slug 并兼容存量调用。OBS-V1（400/415 不统一）跳过不修。tsc+build 通过 |
+| Vercel 上线批次 QA 验收 | ✅ 双报告通过（2026-09-04 深夜） | 自动化 [QA回归报告丨Vercel上线](docs/qa/QA回归报告丨Vercel上线丨2026-09-04.md)：Total 24 / PASS 22 / FAIL 0 / BLOCKED 2（环境限制）——API 层 transcribe 4 负例+真音频 E2E（ASR 3.6s）、ai-organize 结构化、生产 smoke、匿名分享 RPC 全过，数据安全零违规。真机 [真机QA报告丨Vercel上线](docs/qa/真机QA报告丨Vercel上线丨2026-09-04.md)：Total 30 / PASS 22 / FAIL 3（甄别后全为真问题即 RQA-V-01/02/03，已修）/ BLOCKED 5（用户跳过登录；真人语音转写已被用户亲测覆盖）；亮点：真实麦克风权限弹窗捕获、deepseek-v4-flash 真实 AI <5s、分享图真实下载。**手机复测 3 项待用户执行**（见 0.2 ⑨） |
+| 8081 二次重建 | ✅ 完成（2026-09-04 深夜二次） | deploy.sh 拉取 `6705e26`，新镜像 `f820095d5341`，healthz 200，bundle 实证含删除确认弹窗文案。三端（5173/8081/Vercel）同码 |
+| 收工状态 | 📌 2026-09-04 深夜二次收工 | 四项修复上线三端；恢复入口见 0.2 ⑨–⑪ |
 
 ### 0.2 下一步任务（按优先级）
 
@@ -57,7 +60,10 @@
    ⑥ ~~Tailscale HTTPS 穿透~~ ⏭️ **已被 Vercel 方案取代（手机录音直接用 Vercel HTTPS 域名即可）**，Tailscale 不再必要，仅当用户想要自有域名/内网 HTTPS 时再做；
    ⑦ 高德 Key 联调（Vercel 与 8081 均未配 `VITE_AMAP_*`，申请后在两端环境变量各补一份并重建/重部署）；
    ⑧ 收尾：QA 验收临时标签清理（等用户示下）、`.env.vercel.local` 粘贴用临时文件可删（已被 git 忽略）。
-8. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
+9. **RQA-V 修复后手机复测（2026-09-04 深夜二次，用户收工未做，三端已同码）**：建「QA测-复测」记录+分享 → ① 删除按钮出应用内确认弹窗（再想想/确认删除）；② 删除前无痕窗口验证分享链接可开 → 删除后刷新该链接显示「链接已失效或被撤销」（同时验证 revoke slug 修复）；③ 若为该地点唯一记录，删后「我的」页地点数 -1、无空地点残留。
+10. **登录态删除复活风险（下轮优先验证）**：V1 云端 entry 无删除 op（`deleteEntry` 注释「云端删除交给 Cascading + 后续版本」）——登录用户删记录后云端行仍在，下次 pullRemote 可能拉回复活。需真登录态实测：删记录 → 等同步 → 强刷重拉 → 确认是否复活。若复活，需设计 entry 云端删除（软删/删除 op + 云端级联 entry_tags/share_items）。
+11. **临时文件清理（等用户示下）**：/tmp/qa-profile-vercel-31574、/tmp/rqa-profile-ef894e7a 两个隔离 profile 目录；Downloads 里 1 张 QA 测试分享图；历史验收标签（验收T3/T7）。
+12. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置；④ OBS-V1 transcribe 对非标准请求 400 vs 8081 415 不统一（用户拍板跳过）。
 
 ### 0.3 注意事项及相关规矩
 
