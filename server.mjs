@@ -12,8 +12,10 @@ const PORT = Number(process.env.PORT || 3000)
 
 async function loadHandler(name) {
   try {
-    const mod = await import(`./dist-api/${name}.cjs`)
-    return typeof mod === 'function' ? mod : mod.default
+    // esbuild CJS interop 会把 export default 包成 { default: { default: fn } }，逐层解到函数为止
+    let h = await import(`./dist-api/${name}.cjs`)
+    for (let i = 0; i < 3 && h && typeof h !== 'function'; i++) h = h.default
+    return typeof h === 'function' ? h : null
   } catch {
     return null
   }
