@@ -1,4 +1,4 @@
-# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-04 晚快照（主题/分享长图批次已提交 + Record 页三项修复待提交 + 暂停收工）
+# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-04 深夜快照（Vercel 云端上线 + 手机录音解锁，收工）
 
 > 用途：新智能体接续恢复开发的**唯一入口文档**。先读本文，再按「必读文档」顺序补齐上下文。
 > 项目路径：`/Users/zzymima0000/Developer/coding/1.Active/ing 丨0831个人打卡小工具 MACMINI GL`
@@ -23,7 +23,7 @@
 | 标签丢失 bug | ✅ **TAG_FIX_PASS**（2026-09-03 18:00 复核通过） | 根因：演示标签从未上云 → entry_tags 外键失败 + pullRemote 硬编码 `tagIds: []` 覆盖本地。修复：`src/lib/sync.ts` 新增 `ensureTagsInCloud` + merge 保留本地 tagIds。QA 6/6 通过（T1–T6 全 PASS）；观察项 T2-B「父链补推」**已修复**（ensureTagsInCloud 沿 parent_id 递归展开整链、父先于叶推送，tsc+build 通过；注意该修复在 QA 通过之后，未做云端实测，下次联网同步观察含父链标签即可）；证据 `docs/acceptance-l2/L2-REPORT.md`「标签同步修复回归验收」section |
 | 单设备定位 | ✅ 用户决定 | **不做双设备/并发/断线重连验收（L3 取消）**；乐观锁与 Mine 页冲突裁决 UI 仅作兜底 |
 | 平台仓库 | ✅ 基线 commit `efddca5` | 无 remote 未推送；prompt_manager 未推送 Migration `20260901163555` 原样保留（任何 db push 会连带推送它，⚠️ 需 prompt_manager 项目决策） |
-| 业务项目 git | ✅ 已同步 `5f99891`（origin/master 一致） | `cfef1cd` 洁癖收尾 → 09-04 功能批次 `168ef9b`→`5f99891`（主题/分享长图/标签真删/Find 分离等）；本地仅 `src/pages/Record.tsx` 未提交（见本表“Record 页三项修复”行）；push 仍需用户二次确认 |
+| 业务项目 git | ✅ 已同步 `ab1086e`（origin/master 一致） | `5f99891` 主题/分享长图批次 → `35538b8` Record 三项修复 → `d95aa04` OBS-1 修复+QA 双报告 → `ab1086e` transcribe Vercel 修复；另 `f5d1946` HANDOFF 快照；Vercel 部署连接 GitHub 自动构建 |
 | 编辑已有记录 | ✅ 已实现+已提交 | EntryDetail「分享/编辑/删除」：评分/日期/人均/感受/公开理由/标签可改（QA 遗留事项 3）；tsc+build 通过，**未经 QA 实测** |
 | QA 基线 V0.2 | ✅ 已执行 | [docs/qa/QA-BASELINE丨V0.2.md](docs/qa/QA-BASELINE丨V0.2.md)：锚定 `19eb499`，5 组 checklist（编辑 6 项/标签 T1–T8/核心链路/滚动手势/同步状态）+ 红线；整轮回归已完成见下 |
 | 第二轮 QA（V0.2 整轮回归） | ✅ **QA_V02_PASS（25/25）** | 报告 [docs/qa/QA-REPORT丨V0.2.md](docs/qa/QA-REPORT丨V0.2.md)（含开发侧后处理附录）；K1 滚动**未复现**（D1–D5 全过）、K2 T7/T8 **实证通过**；A 编辑 6/6 |
@@ -35,9 +35,9 @@
 | 滚动异常 K1 | ✅ 未复现 | QA D1–D5 全过（含 1661px 长页/相册横滑/键盘）；用户如再遇，按基线 §5-D 固化步骤报修 |
 | 近期功能批次 | ✅ 已提交（`168ef9b`→`5f99891` 共 9 commit） | 标签管理重设计（底部弹窗菜单+使用计数）、Find 标签筛选交集+按频次、语音超短按友好提示、标签真删 deleteTags（清 entry_tags/子先父后/防复活）、**uuid polyfill（修手机局域网 http 下 crypto.randomUUID 缺失致新建全挂）**、分享卡片图 canvas（微信拦外链场景）、Find 筛选条按维度分组、创建分享弹层主按钮=保存分享图、分享长图重构（全部照片+标签+公开理由入卡，票根/竹青主题）、全站主题系统（暖纸/暖票/竹青 CSS 变量切换+我的页选择）。以 git log 为权威 |
 | QA 回归+视觉验收报告 | ✅ 已执行并甄别 | [docs/qa/QA回归报告丨2026-09-04.md](docs/qa/QA回归报告丨2026-09-04.md)、[docs/qa/视觉验收报告丨2026-09-04.md](docs/qa/视觉验收报告丨2026-09-04.md)（均含截图，commit `5f99891`）；8 个 FAIL 甄别后真问题仅 2 个且已修（Find 标签 toggle 取消 `b819931`、8081 OAuth 白名单用户已在 Dashboard 补），其余为伪 bug（详见 0.2 第 5 条） |
-| Record 页三项修复（本轮 2026-09-04 晚） | ✅ 已入库 `35538b8` | 手机（192.168.31.60:8081）实测发现 3 问题：① 封面不能切换 → 已修：非封面照片左上角新增「设为封面」按钮，点击即移到第一位（封面=photos[0] 语义不变，AiConfirm 无需改）；② 手机系统浏览器不能录音 → 根因是浏览器硬限制（HTTP 非安全上下文 `navigator.mediaDevices` 为 undefined，代码无法绕过），已把提示文案改为准确说明+指向 HTTPS，**真正解锁需 Tailscale HTTPS**；③ 填文字后「交给 AI 整理」点不动 → 根因：地点未选中（canNext 需 地点+内容），已改按钮文案明示缺失项（「先选择地点，再交给 AI 整理 →」）。改动仅 `src/pages/Record.tsx`，tsc+build 通过；**8081 镜像仍为旧版，手机复测需重建** |
+| Record 页三项修复（本轮 2026-09-04 晚） | ✅ 已入库 `35538b8` | 手机（192.168.31.60:8081）实测发现 3 问题：① 封面不能切换 → 已修：非封面照片左上角新增「设为封面」按钮，点击即移到第一位（封面=photos[0] 语义不变，AiConfirm 无需改）；② 手机系统浏览器不能录音 → 根因是浏览器硬限制（HTTP 非安全上下文 `navigator.mediaDevices` 为 undefined，代码无法绕过），已把提示文案改为准确说明+指向 HTTPS，**真正解锁需 Tailscale HTTPS**；③ 填文字后「交给 AI 整理」点不动 → 根因：地点未选中（canNext 需 地点+内容），已改按钮文案明示缺失项（「先选择地点，再交给 AI 整理 →」）。改动仅 `src/pages/Record.tsx`，tsc+build 通过；8081 镜像已重建生效（见 0.2 ③）；录音解锁最终由 Vercel HTTPS 实现（Tailscale 计划取消，见 0.2 ⑤⑥） |
 | Record 修复 QA 验收（2026-09-04 下午） | ✅ 双报告通过 | 自动化 QA [QA回归报告丨Record修复](docs/qa/QA回归报告丨Record修复丨2026-09-04.md)：**QA_PASS_WITH_BLOCKED**，Total 11 / PASS 9 / FAIL 0 / BLOCKED 2——R1 封面切换（顺序交换实证）、R2 录音降级（fake device 短按友好提示）、R3 按钮三态、B1–B5 基线全过；BLOCKED=R2-HTTP 提示（桌面恒安全上下文，待手机）+ B6 云同步（自动化无登录态，真机侧已覆盖）。真机 QA [真机QA报告](docs/qa/真机QA报告丨2026-09-04.md)：**PASS**，Total 18 / PASS 14 / FAIL 0 / Pending 4——Happy Path 全链跑通（登录/记录/AI确认/保存/编辑/分享长图/分享链接/Find/三主题），未发现 P0/P1。**甄别**：RQA-OBS-01（5173 AI/ASR 未配置）为伪 bug——dev 下 /api 404 降级是设计（organize.ts 判 404 走本地推测），8081 已实测真 Key；OBS-1（P3）Gallery `validateDOMNesting` button 嵌套（ui.tsx Stars 嵌于 EntryCard button，Gallery.tsx:217）为真问题但功能无影响，待用户示下是否顺手修 |
-| 暂停原因 | 📌 2026-09-04 晚收工 | 用户 VPN 暂不可用（Tailscale 计划受阻），主动暂停；恢复入口见 0.2 优先级清单 |
+| 收工状态 | 📌 2026-09-04 深夜收工 | 用户实测 **手机 Vercel HTTPS 录音成功**；Vercel 部署+验收全通过、Supabase 白名单已补；恢复入口见 0.2 ⑤–⑧ |
 
 ### 0.2 下一步任务（按优先级）
 
@@ -52,9 +52,10 @@
    ② ~~OBS-1 顺手修~~ ✅ **完成（`d95aa04`）**：Stars 只读模式改渲染 span（editable 表单保留 button），消除 Gallery/PlaceDetail/分享页卡片嵌套警告，tsc+build 通过；
    ③ ~~同步 8081 部署版~~ ✅ **完成**：deploy.sh 拉取 `d95aa04` 重建镜像（首次 build 因网络 DeadlineExceeded，重试 + 基础镜像预拉后成功），healthz 200，bundle 实证含「设为封面/先选择地点/浏览器要求 HTTPS」三项修复，**手机可直接复测**；
    ④ ~~git push~~ ✅ **完成**：`5f99891..d95aa04` 已推送 GitHub（含 Record 修复 `35538b8`、OBS-1 修复、QA 双报告归档）；
-   ⑤ **Tailscale HTTPS 穿透**（用户网络/VPN 恢复后）：Mac+手机装 Tailscale 同账号 → 配 tailscale serve HTTPS → 解锁手机录音 + 外网访问，并补 R2-HTTP 提示文案真机验证；
-   ⑥ 高德 Key 联调（`VITE_AMAP_*` 已填，分享页地图待验，需重建镜像）；
-   ⑦ 收尾：QA 验收临时标签清理待用户示下、Vercel 云端部署决策。
+   ⑤ **Vercel 云端部署** ✅ **2026-09-04 深夜上线并通过验收**：生产域名 **`https://place-journal-xi.vercel.app`**（用户 Vercel Hobby 团队 `houfan`，GitHub 仓库 wanghoufan/place-journal 自动部署）。14 个环境变量已配（值取自 docker 部署副本 env；`VITE_AMAP_*`/`DEEPSEEK_API_KEY`/`OPENROUTER_API_KEY` 未配待联调）。验收：首页/bundle 200、VITE 变量注入、ai-organize 400 拒空、**transcribe 真音频端到端 PASS（腾讯 ASR 返回「嗯。」）**。**部署事故修复（`ab1086e`）**：api/transcribe.ts 首次部署全量 500——`ERR_MODULE_NOT_FOUND: api/_lib/tencent`，根因 Vercel ESM 打包不含 `_lib` 子目录相对导入，修复=TC3 签名内联进 transcribe.ts 自包含（ai-organize 无此问题）。**Supabase Redirect 白名单已补 `https://place-journal-xi.vercel.app/**`**（浏览器自动化实测列表确认）；线上首页实测渲染正常（云端 6 地点/标签/导航全拉取）。**✅ 用户实测（2026-09-04 深夜）：手机 Vercel HTTPS 录音成功，语音→ASR 链路在云端正式可用**；Google OAuth 登录在 Vercel 域名待用户日常使用中确认（白名单已备好）；
+   ⑥ ~~Tailscale HTTPS 穿透~~ ⏭️ **已被 Vercel 方案取代（手机录音直接用 Vercel HTTPS 域名即可）**，Tailscale 不再必要，仅当用户想要自有域名/内网 HTTPS 时再做；
+   ⑦ 高德 Key 联调（Vercel 与 8081 均未配 `VITE_AMAP_*`，申请后在两端环境变量各补一份并重建/重部署）；
+   ⑧ 收尾：QA 验收临时标签清理（等用户示下）、`.env.vercel.local` 粘贴用临时文件可删（已被 git 忽略）。
 8. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置。
 
 ### 0.3 注意事项及相关规矩
