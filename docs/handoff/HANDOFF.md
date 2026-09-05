@@ -1,4 +1,4 @@
-# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-04 深夜快照（Vercel 云端上线 + 手机录音解锁，收工）
+# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-05 收工快照（删除链路根治 + 评分筛选 5 档 + 现场建标签，收工）
 
 > 用途：新智能体接续恢复开发的**唯一入口文档**。先读本文，再按「必读文档」顺序补齐上下文。
 > 项目路径：`/Users/zzymima0000/Developer/coding/1.Active/ing 丨0831个人打卡小工具 MACMINI GL`
@@ -44,7 +44,10 @@
 | 收工状态 | 📌 2026-09-04 深夜二次收工 | 四项修复上线三端；恢复入口见 0.2 ⑨–⑪ |
 | 复测补线修复（2026-09-05） | ✅ 已实测并上线三端（commit `9f0eeb7`） | RQA-V 修复实为两处半成品，本轮补齐：① `src/lib/idb.ts` `deleteEntry` 接上级联——6705e26 只铺了底层管道（revokeShare 按 slug + ShareItem.entryId），但删除入口从未调用；现删除时自动撤销该记录全部分享 + 空地点本地删 + `delete_place` op 同步删云端。② `src/pages/EntryDetail.tsx:188` 删除按钮改 `setConfirmDel(true)`——确认 Sheet 此前是**死代码**（无任何 setConfirmDel(true) 调用），普通视图删除直接执行、弹窗从未出现过（上轮「弹窗已修」验收结论不实）。实测全过：弹窗文案四要素 + 再想想取消路径 + 删后匿名 RPC 返回 null（分享失效）+ 空地点云端级联清除。tsc+build 通过 |
 | delete_entry op + 云端大扫除（2026-09-05） | ✅ 已上线三端 | ① 新增 `delete_entry` outbox op（idb+sync，对齐 delete_place 模式；entries owner DELETE policy 0001 已具备，无 Schema 变更）：多记录地点删单条也删云端行，**根治 pullRemote 全量补插复活**——场景 C 实测：删 C1 后云端行消失、C2 与地点保留。② 云端大扫除（用户授权「你定」）：habit_tracker 8 表业务行全清（26 entries/27 places 全为历轮 QA 重复播种+验收残留，无真实数据），两个 Storage 桶递归删 6 个测试对象（recursive 剩余 0）；结构/RLS/bucket 策略未动。③ 部署：commit `9f0eeb7` push → Vercel 自动部署（bundle 含 delete_entry 实证）；8081 deploy.sh 重建（git 6705e26→9f0eeb7，镜像 f820095d5341→f00f7dec9fe6，healthz 200，bundle 实证）。④ QA Chrome profile 本地库已 wipeLocal 重置（重新播种 demo）。**注意**：用户真实设备本地数据不受影响；但旧记录（sync='synced'）在云端已无对应行，日后编辑旧记录若触发冲突，走 Mine 页冲突裁决 UI 兜底即可 |
-| 评分筛选 + demo 防泄漏（2026-09-05） | ✅ 已实测并上线三端（commit `00c115d`） | ① Find 页筛选条新增**评分组**（3星以上/4星以上/5星，`src/pages/Find.tsx`）：按地点最高分记录过滤，与标签 chip 同款单选可取消交互、与自然语言搜索叠加；实测档位计数与数据吻合（demo 6 地点：4星以上滤掉老爸茶3星→5，5星只剩绿野书屋→1）。② `sync.sweepDirtyRows` 跳过纯 demo 行（demo 记录永不上云；demo 地点仅被真实记录引用时随行）——堵死 demo 数据经自愈清扫反复溜进 Supabase 的复发通道；实测本地 6 条 demo 行跑两轮同步后云端仍为 0。背景：用户确认 demo 数据曾进云端（大扫除 26 条中大部分即历轮 demo 播种），行数据 KB 级、大头是图片（桶已清）。③ 部署：`00c115d` push → Vercel 自动部署；8081 deploy.sh 重建（9f0eeb7→00c115d，镜像 f00f7dec9fe6→4ec462f7d672，healthz 200），两端 bundle 均实证含「星以上」筛选文案 |
+| 评分筛选 + demo 防泄漏（2026-09-05） | ✅ 已实测并上线三端（commit `00c115d`） | ① Find 页筛选条新增**评分组**（`src/pages/Find.tsx`）：按地点最高分记录过滤，与标签 chip 同款单选可取消交互、与自然语言搜索叠加；实测档位计数与数据吻合。② `sync.sweepDirtyRows` 跳过纯 demo 行（demo 记录永不上云；demo 地点仅被真实记录引用时随行）。③ 部署：`00c115d` push → Vercel 自动部署；8081 重建（镜像 4ec462f7d672） |
+| 评分筛选扩 5 档（2026-09-05 下午） | ✅ 已实测并上线三端（commit `6227d56`） | 用户反馈改 1 星后无低分档可选 → 档位由 3 档扩为 **1/2/3/4/5 星** 五档（`Find.tsx` 一行）；实测五档计数与数据全吻合（demo 6 地点：1/2/3星以上=6、4星以上=5、5星=1）；8081 镜像 606efa9037af。**澄清两点**：筛选结果是动态的（UI 改评分后 Find 结果正确反映）；评分是记录数字字段、不属于标签维度体系（Mine「标签与维度」里没有属设计） |
+| 现场新建标签 + demo 显式保存防泄漏（2026-09-05 下午） | ✅ 已实测并上线三端（commit `08bae21`） | ① EntryDetail 编辑表单标签区末尾「**＋ 新标签**」入口 → Sheet（名称 + 维度 chips，默认自定义维度/无则第一维度）→ 创建即自动勾选；**同名标签提示并「选用现有标签」**不产生重复；新标签自动进对应维度分组（标签与维度页、Find 筛选条均可见）。② 连带堵漏：demo 记录被**显式编辑保存**仍会上云（saveEdit 入队 upsert_entry 直推）→ `sync.upsert_entry` 分支遇 demo 行直接丢弃 op（与 sweep 同口径），实测 op 丢弃、云端保持 0。③ 实测：创建→自动勾选→保存→tagIds 持久化→云端三层（tag/entry/entry_tags）同步正确（测后云端 QA 数据已再清零）；8081 镜像 997aea868460 |
+| 收工状态 | 📌 2026-09-05 收工 | 当日四批上线：删除链路补全+delete_entry 根治复活+云端大扫除（`9f0eeb7`）→ 评分筛选（`00c115d`）→ 5 档（`6227d56`）→ 现场建标签（`08bae21`）。三端同码：5173 dev / 8081 Docker（镜像 997aea868460，healthz 200）/ Vercel `https://place-journal-xi.vercel.app`。云端业务表 0 行（白纸），demo 数据已三通道防上云（sweep/显式保存/大扫除） |
 
 ### 0.2 下一步任务（按优先级）
 
@@ -65,8 +68,9 @@
    ⑧ 收尾：QA 验收临时标签清理（等用户示下）、`.env.vercel.local` 粘贴用临时文件可删（已被 git 忽略）。
 9. ~~RQA-V 修复后手机复测~~ ✅ **2026-09-05 桌面自动化等价验证完成 + 修复上线三端（`9f0eeb7`）**：① 删除确认弹窗（文案四要素 + 取消路径）PASS；② 删记录后分享失效（本地 revoked + 云端 status=revoked + 匿名 RPC null）PASS；③ 空地点清理（本地 -1 + 云端 place/entries 级联清除）PASS；附加多记录地点删单条（delete_entry op）PASS。手机真机复测改为可选（如做：删除确认弹窗 + 分享失效 + 地点计数三项，8081/Vercel 均已是新码）。
 10. ~~登录态删除复活风险~~ ✅ **2026-09-05 已根治上线（`9f0eeb7`）**：① 复活根因 = V1 云端 entries 无删除 op + pullRemote 全量补插（实测复现：手动 pull 把已删记录拉回；日常强刷不复活系 on-load `autoSync()` 竞态侥幸）；② 修复 = `delete_entry` outbox op（复用 0001 已有 owner DELETE policy，无 Schema 变更）+ deleteEntry 内联级联；③ 云端 26/27 僵尸（历轮 QA 重复播种+验收残留）经用户授权全清，两桶测试对象已删；④ 遗留观察：autoSync 竞态本身未修（cloudState 非 idle 时静默跳过首次拉取，Realtime 订阅成功会补拉，行为可接受）；用户真实设备旧记录云端行已清，编辑旧记录若出冲突走 Mine 页裁决 UI。
-11. **临时文件清理（等用户示下）**：/tmp/qa-profile-vercel-31574、/tmp/rqa-profile-ef894e7a 两个隔离 profile 目录；Downloads 里 1 张 QA 测试分享图；历史验收标签（验收T3/T7）。
-12. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置；④ OBS-V1 transcribe 对非标准请求 400 vs 8081 415 不统一（用户拍板跳过）。
+11. **临时文件清理（等用户示下）**：/tmp/qa-profile-vercel-31574、/tmp/rqa-profile-ef894e7a 两个隔离 profile 目录；/tmp/chrome-cdp-profile（2026-09-05 用的登录态 profile，测完可一并问）；Downloads 里 1 张 QA 测试分享图；历史验收标签（验收T3/T7）。
+12. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置；④ OBS-V1 transcribe 对非标准请求 400 vs 8081 415 不统一（用户拍板跳过）；⑤ on-load `autoSync()` 竞态未修（cloudState 非 idle 时静默跳过首次拉取，Realtime 订阅成功会补拉，行为可接受）。
+13. **2026-09-05 新功能手机真机复测（可选，均已在桌面自动化实测过）**：① 删除记录出确认弹窗、删空地点计数 -1、分享链接失效；② Find 评分 5 档筛选；③ 编辑记录 →「＋ 新标签」现场建标签并自动勾选。PWA 缓存「下次打开才生效」，先完全划掉 app 再重开。
 
 ### 0.3 注意事项及相关规矩
 
@@ -79,6 +83,7 @@
 7. **prompt_manager 是相邻项目**：共用 Supabase 但互不归属；本项目的 bug 不要顺手改它（2026-09-03 曾发生两项目交叉混淆，用户已叫停）。
 8. **Chrome 验收自动化坑（2026-09-04）**：QA Chrome 启动参数 `--user-data-dir=/tmp/chrome-cdp-profile --remote-debugging-port=9334`；TRAE 沙箱会拦 Chrome 的系统访问（Crashpad/Keychain），Chrome 相关命令需 `dangerouslyDisableSandbox`；**强杀（pkill -9）Chrome 会挂死该 profile 的 IndexedDB**（`ensureSeeded` 永不落地 → 应用白屏且零 console 报错），退出尽量走优雅路径；Google OAuth 登录不得代输凭据，必须用户亲自完成；复用同一 profile 免重复登录。
 9. **手机局域网实测坑（2026-09-04）**：`http://192.168.31.60:8081` 是非安全上下文——① `navigator.mediaDevices` 为 undefined，录音直接不可用（浏览器硬限制，只能靠 HTTPS 解锁，代码提示已改准确）；② `crypto.randomUUID` 不存在（已修：`src/lib/uuid.ts` polyfill，commit `6fc3cd5`）。手机验证一律用 8081 部署版，**改代码后必须重建镜像**（仅重启容器不生效）。
+10. **浏览器自动化补充坑（2026-09-05）**：① `/tmp/chrome-cdp-profile`（CDP 9334）在 5173 origin 有有效登录态可复用，接管前先 `curl http://127.0.0.1:9334/json/list` 探活；② Stars 评分组件是 **aria-label button**（内容为 SVG），eval 里用 `document.querySelector('[aria-label="5 星"]')` 定位，textContent 匹配必落空；③ 验证 bundle 是否含新代码时注意模板拼接字符串（如 `${n} 星以上`），grep 关键词要选字面量（如 `星以上`、`\[1,2,3,4,5\]\.map`）；④ `agent-browser click ref=` 的引用可能过期，点击后必须实测校验（本轮曾误判「弹窗没开」实为已点确认删除）。
 
 ---
 
