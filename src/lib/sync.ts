@@ -215,6 +215,12 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
         }
       } else if (op.kind === 'upsert_entry') {
         const e = (await repo.entries()).find((x) => x.id === op.id)
+        if (e?.demo) {
+          // Demo 行永不上云（与 sweep 自愈清扫同口径）：显式编辑保存产生的 op 直接丢弃
+          await outboxRemove(row.seq!)
+          done++
+          continue
+        }
         if (e) {
           // QA V0.2 ENV-2：归属地点缺失时先补推 place，否则 entries_place_owner_fk 拦死
           await ensurePlacesInCloud(sb, owner, e.placeId)

@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet } from '../components/ui'
 import { repo } from '../lib/idb'
+import { uuid } from '../lib/uuid'
 import { createSingleShare, shareUrl, copyText } from '../lib/shares'
 import { renderShareCard, saveOrShareBlob, THEMES } from '../lib/shareCard'
 import type { CardTheme } from '../lib/shareCard'
-import type { MediaItem, ShareSnapshot } from '../lib/types'
+import type { MediaItem, ShareSnapshot, Tag } from '../lib/types'
 
 export default function EntryDetail() {
   const { id } = useParams()
@@ -27,6 +28,11 @@ export default function EntryDetail() {
   const [fNotePublic, setFNotePublic] = useState('')
   const [fTagIds, setFTagIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  // 现场新建标签（2026-09-05）：编辑表单内直接建标签并选用
+  const [newTagOpen, setNewTagOpen] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagDimId, setNewTagDimId] = useState<string | undefined>(undefined)
+  const defaultDimId = data?.dimensions.find((d) => d.kind === 'custom')?.id ?? data?.dimensions[0]?.id
   // RQA-V-01：删除走应用内确认弹窗（原生 confirm 会被部分浏览器拦截，项目既有规矩）
   const [confirmDel, setConfirmDel] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -69,6 +75,22 @@ export default function EntryDetail() {
     setShareSnap(s)
     setShareLink(shareUrl(s))
     setShareOpen(true)
+  }
+  // 现场新建标签：同名复用，否则建到所选维度（顶层标签），创建后自动勾选
+  async function createNewTag() {
+    const name = newTagName.trim()
+    if (!name || !data) return
+    const exist = data.tags.find((t) => t.name === name)
+    if (exist) {
+      setFTagIds((ids) => (ids.includes(exist.id) ? ids : [...ids, exist.id]))
+    } else {
+      const dimId = newTagDimId ?? defaultDimId
+      if (!dimId) return
+      const t: Tag = { id: uuid(), dimensionId: dimId, parentId: null, name, sortOrder: data.tags.length }
+      await repo.saveTags(data.dimensions, [...data.tags, t])
+      setFTagIds((ids) => [...ids, t.id])
+    }
+    setNewTagName(''); setNewTagDimId(undefined); setNewTagOpen(false)
   }
 
   // 分享卡片图：微信等平台拦截外链时，保存图片直接发微信（长图含全部照片+标签+公开理由）
@@ -133,6 +155,9 @@ export default function EntryDetail() {
                       {t.parentId ? '└ ' : ''}{t.name}
                     </button>
                   ))}
+                  {/* 现场建标签：没有合适标签时不必跑去标签页（2026-09-05 用户需求） */}
+                  <button type="button" onClick={() => { setNewTagName(''); setNewTagOpen(true) }}
+                    className="px-2.5 py-1 rounded-full text-xs border border-dashed border-terra text-terra">＋ 新标签</button>
                 </div>
               </div>
               <div className="flex gap-3 pt-1">
@@ -240,6 +265,32 @@ export default function EntryDetail() {
               {deleting ? '删除中…' : '确认删除'}
             </button>
           </div>
+        </div>
+      </Sheet>
+
+      {/* 现场新建标签：名称 + 归属维度；同名自动复用不重复建 */}
+      <Sheet open={newTagOpen} onClose={() => setNewTagOpen(false)} title="新建标签">
+        <div className="space-y-3">
+          <input className="field-input" placeholder="标签名称" value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)} />
+          <div>
+            <p className="text-sm font-bold mb-1.5">归属维度</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[...(data?.dimensions ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((d) => (
+                <button key={d.id} type="button"
+                  onClick={() => setNewTagDimId(d.id)}
+                  className={`px-2.5 py-1 rounded-full text-xs border ${(newTagDimId ?? defaultDimId) === d.id ? 'bg-terra text-white border-terra' : 'bg-card border-line text-inkmuted'}`}>
+                  {d.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          {newTagName.trim() && data?.tags.some((t) => t.name === newTagName.trim()) && (
+            <p className="text-xs text-terra">已有同名标签，确认后将直接选用它。</p>
+          )}
+          <button className="btn-primary w-full py-3" disabled={!newTagName.trim()} onClick={createNewTag}>
+            {newTagName.trim() && data?.tags.some((t) => t.name === newTagName.trim()) ? '选用现有标签' : '创建并选用'}
+          </button>
         </div>
       </Sheet>
     </div>
