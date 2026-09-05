@@ -75,7 +75,7 @@ export default function Find() {
         <div>
           <div className="text-[11px] text-inkmuted mb-1.5 ml-0.5">评分</div>
           <div className="flex flex-wrap gap-2">
-            {[3, 4, 5].map((n) => (
+            {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} className={`chip ${minRating === n ? 'chip-active' : ''}`} onClick={() => setMinRating((v) => (v === n ? null : n))}>
                 {n === 5 ? '5 星' : `${n} 星以上`} {minRating === n ? '✓' : ''}
               </button>
