@@ -4,7 +4,7 @@
 
 规格来源：`docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md`（SSOT，V1.0）。视觉基准：`docs/visuals/01–07`。
 
-## 当前状态（2026-09-04 快照，权威状态见 `docs/handoff/HANDOFF.md` §0）
+## 当前状态（2026-09-05 快照，开发暂停；权威状态见 `docs/handoff/HANDOFF.md` §0）
 
 ✅ **全部页面与流程已实现**：画廊（按记录/按地点）、记录（多图+按住说话+手动）、AI 确认、记录详情（含编辑）、地点时间线归档、找地点（自然语言+结构化筛选）、标签与维度（父→子两层，含父链补推）、我的（导出/同步/隐私/冲突裁决）、单地点分享页、多地点清单分享、地图总览（编号名牌）、本地 IndexedDB + Supabase 同步引擎（含 `ensureTagsInCloud`/`ensurePlacesInCloud`/`sweepDirtyRows` 自愈）、图片压缩上传、PWA 安装。`tsc && vite build` 通过（PWA precache 7 entries / 504KB）。
 
@@ -35,7 +35,7 @@ npm run dev        # http://localhost:5173
 1. 推送到 GitHub 仓库（本项目不自动 commit/push，需确认后执行）。
 2. Vercel → Add New Project → Import Git Repository（无需改配置，已含 `vercel.json`）。
 3. 在 Vercel Project → Settings → Environment Variables 按 `.env.example` 填入真实值（注意区分前端 `VITE_` 前缀与服务端变量）。
-   生产现役：`https://place-journal-xi.vercel.app`（2026-09-04 上线，HEAD `ab1086e`，transcribe 真音频 PASS）。
+   生产现役：`https://place-journal-xi.vercel.app`（2026-09-04 上线，HEAD `6dafc82`，transcribe 真音频 PASS；09-05 四批后三端同码）。
 4. 部署得到 Preview/Production URL 后：
    - Supabase Auth URL Configuration 加入正式 URL；Google OAuth 回调见方案 7.4；
    - 高德 JS API Key 的域名白名单加入正式域名。
@@ -62,8 +62,8 @@ npm run dev        # http://localhost:5173
 
 ## 待办 / 待真实验收
 
-- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）；ENV-1 九项实测（ENV-1 关闭）；ASR 真转写 + AI 全通；Docker 8081 上线（healthy）；Record 三项修复 + OBS-1 已修并推送（`ab1086e`）；Vercel 生产上线+验收（transcribe 真音频 PASS，手机 HTTPS 录音用户实测成功）。
-- ⏳ 待办：用户亲手 Google 登录（Vercel 域名）+ 日常使用确认；高德 Key 联调（Vercel/8081 两端补变量后重建/重部署）；历史验收标签清理待示下；Realtime 其余部分冻结（Tailscale 已被 Vercel 取代）。
+- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）；ENV-1 九项实测（ENV-1 关闭）；ASR 真转写 + AI 全通；Docker 8081 上线（healthy）；RQA-V 真机修复（`6705e26`）；09-05 四批：删除链路根治（`delete_entry`）+ 评分 5 档 + 现场建标签 + demo 三通道防上云；Vercel 生产上线+验收（transcribe 真音频 PASS，手机 HTTPS 录音用户实测成功）。
+- ⏳ 待办：高德 Key 联调（Vercel/8081 两端补变量后重建/重部署）；历史验收标签清理待示下；`coordination/`＋`docs/review/` 去留待示下；Realtime 其余部分冻结；单设备定位（Tailscale 已被 Vercel 取代）。
 - ⚠️ 09-04 新增原始报告 `docs/qa/QA回归报告丨2026-09-04.md`（QA_FAIL）与 `docs/qa/视觉验收报告丨2026-09-04.md`（VA_FAIL）为执行快照，甄别结论以 `docs/handoff/HANDOFF.md` §0.5 为准（真问题 2 个已修）。
 
 ## 共享 Supabase 数据库管理员角色交接（2026-09-03）

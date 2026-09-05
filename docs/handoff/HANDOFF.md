@@ -68,7 +68,7 @@
    ⑧ 收尾：QA 验收临时标签清理（等用户示下）、`.env.vercel.local` 粘贴用临时文件可删（已被 git 忽略）。
 9. ~~RQA-V 修复后手机复测~~ ✅ **2026-09-05 桌面自动化等价验证完成 + 修复上线三端（`9f0eeb7`）**：① 删除确认弹窗（文案四要素 + 取消路径）PASS；② 删记录后分享失效（本地 revoked + 云端 status=revoked + 匿名 RPC null）PASS；③ 空地点清理（本地 -1 + 云端 place/entries 级联清除）PASS；附加多记录地点删单条（delete_entry op）PASS。手机真机复测改为可选（如做：删除确认弹窗 + 分享失效 + 地点计数三项，8081/Vercel 均已是新码）。
 10. ~~登录态删除复活风险~~ ✅ **2026-09-05 已根治上线（`9f0eeb7`）**：① 复活根因 = V1 云端 entries 无删除 op + pullRemote 全量补插（实测复现：手动 pull 把已删记录拉回；日常强刷不复活系 on-load `autoSync()` 竞态侥幸）；② 修复 = `delete_entry` outbox op（复用 0001 已有 owner DELETE policy，无 Schema 变更）+ deleteEntry 内联级联；③ 云端 26/27 僵尸（历轮 QA 重复播种+验收残留）经用户授权全清，两桶测试对象已删；④ 遗留观察：autoSync 竞态本身未修（cloudState 非 idle 时静默跳过首次拉取，Realtime 订阅成功会补拉，行为可接受）；用户真实设备旧记录云端行已清，编辑旧记录若出冲突走 Mine 页裁决 UI。
-11. **临时文件清理（等用户示下）**：/tmp/qa-profile-vercel-31574、/tmp/rqa-profile-ef894e7a 两个隔离 profile 目录；/tmp/chrome-cdp-profile（2026-09-05 用的登录态 profile，测完可一并问）；Downloads 里 1 张 QA 测试分享图；历史验收标签（验收T3/T7）。
+11. **临时文件清理（等用户示下）**：/tmp/qa-profile-vercel-31574（隔离 QA profile）；/tmp/chrome-cdp-profile（CDP 9334 Chrome 仍运行中，PID 见 `ps`，含 5173 登录态可复用，弃用时需先优雅退出 Chrome 再删目录）；/tmp/rqa-profile-ef894e7a 已不存在（核实 2026-09-05）；Downloads 里 1 张 QA 测试分享图；历史验收标签（验收T3/T7）；根目录 `coordination/`＋`docs/review/`（双智能体复盘 Run 产物，去留待示下）。
 12. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置；④ OBS-V1 transcribe 对非标准请求 400 vs 8081 415 不统一（用户拍板跳过）；⑤ on-load `autoSync()` 竞态未修（cloudState 非 idle 时静默跳过首次拉取，Realtime 订阅成功会补拉，行为可接受）。
 13. **2026-09-05 新功能手机真机复测（可选，均已在桌面自动化实测过）**：① 删除记录出确认弹窗、删空地点计数 -1、分享链接失效；② Find 评分 5 档筛选；③ 编辑记录 →「＋ 新标签」现场建标签并自动勾选。PWA 缓存「下次打开才生效」，先完全划掉 app 再重开。
 
@@ -94,7 +94,7 @@
 | 1 | 本文档 §0 | 现役收工快照（唯一权威） |
 | 2 | 项目根 `HANDOFF.md` | 入口指针（已瘦身，详见本文 §0） |
 | 3 | `docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md` | SSOT 产品与技术方案（M0–M6），需求以此为准 |
-| 4 | `.workbuddy/memory/2026-09-03.md`、`2026-09-02.md`、`2026-09-01.md` | 开发全程日志（09-03 含 L2/QA 实测细节） |
+| 4 | `.workbuddy/memory/2026-09-05.md`（现役）、`2026-09-03.md`、`2026-09-02.md`、`2026-09-01.md`、`2026-09-04.md`（指针） | 开发全程日志（09-03 含 L2/QA 实测细节；09-04 工作详见本文 §0 与 docs/qa/ 两份报告） |
 | 5 | `alw丨数据库管理专家/2026-09-03 丨 共享 Supabase 项目与独立 Schema 数据库规范 丨 V1.4.md` | 数据库规范（当前生效 V1.4；迁移 SQL 必须符合它） |
 | 6 | `alw丨数据库管理专家/平台丨共享 Supabase 数据库/` | 正式 Migration 仓库与 DATABASE_CATALOG |
 
