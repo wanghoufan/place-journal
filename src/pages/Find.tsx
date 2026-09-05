@@ -11,6 +11,7 @@ export default function Find() {
   const nav = useNavigate()
   const [q, setQ] = useState('')
   const [pickedTags, setPickedTags] = useState<Set<string>>(new Set())
+  const [minRating, setMinRating] = useState<number | null>(null)
   const [view, setView] = useState<'gallery' | 'list'>('list')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [listOpen, setListOpen] = useState(false)
@@ -27,9 +28,12 @@ export default function Find() {
     if (!data || !parsed) return []
     const base = matchEntries(parsed, data.entries, data.places, data.tags, data.media)
     // 标签 chips = 独立交集过滤：地点须同时带有全部选中标签（与自然语言搜索叠加）
-    if (!pickedTags.size) return base
-    return base.filter((h) => [...pickedTags].every((id) => h.best.tagIds?.includes(id)))
-  }, [data, parsed, pickedTags])
+    let out = base
+    if (pickedTags.size) out = out.filter((h) => [...pickedTags].every((id) => h.best.tagIds?.includes(id)))
+    // 评分筛选（2026-09-05）：地点按其最高分记录（best）过滤，N 星以上语义；未评分记录不入选
+    if (minRating != null) out = out.filter((h) => (h.best.rating ?? 0) >= minRating)
+    return out
+  }, [data, parsed, pickedTags, minRating])
 
   if (!data || !parsed) return null
 
@@ -65,6 +69,18 @@ export default function Find() {
           <input className="flex-1 bg-transparent outline-none text-[15px]" placeholder="如：海口，晚上适合聊天的地方"
             value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} />
           <span className="text-terra">✦</span>
+        </div>
+
+        {/* 评分筛选（单选可取消）：按地点最高分记录过滤，N 星以上语义 */}
+        <div>
+          <div className="text-[11px] text-inkmuted mb-1.5 ml-0.5">评分</div>
+          <div className="flex flex-wrap gap-2">
+            {[3, 4, 5].map((n) => (
+              <button key={n} className={`chip ${minRating === n ? 'chip-active' : ''}`} onClick={() => setMinRating((v) => (v === n ? null : n))}>
+                {n === 5 ? '5 星' : `${n} 星以上`} {minRating === n ? '✓' : ''}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* 标签筛选：按维度分组（同类一组内换行、不同类另起一行），组内按使用频次排序；多选取交集，再点取消 */}

@@ -177,10 +177,16 @@ async function ensurePlacesInCloud(sb: SupabaseClient, owner: string, placeId: s
 // 重新入队；upsert_entry 分支内的 ensurePlacesInCloud 会顺带补推缺失的归属地点。
 async function sweepDirtyRows(): Promise<void> {
   const queued = new Set((await outboxAll()).map((r) => (r.op.kind === 'upsert_tags' ? 'upsert_tags:' : r.op.kind === 'delete_tags' ? `delete_tags:${r.op.ids.join(',')}` : `${r.op.kind}:${r.op.id}`)))
+  const allEntries = await repo.entries()
   for (const p of await repo.places()) {
+    // 防复发（2026-09-05 云端大扫除）：纯演示地点不上云（demo 行 sync='local' 会被本函数反复捞起重推，
+    // 历轮 QA 的万绿园×4 等僵尸即此通道产生）。仅当存在真实（非 demo）记录引用时才放行
+    // ——此时 upsert_entry 分支的 ensurePlacesInCloud 本来也会补推，与该设计对称。
+    if (p.demo && !allEntries.some((e) => e.placeId === p.id && !e.demo)) continue
     if ((p.sync === 'local' || p.sync === 'failed') && !queued.has(`upsert_place:${p.id}`)) await enqueue({ kind: 'upsert_place', id: p.id })
   }
-  for (const e of await repo.entries()) {
+  for (const e of allEntries) {
+    if (e.demo) continue // 演示记录永不上云（demo 播种只写本地，不走 outbox；sweep 是唯一泄漏通道）
     if ((e.sync === 'local' || e.sync === 'failed') && !queued.has(`upsert_entry:${e.id}`)) await enqueue({ kind: 'upsert_entry', id: e.id })
   }
 }
