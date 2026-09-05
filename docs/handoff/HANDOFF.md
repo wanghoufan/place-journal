@@ -42,6 +42,7 @@
 | Vercel 上线批次 QA 验收 | ✅ 双报告通过（2026-09-04 深夜） | 自动化 [QA回归报告丨Vercel上线](docs/qa/QA回归报告丨Vercel上线丨2026-09-04.md)：Total 24 / PASS 22 / FAIL 0 / BLOCKED 2（环境限制）——API 层 transcribe 4 负例+真音频 E2E（ASR 3.6s）、ai-organize 结构化、生产 smoke、匿名分享 RPC 全过，数据安全零违规。真机 [真机QA报告丨Vercel上线](docs/qa/真机QA报告丨Vercel上线丨2026-09-04.md)：Total 30 / PASS 22 / FAIL 3（甄别后全为真问题即 RQA-V-01/02/03，已修）/ BLOCKED 5（用户跳过登录；真人语音转写已被用户亲测覆盖）；亮点：真实麦克风权限弹窗捕获、deepseek-v4-flash 真实 AI <5s、分享图真实下载。**手机复测 3 项待用户执行**（见 0.2 ⑨） |
 | 8081 二次重建 | ✅ 完成（2026-09-04 深夜二次） | deploy.sh 拉取 `6705e26`，新镜像 `f820095d5341`，healthz 200，bundle 实证含删除确认弹窗文案。三端（5173/8081/Vercel）同码 |
 | 收工状态 | 📌 2026-09-04 深夜二次收工 | 四项修复上线三端；恢复入口见 0.2 ⑨–⑪ |
+| 复测补线修复（2026-09-05） | ✅ 已实测（5173 桌面 Chrome 自动化，未 commit） | RQA-V 修复实为两处半成品，本轮补齐：① `src/lib/idb.ts` `deleteEntry` 接上级联——6705e26 只铺了底层管道（revokeShare 按 slug + ShareItem.entryId），但删除入口从未调用；现删除时自动撤销该记录全部分享 + 空地点本地删 + `delete_place` op 同步删云端。② `src/pages/EntryDetail.tsx:188` 删除按钮改 `setConfirmDel(true)`——确认 Sheet 此前是**死代码**（无任何 setConfirmDel(true) 调用），普通视图删除直接执行、弹窗从未出现过（上轮「弹窗已修」验收结论不实）。实测全过：弹窗文案四要素 + 再想想取消路径 + 删后匿名 RPC 返回 null（分享失效）+ 空地点云端级联清除（delete_place 删 places 行 → FK cascade 带走 entries）。tsc+build 通过 |
 
 ### 0.2 下一步任务（按优先级）
 
@@ -60,8 +61,8 @@
    ⑥ ~~Tailscale HTTPS 穿透~~ ⏭️ **已被 Vercel 方案取代（手机录音直接用 Vercel HTTPS 域名即可）**，Tailscale 不再必要，仅当用户想要自有域名/内网 HTTPS 时再做；
    ⑦ 高德 Key 联调（Vercel 与 8081 均未配 `VITE_AMAP_*`，申请后在两端环境变量各补一份并重建/重部署）；
    ⑧ 收尾：QA 验收临时标签清理（等用户示下）、`.env.vercel.local` 粘贴用临时文件可删（已被 git 忽略）。
-9. **RQA-V 修复后手机复测（2026-09-04 深夜二次，用户收工未做，三端已同码）**：建「QA测-复测」记录+分享 → ① 删除按钮出应用内确认弹窗（再想想/确认删除）；② 删除前无痕窗口验证分享链接可开 → 删除后刷新该链接显示「链接已失效或被撤销」（同时验证 revoke slug 修复）；③ 若为该地点唯一记录，删后「我的」页地点数 -1、无空地点残留。
-10. **登录态删除复活风险（下轮优先验证）**：V1 云端 entry 无删除 op（`deleteEntry` 注释「云端删除交给 Cascading + 后续版本」）——登录用户删记录后云端行仍在，下次 pullRemote 可能拉回复活。需真登录态实测：删记录 → 等同步 → 强刷重拉 → 确认是否复活。若复活，需设计 entry 云端删除（软删/删除 op + 云端级联 entry_tags/share_items）。
+9. ~~RQA-V 修复后手机复测~~ ✅ **2026-09-05 桌面自动化等价验证完成**（三端同码，删除逻辑与设备无关；手机真机复测改为可选）：① 删除确认弹窗（文案四要素 + 取消路径）PASS；② 删记录后分享失效（本地 revoked + 云端 status=revoked + 匿名 RPC null）PASS；③ 空地点清理（本地 -1 + 云端 place/entries 级联清除）PASS。修复内容见 §0.1「复测补线修复」行；**改动未 commit，8081/Vercel 要生效需 commit+push（8081 另需重建镜像）**。
+10. ~~登录态删除复活风险~~ ✅ **2026-09-05 实锤复现并细化**（仅验证 + 记录，修复方案待用户拍板）：① 复活路径 = 手动 pullRemote（全量拉取、缺失行补插）把已删记录拉回——已实测复现；日常强刷不复活是因为 on-load `autoSync()` 有竞态（`cloudState() !== 'idle'` 时静默跳过），Realtime 订阅成功或换设备登录仍会全量拉回；② 根因 = V1 云端 entries 无删除 op，且 `entries.place_id → places` FK cascade 意味着「地点级联删」可顺带清 entries，但多记录地点删单条时云端行仍残留；③ **云端现状（2026-09-05 直读）：26 entries / 27 places**，含历轮 QA 重复播种（万绿园×4、绿野书屋×4、海边小酒馆×4、骑楼老街×3 等）+ 验收残留（验收测试地点/验收标签测试A/验收D2滚动测试/存储实测绿野书屋）+ 至少 1 条真实 QA 数据——任何新设备登录都会全部复活。修复设计要点（待批准）：`delete_entry` outbox op + 检查 entries RLS 是否有 owner DELETE policy + 云端僵尸数据清理方案；清理涉真实云端数据，必须用户逐项确认。
 11. **临时文件清理（等用户示下）**：/tmp/qa-profile-vercel-31574、/tmp/rqa-profile-ef894e7a 两个隔离 profile 目录；Downloads 里 1 张 QA 测试分享图；历史验收标签（验收T3/T7）。
 12. **不修留档的观察项**：① 分享面板创建后不自动同步（create_share 等下次同步才上云，期间匿名访客见「链接已失效」）；② owner 打开自己的分享链接封面空白（本地快照 blob 失效，匿名访客正常）；③ OBS-2 lastSyncError 显示被 reload 重置；④ OBS-V1 transcribe 对非标准请求 400 vs 8081 415 不统一（用户拍板跳过）。
 

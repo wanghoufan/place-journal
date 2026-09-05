@@ -14,6 +14,7 @@ export type OutboxOp =
   | { kind: 'upsert_tags' }
   | { kind: 'delete_tags'; ids: string[] }
   | { kind: 'delete_place'; id: string }
+  | { kind: 'delete_entry'; id: string }
   | { kind: 'create_share'; id: string }
   | { kind: 'revoke_share'; id: string } // id = slug（修复：此前传 snapshot uuid 当 slug，云端撤销静默失效）
 
@@ -123,12 +124,37 @@ export const repo = {
   async deleteEntry(id: string) {
     const d = await db()
     const media = (await d.getAll('media')) as MediaItem[]
+    const entry = (await d.get('entries', id)) as Entry | undefined
     const tx = d.transaction(['entries', 'media'], 'readwrite')
     for (const m of media.filter((m) => m.entryId === id)) tx.objectStore('media').delete(m.id)
     await tx.objectStore('entries').delete(id)
     await tx.done
     bump()
-    // 云端删除交给 Cascading + 后续版本；V1 本地删除即可
+    // §0.2-10（2026-09-05）：云端 entry 行删除 op——此前 V1 不删云端行，pullRemote 全量补插会复活。
+    // 行不存在（从未上云/已被 place 级联带走）= 目的已达成，正常出队。
+    await enqueue({ kind: 'delete_entry', id })
+    // RQA-V-02 补线（2026-09-05）：级联撤销该记录的分享。6705e26 只铺了底层管道
+    // （revokeShare 按 slug + ShareItem.entryId 定位键），但两个删除入口都没调用——此处统一收口。
+    // 新快照按 items[].entryId 定位；旧快照无 entryId，按 coverMediaId 反查（无照片旧快照接受边缘）。
+    const shares = (await d.getAll('shares')) as ShareSnapshot[]
+    for (const s of shares) {
+      if (s.status === 'revoked') continue
+      const hit = s.items.some((it) => it.entryId === id || (entry?.coverMediaId && it.coverMediaId === entry.coverMediaId))
+      if (hit) await this.revokeShare(s.slug)
+    }
+    // RQA-V-03 补线：删空后级联清理空地点（本地删 + delete_place op 同步删云端，行不存在视为成功）。
+    if (entry?.placeId) {
+      const rest = (await d.getAll('entries')) as Entry[]
+      if (!rest.some((e) => e.placeId === entry.placeId)) {
+        const place = await d.get('places', entry.placeId)
+        if (place) {
+          await d.delete('places', entry.placeId)
+          bump()
+          await enqueue({ kind: 'delete_place', id: entry.placeId })
+        }
+      }
+    }
+    // 注意：云端 entries 行删除仍未实现（pullRemote 可能拉回复活）——见 HANDOFF §0.2-10，需另行设计
   },
   async saveTags(dimensions: Dimension[], tags: Tag[]) {
     await bulkPut('dimensions', dimensions)

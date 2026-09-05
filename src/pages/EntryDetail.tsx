@@ -185,7 +185,7 @@ export default function EntryDetail() {
             <div className="flex gap-3">
               <button className="btn-primary flex-1 py-3" onClick={doShare}>分享这个地点</button>
               <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" onClick={startEdit}>编辑</button>
-              <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" onClick={async () => { await repo.deleteEntry(entry.id); nav('/', { replace: true }) }}>删除</button>
+              <button className="px-4 py-3 rounded-full bg-card border border-line text-inkmuted" onClick={() => setConfirmDel(true)}>删除</button>
             </div>
           </>
         )}

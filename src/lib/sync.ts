@@ -380,6 +380,11 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
         // RQA-V-03：记录删空后级联清理空地点。行不存在（从未上云/已删）= 目的已达成，正常出队。
         const { error } = await table(sb, 'places').delete().eq('id', op.id).eq('owner_user_id', owner)
         if (error) throw error
+      } else if (op.kind === 'delete_entry') {
+        // §0.2-10（2026-09-05）：删除记录的云端落点（owner DELETE policy 0001 已具备）。
+        // 行不存在 = 目的已达成，正常出队；多记录地点删单条不再残留云端行（复活根因修复）。
+        const { error } = await table(sb, 'entries').delete().eq('id', op.id).eq('owner_user_id', owner)
+        if (error) throw error
       }
       await outboxRemove(row.seq!)
       done++
