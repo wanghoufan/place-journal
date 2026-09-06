@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getVersion, subscribe, repo } from '../lib/idb'
 import type { Entry, MediaItem } from '../lib/types'
-import { cloudState, type CloudState } from '../lib/sync'
+import { cloudState, type CloudState, getRemoteMediaUrl, remoteMediaUrl } from '../lib/sync'
 
 // ---- 数据 hook ----
 export function useDBData() {
@@ -134,11 +134,47 @@ export function useBlobUrl(blob?: Blob): string | undefined {
 }
 
 export function Thumb({ m, className, preferThumb }: { m: MediaItem; className?: string; preferThumb?: boolean }) {
-  const blobUrl = useBlobUrl(preferThumb ? m.thumb : m.display ?? m.thumb)
-  const remote = blobUrl ? undefined : m.remotePath ? undefined : undefined
-  const src = blobUrl ?? m.demoUri ?? remote
-  if (!src) return <div className={`bg-carddeep ${className ?? ''}`} />
+  const src = useMediaUrl(m, preferThumb ? 'thumb' : 'display')
+  if (!src) return <div className={`bg-carddeep animate-pulse ${className ?? ''}`} />
   return <img src={src} alt="" loading="lazy" className={`object-cover ${className ?? ''}`} />
+}
+
+// 统一图片地址解析：本地 Blob → 演示 data URI → 远端签名 URL（缩略图优先）。
+// 修复前 Thumb 的 remote 分支恒为 undefined，换设备后图片永远空白。
+export function useMediaUrl(m: MediaItem, kind: 'thumb' | 'display' = 'display'): string | undefined {
+  const blobUrl = useBlobUrl(kind === 'thumb' ? (m.thumb ?? m.display) : (m.display ?? m.thumb))
+  const [remote, setRemote] = useState<string | undefined>(() => remoteMediaUrl(`${m.id}:${kind}`))
+  useEffect(() => {
+    if (blobUrl || m.demoUri) return
+    if (!m.remotePath && !m.remoteThumbPath) return
+    let alive = true
+    getRemoteMediaUrl(m, kind).then((u) => { if (alive && u) setRemote(u) })
+    return () => { alive = false }
+  }, [blobUrl, m.id, m.demoUri, m.remotePath, m.remoteThumbPath, kind])
+  return blobUrl ?? m.demoUri ?? remote
+}
+
+// 相册一次性解析多张（网格+灯箱共用，保证顺序稳定）
+export function useAllMediaUrls(list: MediaItem[], kind: 'thumb' | 'display' = 'display'): (string | undefined)[] {
+  const [tick, setTick] = useState(0)
+  const blobs = list.map((m) => kind === 'thumb' ? (m.thumb ?? m.display) : (m.display ?? m.thumb))
+  const [blobUrls, setBlobUrls] = useState<(string | undefined)[]>([])
+  useEffect(() => {
+    const urls = blobs.map((b) => (b ? URL.createObjectURL(b) : undefined))
+    setBlobUrls(urls)
+    return () => urls.forEach((u) => u && URL.revokeObjectURL(u))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list.map((m) => m.id).join(','), list.map((m) => (kind === 'thumb' ? m.thumb : m.display)).join(','), kind])
+  useEffect(() => {
+    let alive = true
+    // 只请求缓存里还没有的；取回后 setTick 触发重渲染，此时缓存已命中即停，不会循环
+    const miss = list.filter((mm, i) => !blobUrls[i] && !mm.demoUri && (mm.remotePath || mm.remoteThumbPath) && !remoteMediaUrl(`${mm.id}:${kind}`))
+    if (!miss.length) return
+    Promise.allSettled(miss.map((mm) => getRemoteMediaUrl(mm, kind))).then(() => alive && setTick((t) => t + 1))
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blobUrls.join(','), list.map((m) => m.id).join(','), kind])
+  return list.map((mm, i) => blobUrls[i] ?? mm.demoUri ?? remoteMediaUrl(`${mm.id}:${kind}`))
 }
 
 // ---- 底部弹层 ----

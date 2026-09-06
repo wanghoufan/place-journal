@@ -30,7 +30,7 @@ export default function PlaceDetail() {
             <Link key={e.id} to={`/entry/${e.id}`} className="block relative card-paper p-3 active:scale-[0.99] transition">
               <span className="absolute -left-[18px] top-5 w-3 h-3 rounded-full bg-terra border-2 border-paper" />
               <div className="flex gap-3">
-                <Thumb m={data.media.find((m) => m.id === e.coverMediaId) ?? data.media.find((m) => m.entryId === e.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} className="w-16 h-16 rounded-lg shrink-0" />
+                <Thumb m={data.media.find((m) => m.id === e.coverMediaId) ?? data.media.find((m) => m.entryId === e.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} preferThumb className="w-16 h-16 rounded-lg shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm text-inkmuted">{e.visitDate.replace(/-/g, ' . ')}</p>
                   <Stars value={e.rating} size={12} />

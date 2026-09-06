@@ -100,7 +100,7 @@ function sceneEmoji(name: string) {
 export function CoverOf({ entry, data, className }: { entry: Entry; data: NonNullable<ReturnType<typeof useDBData>>; className?: string }) {
   const m = data.media.find((x) => x.id === entry.coverMediaId) ?? data.media.find((x) => x.entryId === entry.id)
   if (!m) return <div className={`bg-carddeep ${className ?? ''}`} />
-  return <Thumb m={m} className={className} />
+  return <Thumb m={m} preferThumb className={className} />
 }
 
 function EntryCard({ entry, data, onClick }: { entry: Entry; data: NonNullable<ReturnType<typeof useDBData>>; onClick: () => void }) {

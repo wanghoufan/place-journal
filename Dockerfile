@@ -21,7 +21,8 @@ COPY . .
 # 前端静态产物 + Vercel Functions 同实现的 /api 打包（esbuild 随 vite 依赖就位）
 RUN npm run build \
  && ./node_modules/.bin/esbuild api/transcribe.ts --bundle --platform=node --format=cjs --outfile=dist-api/transcribe.cjs \
- && ./node_modules/.bin/esbuild api/ai-organize.ts --bundle --platform=node --format=cjs --outfile=dist-api/ai-organize.cjs
+ && ./node_modules/.bin/esbuild api/ai-organize.ts --bundle --platform=node --format=cjs --outfile=dist-api/ai-organize.cjs \
+ && ./node_modules/.bin/esbuild api/ocr.ts --bundle --platform=node --format=cjs --outfile=dist-api/ocr.cjs
 
 # ── runtime ──
 FROM node:22-alpine

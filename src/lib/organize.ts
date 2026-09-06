@@ -26,6 +26,50 @@ export async function transcribe(blob: Blob): Promise<{ ok: true; text: string }
   }
 }
 
+// 封面文字识别：把封面图缩到 1600 以内走 /api/ocr（腾讯通用印刷体识别）。
+// 返回按置信度排序的候选文本（已去空格、≥2字），调用方负责匹配老地点/填新地点。
+export async function recognizeCoverText(blob?: Blob): Promise<{ ok: true; texts: string[] } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
+  if (!blob) return { ok: false, reason: 'error', message: '请先添加照片' }
+  try {
+    const dataUrl = await new Promise<string>((res, rej) => {
+      const url = URL.createObjectURL(blob)
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight))
+          const c = document.createElement('canvas')
+          c.width = Math.max(1, Math.round(img.naturalWidth * scale))
+          c.height = Math.max(1, Math.round(img.naturalHeight * scale))
+          c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
+          res(c.toDataURL('image/jpeg', 0.85))
+        } catch (e) { rej(e) } finally { URL.revokeObjectURL(url) }
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('图片读取失败')) }
+      img.src = url
+    })
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), 15000)
+    try {
+      const r = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+        signal: ac.signal,
+      })
+      if ((r.headers.get('content-type') ?? '').includes('text/html') || r.status === 404) return { ok: false, reason: 'not_configured' }
+      const j = await r.json().catch(() => ({}))
+      if (r.status === 501 || r.status === 404) return { ok: false, reason: 'not_configured' }
+      if (!r.ok || !j.ok) return { ok: false, reason: 'error', message: j.error || `识别失败(${r.status})` }
+      return { ok: true, texts: Array.isArray(j.texts) ? j.texts.map(String).slice(0, 8) : [] }
+    } finally {
+      clearTimeout(timer)
+    }
+  } catch (e: any) {
+    if (e?.name === 'AbortError') return { ok: false, reason: 'error', message: '识别超时(15秒)' }
+    return { ok: false, reason: 'error', message: e?.message || '识别失败' }
+  }
+}
+
 export async function organize(input: OrganizeInput): Promise<{ ok: true; result: AiOrganizeResult; mock: boolean } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
   // 12s 超时：大模型免费档偶发 60s+ 慢响应，与其让用户干等「整理中…」，
   // 不如快速降级到本地推测（确认页会明确标注，全部可手动修改）

@@ -127,7 +127,7 @@ export default function Find() {
             {hits.map((h) => (
               <div key={h.place.id} className={`card-paper p-3 flex gap-3 items-center ${picked.has(h.place.id) ? 'ring-2 ring-terra' : ''}`}>
                 <button className="flex gap-3 items-center flex-1 min-w-0" onClick={() => nav(`/place/${h.place.id}`)}>
-                  <Thumb m={data.media.find((m) => m.id === h.best.coverMediaId) ?? data.media.find((m) => m.entryId === h.best.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} className="w-24 h-20 rounded-xl shrink-0" />
+                  <Thumb m={data.media.find((m) => m.id === h.best.coverMediaId) ?? data.media.find((m) => m.entryId === h.best.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} preferThumb className="w-24 h-20 rounded-xl shrink-0" />
                   <div className="min-w-0 text-left">
                     <p className="font-bold text-[16px] truncate">{h.place.name} <span className="text-terra text-xs">✦</span></p>
                     <p className="text-xs text-inkmuted mt-1">{h.best.budget != null ? <>人均 ¥{h.best.budget} · </> : ''}{h.best.summary ?? h.best.transcript ?? '—'}</p>
@@ -147,7 +147,7 @@ export default function Find() {
           <div className="grid grid-cols-2 gap-3">
             {hits.map((h) => (
               <button key={h.place.id} onClick={() => nav(`/place/${h.place.id}`)} className="card-paper overflow-hidden text-left active:scale-[0.98] transition">
-                <Thumb m={data.media.find((m) => m.id === h.best.coverMediaId) ?? data.media.find((m) => m.entryId === h.best.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} className="w-full aspect-square" />
+                <Thumb m={data.media.find((m) => m.id === h.best.coverMediaId) ?? data.media.find((m) => m.entryId === h.best.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} preferThumb className="w-full aspect-square" />
                 <div className="p-2.5">
                   <p className="font-bold text-sm truncate">{h.place.name}</p>
                   <Stars value={h.best.rating} size={11} />

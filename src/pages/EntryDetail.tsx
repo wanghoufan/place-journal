@@ -1,7 +1,8 @@
 // 记录详情：多图相册、封面切换、公开/私密笔记、标签、分享入口（方案 3.2）+ 编辑已有记录（2026-09-03）
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet } from '../components/ui'
+import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet, useAllMediaUrls } from '../components/ui'
+import Lightbox from '../components/Lightbox'
 import { repo } from '../lib/idb'
 import { uuid } from '../lib/uuid'
 import { createSingleShare, shareUrl, copyText } from '../lib/shares'
@@ -36,6 +37,10 @@ export default function EntryDetail() {
   // RQA-V-01：删除走应用内确认弹窗（原生 confirm 会被部分浏览器拦截，项目既有规矩）
   const [confirmDel, setConfirmDel] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // 灯箱：点图放大、左右滑动；设封面只走显式按钮
+  const [lightIndex, setLightIndex] = useState<number | null>(null)
+  const mediaList = (data?.media.filter((m) => m.entryId === id).sort((a, b) => a.order - b.order)) ?? []
+  const albumUrls = useAllMediaUrls(mediaList, 'display')
   if (!data) return null
   const entry = data.entries.find((e) => e.id === id)
   if (!entry) return <div className="p-8 text-center text-inkmuted">记录不存在或已被删除。<Link to="/" className="underline text-terra">回画廊</Link></div>
@@ -110,16 +115,27 @@ export default function EntryDetail() {
     <div className="min-h-screen safe-bottom">
       <PageHeader title="记录详情" back />
       <div className="px-5 space-y-4">
-        {/* 相册 */}
+        {/* 相册：点图放大滑动，设封面只走显式按钮 */}
         <div className="grid grid-cols-3 gap-2">
-          {media.map((m) => (
-            <button key={m.id} onClick={() => setCover(m)} className="relative rounded-xl overflow-hidden" title="点击设为封面">
-              <Thumb m={m} className="w-full aspect-square" />
-              {entry.coverMediaId === m.id && <span className="absolute top-1 left-1 bg-terra text-white text-[10px] px-1.5 py-0.5 rounded-full">封面</span>}
-            </button>
+          {media.map((m, i) => (
+            <div key={m.id} className="relative rounded-xl overflow-hidden">
+              <button onClick={() => setLightIndex(i)} className="block w-full" title="点击放大查看">
+                <Thumb m={m} preferThumb className="w-full aspect-square" />
+              </button>
+              {entry.coverMediaId === m.id
+                ? <span className="absolute top-1 left-1 bg-terra text-white text-[10px] px-1.5 py-0.5 rounded-full">封面</span>
+                : <button onClick={(e) => { e.stopPropagation(); setCover(m) }} aria-label="设为封面" className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full">设为封面</button>}
+            </div>
           ))}
         </div>
-        <p className="text-xs text-inkmuted">点击任意照片可设为封面（共 {media.length} 张）</p>
+        <p className="text-xs text-inkmuted">点击照片放大、左右滑动查看（共 {media.length} 张）</p>
+        {lightIndex != null && (
+          <Lightbox
+            images={albumUrls} index={lightIndex} onIndex={setLightIndex} onClose={() => setLightIndex(null)}
+            coverIndex={Math.max(0, media.findIndex((m) => m.id === entry.coverMediaId))}
+            onSetCover={(i) => { const m = media[i]; if (m) setCover(m) }}
+          />
+        )}
 
         {editing ? (
           <>

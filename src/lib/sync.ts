@@ -16,9 +16,40 @@ import type { Place, Entry, MediaItem, Dimension, Tag, ShareSnapshot, SyncStatus
 export type CloudState = 'unconfigured' | 'offline' | 'signed-out' | 'syncing' | 'idle' | 'error'
 export let lastSyncError = ''
 
-const remoteUrlCache = new Map<string, string>()
+const remoteUrlCache = new Map<string, { url: string; expires: number }>()
+const remoteUrlInflight = new Map<string, Promise<string | undefined>>()
 export function remoteMediaUrl(mediaId?: string): string | undefined {
-  return mediaId ? remoteUrlCache.get(mediaId) : undefined
+  const e = mediaId ? remoteUrlCache.get(mediaId) : undefined
+  if (!e) return undefined
+  if (Date.now() > e.expires) { remoteUrlCache.delete(mediaId!); return undefined }
+  return e.url
+}
+
+// 按需取远端签名 URL（缩略图优先，快；展示图懒加载）：带内存缓存 +  inflight 去重。
+// Thumb 网格传 'thumb'，灯箱大图传 'display'。
+export async function getRemoteMediaUrl(
+  m: { id: string; remotePath?: string; remoteThumbPath?: string },
+  kind: 'thumb' | 'display' = 'thumb',
+): Promise<string | undefined> {
+  const cacheKey = `${m.id}:${kind}`
+  const hit = remoteUrlCache.get(cacheKey)
+  if (hit && Date.now() < hit.expires) return hit.url
+  const pend = remoteUrlInflight.get(cacheKey)
+  if (pend) return pend
+  const p = (async () => {
+    try {
+      const path = kind === 'thumb' ? (m.remoteThumbPath ?? m.remotePath) : (m.remotePath ?? m.remoteThumbPath)
+      if (!path) return undefined
+      if (!(await getSession())) return undefined
+      const { data } = await supabase().storage.from('habit-tracker-media-private').createSignedUrl(path, 3600)
+      const url = data?.signedUrl
+      if (url) remoteUrlCache.set(cacheKey, { url, expires: Date.now() + 50 * 60 * 1000 })
+      return url
+    } catch { return undefined }
+    finally { remoteUrlInflight.delete(cacheKey) }
+  })()
+  remoteUrlInflight.set(cacheKey, p)
+  return p
 }
 
 export async function cloudState(): Promise<CloudState> {
@@ -517,7 +548,8 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
   const mergedMedia: MediaItem[] = mergedEntries.length ? merge(localMedia, media ?? [], (r) => ({
     id: r.id, entryId: r.entry_id, placeId: r.place_id, order: r.sort_order ?? 0,
     width: r.width ?? undefined, height: r.height ?? undefined, bytes: r.bytes ?? undefined,
-    takenAt: r.taken_at ?? undefined, remotePath: r.storage_path, sync: 'synced' as const,
+    takenAt: r.taken_at ?? undefined,
+    remotePath: r.storage_path, remoteThumbPath: r.thumb_path ?? undefined, sync: 'synced' as const,
   })) : localMedia
   // 本地 entry_tags 合并（仅已同步条目；未确认本机变更不被远端覆盖）
   const { data: entryTags } = await table(sb, 'entry_tags').select('*')
@@ -552,12 +584,10 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
   await bulkPut('media', mergedMedia)
   await bulkPut('dimensions', localDims)
   await bulkPut('tags', localTags)
-  // 为远端缩略图生成短期签名 URL（缓存）
-  const withRemote = mergedMedia.filter((m) => m.remotePath && !m.display && !m.thumb)
-  for (const m of withRemote.slice(0, 200)) {
-    const { data } = await supabase().storage.from('habit-tracker-media-private').createSignedUrl(m.remotePath!, 3600)
-    if (data) remoteUrlCache.set(m.id, data.signedUrl)
-  }
+  // 为远端缩略图生成短期签名 URL（缓存）：只预取 thumb（小、快），display 大图由灯箱按需懒加载。
+  // 并行请求，不阻塞返回——解决此前串行 200 次 await 导致的“同步半天不动”。
+  const withRemote = mergedMedia.filter((m) => (m.remotePath || m.remoteThumbPath) && !m.display && !m.thumb)
+  void Promise.allSettled(withRemote.slice(0, 200).map((m) => getRemoteMediaUrl(m, 'thumb')))
   return { entries: mergedEntries.length, media: mergedMedia.length }
 }
 

@@ -17,7 +17,7 @@
 | Supabase 云端 | `VITE_SUPABASE_URL` `VITE_SUPABASE_PUBLISHABLE_KEY` | 已填 `.env.local` 并验证 Expose/RLS；Publishable key 可进前端 |
 | Google 登录 | Supabase Dashboard 配置（见方案 7.4） | 已验证真登录；Redirect 白名单含 `http://localhost:5173` |
 | 腾讯 ASR | `TENCENT_ASR_SECRET_ID` `TENCENT_ASR_SECRET_KEY` | ✅ 2026-09-04 真转写 PASS；未配置时降级手动填写 |
-| AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | ✅ 2026-09-04 全通，当前 `OPENCODE_MODEL=deepseek-v4-flash`（12s 超时降级保留）；未配置时本地推测预填 |
+| AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | ✅ 2026-09-04 全通，当前 `OPENCODE_MODEL=glm-5.3-flash`（12s 超时降级保留）；封面 OCR（`/api/ocr` vision 版，OpenCode→OpenRouter→DeepSeek failover）复用同一套 Key；未配置时本地推测预填 |
 | 高德地图 | `VITE_AMAP_KEY` `VITE_AMAP_SECURITY_JSCODE` | 已填待联调（分享页地图待验，需重建镜像）；未配置时示意底图 |
 | Storage buckets | — | ✅ ENV-1 已关闭（2026-09-04）：两桶已上线 + 9 项实测 + 管理员复审通过，证据 `docs/db/ENV1-实测记录丨2026-09-04.md` |
 
