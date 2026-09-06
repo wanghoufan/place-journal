@@ -121,6 +121,13 @@ export const repo = {
     await put('media', m)
     if (syncQueue && (m.display || m.thumb)) await enqueue({ kind: 'upload_media', id: m.id })
   },
+  // 删除空地点（记录搬走/删空后的级联清理；云端行不存在视为成功，sync 层已处理）
+  async deletePlace(id: string) {
+    const d = await db()
+    await d.delete('places', id)
+    bump()
+    await enqueue({ kind: 'delete_place', id })
+  },
   async deleteEntry(id: string) {
     const d = await db()
     const media = (await d.getAll('media')) as MediaItem[]

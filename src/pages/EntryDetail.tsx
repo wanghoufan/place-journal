@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet, useAllMediaUrls } from '../components/ui'
 import Lightbox from '../components/Lightbox'
-import { repo } from '../lib/idb'
+import { repo, bulkPut, enqueue } from '../lib/idb'
 import { uuid } from '../lib/uuid'
 import { createSingleShare, shareUrl, copyText } from '../lib/shares'
 import { renderShareCard, saveOrShareBlob, THEMES } from '../lib/shareCard'
@@ -20,8 +20,13 @@ export default function EntryDetail() {
   const [cardHint, setCardHint] = useState('')
   const [cardTheme, setCardTheme] = useState<CardTheme>('warm')
   const [copied, setCopied] = useState('')
-  // 编辑态：仅覆盖可编辑字段（地点归属/照片/摘要不在此改）
+  // 编辑态：可编辑字段（地点归属/地点改名也在此改；照片增删、摘要不在此改）
   const [editing, setEditing] = useState(false)
+  const [fPlaceId, setFPlaceId] = useState<string | null>(null)
+  const [fPlaceName, setFPlaceName] = useState('')
+  const [fPlaceArea, setFPlaceArea] = useState('')
+  const [pickingPlace, setPickingPlace] = useState(false)
+  const [placeQuery, setPlaceQuery] = useState('')
   const [fRating, setFRating] = useState<number | undefined>()
   const [fDate, setFDate] = useState('')
   const [fBudget, setFBudget] = useState<number | undefined>()
@@ -52,6 +57,11 @@ export default function EntryDetail() {
 
   function startEdit() {
     if (!entry) return
+    setFPlaceId(entry.placeId)
+    setFPlaceName(place?.name ?? '')
+    setFPlaceArea(place?.area ?? '')
+    setPickingPlace(false)
+    setPlaceQuery('')
     setFRating(entry.rating)
     setFDate(entry.visitDate)
     setFBudget(entry.budget)
@@ -64,11 +74,31 @@ export default function EntryDetail() {
     if (!entry || saving) return
     setSaving(true)
     try {
+      const now = new Date().toISOString()
+      const moveTo = fPlaceId && fPlaceId !== entry.placeId ? fPlaceId : null
       await repo.saveEntry({
-        ...entry, rating: fRating, visitDate: fDate || entry.visitDate, budget: fBudget,
+        ...entry, placeId: moveTo ?? entry.placeId,
+        rating: fRating, visitDate: fDate || entry.visitDate, budget: fBudget,
         transcript: fTranscript || undefined, notePublic: fNotePublic || undefined, tagIds: fTagIds,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       })
+      if (moveTo) {
+        // 搬家：记录和它的照片一起换归属；有本地图的重传一份到新路径；搬空的老地点级联清理
+        const oldPlaceId = entry.placeId
+        const ms = (await repo.media()).filter((m) => m.entryId === entry.id)
+        if (ms.length) {
+          await bulkPut('media', ms.map((m) => ({ ...m, placeId: moveTo })))
+          for (const m of ms) if (m.display || m.thumb) await enqueue({ kind: 'upload_media', id: m.id })
+        }
+        const stillThere = (await repo.entries()).some((e) => e.placeId === oldPlaceId)
+        if (!stillThere) await repo.deletePlace(oldPlaceId)
+      } else if (place) {
+        // 改名：改的是地点本身，该地点下所有记录一起生效
+        const nn = fPlaceName.trim(), na = fPlaceArea.trim()
+        if ((nn && nn !== place.name) || na !== (place.area ?? '')) {
+          await repo.savePlace({ ...place, name: nn || place.name, area: na || undefined, updatedAt: now })
+        }
+      }
       setEditing(false)
     } finally { setSaving(false) }
   }
@@ -139,8 +169,55 @@ export default function EntryDetail() {
 
         {editing ? (
           <>
-            {/* 编辑表单：评分/日期/人均/感受/公开理由/标签 */}
+            {/* 编辑表单：地点/评分/日期/人均/感受/公开理由/标签 */}
             <div className="card-paper p-4 space-y-4">
+              <div>
+                <p className="text-sm font-bold mb-1.5">地点</p>
+                {(() => {
+                  const moveTo = fPlaceId && fPlaceId !== entry.placeId
+                    ? data.places.find((p) => p.id === fPlaceId) : undefined
+                  const useCount = data.entries.filter((e) => e.placeId === entry.placeId).length
+                  if (pickingPlace) {
+                    const q = placeQuery.trim()
+                    const cands = data.places
+                      .filter((p) => p.id !== entry.placeId && (!q || (p.name + (p.area ?? '')).includes(q)))
+                      .slice(0, 6)
+                    return (
+                      <div className="space-y-2">
+                        <input className="field-input" placeholder="搜索地点名称" value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} />
+                        <div className="flex flex-wrap gap-1.5">
+                          {cands.map((p) => (
+                            <button key={p.id} type="button" className="chip" onClick={() => { setFPlaceId(p.id); setPickingPlace(false) }}>{p.name}</button>
+                          ))}
+                        </div>
+                        <button type="button" className="text-xs text-inkmuted underline" onClick={() => setPickingPlace(false)}>取消</button>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {moveTo ? (
+                        <div className="flex items-center gap-2 bg-paper rounded-xl px-3 py-2 border border-line text-[15px]">
+                          <span>📍</span>
+                          <span className="flex-1 truncate">将搬到：<b>{moveTo.name}</b></span>
+                          <button type="button" className="text-xs text-inkmuted underline shrink-0" onClick={() => setFPlaceId(entry.placeId)}>改回</button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 bg-paper rounded-xl px-3 py-2 border border-line text-[15px]">
+                            <span>📍</span>
+                            <span className="flex-1 truncate">{place?.name ?? '未知地点'}</span>
+                            <button type="button" className="text-xs text-terradeep underline shrink-0" onClick={() => setPickingPlace(true)}>更换地点</button>
+                          </div>
+                          <input className="field-input" placeholder="地点名称" value={fPlaceName} onChange={(e) => setFPlaceName(e.target.value)} />
+                          <input className="field-input" placeholder="区域，如：海口 · 西海岸" value={fPlaceArea} onChange={(e) => setFPlaceArea(e.target.value)} />
+                          {useCount > 1 && <p className="text-xs text-inkmuted">该地点下共 {useCount} 条记录，改名会一起生效。</p>}
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold">评分</span>
                 <Stars value={fRating} size={26} editable onChange={setFRating} />
