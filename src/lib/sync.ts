@@ -221,6 +221,17 @@ export async function lastSyncResult(): Promise<SyncResult | undefined> {
   return getMeta<SyncResult>('last_sync_result')
 }
 
+// 超时竞速：supabase-js 的请求没有默认超时，弱网/VPN 下 TCP 半死不活时会无限 hang，
+// 整轮同步卡死、锁残留、结果落不了盘。用 race 掐断（原请求后台随它去，幂等键保证重推安全），
+// 转为可见的失败 + 停放，下轮继续。调用方无需再 catch。
+export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let t: ReturnType<typeof setTimeout>
+  const timeout = new Promise<never>((_, rej) => {
+    t = setTimeout(() => rej(new Error(`${label}超时(${Math.round(ms / 1000)}秒)，网络太慢或卡住，已中断；下轮继续`)), ms)
+  })
+  return Promise.race([p.finally(() => clearTimeout(t!)), timeout])
+}
+
 function opKey(op: OutboxOp): string {
   if (op.kind === 'upsert_tags') return 'upsert_tags:'
   if (op.kind === 'delete_tags') return `delete_tags:${op.ids.join(',')}`
@@ -658,7 +669,14 @@ export async function autoSync() {
   if (st !== 'idle') return
   // 残留锁（页面在同步中途被杀）超过 10 分钟自动接管，不再永久静默跳过
   if (!(await acquireSyncLock())) return
-  try { await syncOnce(); await pullRemote() } finally { await setMeta('syncing', false) }
+  try {
+    await withTimeout((async () => { await syncOnce(); await pullRemote() })(), 120000, '同步')
+  } catch (e: any) {
+    // 超时也落盘：我的页能看到明确原因，且本函数永不抛错（按钮的 then(reload) 照常刷新）
+    const msg = e?.message || String(e)
+    lastSyncError = msg
+    await setMeta('last_sync_result', { at: new Date().toISOString(), done: 0, failed: 0, parked: 0, error: msg } satisfies SyncResult)
+  } finally { await setMeta('syncing', false) }
 }
 
 // ── Realtime（规范 V1.2 §9.1）：只作「云端数据库有变化」的通知 ──

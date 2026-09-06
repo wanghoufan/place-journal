@@ -8,7 +8,7 @@ import { organize, localHeuristics } from '../lib/organize'
 import { repo } from '../lib/idb'
 import { takeDraft, clearDraft } from '../lib/draft'
 import type { RecordDraft, Entry, Place, MediaItem } from '../lib/types'
-import { syncOnce } from '../lib/sync'
+import { syncOnce, withTimeout } from '../lib/sync'
 
 export default function AiConfirm() {
   const nav = useNavigate()
@@ -110,7 +110,7 @@ export default function AiConfirm() {
       await repo.saveEntry(entry)
       for (const m of media) await repo.saveMedia(m)
       clearDraft()
-      await syncOnce().catch(() => {}) // 立即尝试同步；失败保留 local 状态可重试
+      await withTimeout(syncOnce(), 90000, '同步').catch(() => {}) // 立即尝试同步；失败/超时保留 local 状态可重试
       nav(`/entry/${entryId}`, { replace: true })
     } finally { setSaving(false) }
   }
