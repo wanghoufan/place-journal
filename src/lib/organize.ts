@@ -1,7 +1,6 @@
 // 客户端 AI 适配：优先调用服务端 /api/*（密钥只存在服务端）；
 // 服务端未配置或失败时，降级为「本地推测」并明确标注，用户始终在确认页手动修正。
 import type { AiOrganizeResult } from './types'
-import { toWav16k } from './audio'
 
 export interface OrganizeInput {
   transcript: string
@@ -10,23 +9,7 @@ export interface OrganizeInput {
   tags: { id: string; name: string; dimension: string }[]
 }
 
-export async function transcribe(blob: Blob): Promise<{ ok: true; text: string } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
-  try {
-    const wav = await toWav16k(blob)
-    const fd = new FormData()
-    fd.append('audio', wav, 'speech.wav')
-    const r = await fetch('/api/transcribe', { method: 'POST', body: fd })
-    if ((r.headers.get('content-type') ?? '').includes('text/html') || r.status === 404) return { ok: false, reason: 'not_configured' }
-    const j = await r.json().catch(() => ({}))
-    if (r.status === 501) return { ok: false, reason: 'not_configured' }
-    if (!r.ok || !j.ok) return { ok: false, reason: 'error', message: j.error || `转写失败(${r.status})` }
-    return { ok: true, text: j.text }
-  } catch (e: any) {
-    return { ok: false, reason: 'error', message: e?.message || '转写失败' }
-  }
-}
-
-// 封面文字识别：把封面图缩到 1600 以内走 /api/ocr（腾讯通用印刷体识别）。
+// 封面文字识别：把封面图缩到 1600 以内走 /api/ocr（vision 大模型，不调腾讯）。
 // 返回按置信度排序的候选文本（已去空格、≥2字），调用方负责匹配老地点/填新地点。
 export async function recognizeCoverText(blob?: Blob): Promise<{ ok: true; texts: string[] } | { ok: false; reason: 'not_configured' | 'error'; message?: string }> {
   if (!blob) return { ok: false, reason: 'error', message: '请先添加照片' }

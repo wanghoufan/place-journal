@@ -1,12 +1,11 @@
-// 记录页：先照片和地点，再按住说感受；也可手动填写（方案 8.1 图2）
-import { useMemo, useRef, useState } from 'react'
+// 记录页：先照片和地点，再写感受（微信语音输入法直接输入）；交给 AI 整理（方案 8.1 图2）
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { uuid } from '../lib/uuid'
 import { PageHeader, useDBData } from '../components/ui'
 import { compressImage, humanSize } from '../lib/image'
 import Lightbox from '../components/Lightbox'
-import { VoiceRecorder, type Recording } from '../lib/audio'
-import { transcribe, recognizeCoverText } from '../lib/organize'
+import { recognizeCoverText } from '../lib/organize'
 import { repo } from '../lib/idb'
 import { setDraft } from '../lib/draft'
 import type { DraftPhoto, RecordDraft } from '../lib/types'
@@ -21,9 +20,7 @@ export default function Record() {
   const [newMode, setNewMode] = useState(false)
   const [newName, setNewName] = useState('')
   const [newArea, setNewArea] = useState('')
-  const [recording, setRecording] = useState(false)
   const [transcript, setTranscript] = useState('')
-  const [asrNote, setAsrNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<number | null>(null)
   // 封面 OCR：识别门头文字 → 匹配老地点 / 预填新地点
@@ -31,7 +28,14 @@ export default function Record() {
   const [ocrCands, setOcrCands] = useState<string[]>([])
   const [ocrNote, setOcrNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const recorder = useRef<VoiceRecorder | null>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  // 正文框随内容自动撑高：语音输入写多少排多少，页面跟着往下走
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [transcript])
 
   const matchedPlaces = useMemo(() => {
     if (!data || !placeQuery.trim()) return data?.places.slice(0, 5) ?? []
@@ -109,35 +113,6 @@ export default function Record() {
     setEstBytes(est)
     setPhotos((p) => [...p, ...added])
     setBusy(false)
-  }
-
-  async function startRec() {
-    if (!(await VoiceRecorder.supported())) {
-      // 非安全上下文（HTTP）下浏览器不暴露麦克风，与浏览器本身是否支持无关
-      setAsrNote(window.isSecureContext
-        ? '当前浏览器不支持录音，请手动填写感受。'
-        : '浏览器要求 HTTPS 地址才能录音，当前地址不可用。可先手动填写感受，语音请改用 HTTPS 访问。')
-      return
-    }
-    try {
-      recorder.current = new VoiceRecorder()
-      await recorder.current.start()
-      setAsrNote(null)
-      setRecording(true)
-    } catch { setAsrNote('无法访问麦克风，请检查权限或手动填写。') }
-  }
-
-  async function stopRec() {
-    setRecording(false)
-    const rec: Recording | null = recorder.current ? await recorder.current.stop().catch(() => null) : null
-    if (!rec) return
-    // 超短按：MediaRecorder 没来得及产出数据，直接提示重试，避免无意义的解码报错
-    if (rec.blob.size < 2048 || rec.seconds < 0.4) { setAsrNote('好像没录到声音，请按住按钮说完整一句话再松开。'); return }
-    setAsrNote('正在转写…')
-    const r = await transcribe(rec.blob)
-    if (r.ok) { if (r.text.trim()) { setTranscript((t) => (t ? t + ' ' : '') + r.text); setAsrNote(null) } else setAsrNote('没听清内容，请靠近一点大声说，或直接手动填写。') }
-    else if (r.reason === 'not_configured') setAsrNote('语音转写未配置（需在部署环境填入腾讯 ASR 密钥）。可直接手动填写感受。')
-    else setAsrNote(`转写失败：${r.message}。可直接手动填写感受。`)
   }
 
   function next() {
@@ -228,26 +203,20 @@ export default function Record() {
           )}
         </div>
 
-        {/* 感受 */}
-        <div className="card-paper p-5 text-center">
-          <p className="font-bold text-lg">按住说说你的感受</p>
-          <p className="text-xs text-inkmuted mt-1">预算、氛围、适合谁，都可以直接说</p>
-          <button
-            onPointerDown={startRec} onPointerUp={stopRec} onPointerLeave={recording ? stopRec : undefined}
-            className={`mt-5 w-20 h-20 rounded-full bg-terra text-white flex items-center justify-center shadow-pop mx-auto ${recording ? 'rec-pulse' : ''}`}
-            aria-label="按住录音"
-          >
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
-          </button>
-          <p className="text-xs text-inkmuted mt-2">{recording ? '正在录音…松开结束' : '按住橙色按钮说话'}</p>
-          <div className="mt-4 text-left">
-            <textarea className="field-input min-h-[72px]" placeholder="也可以手动填写感受…" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
-          </div>
-          {asrNote && <p className="text-xs text-terradeep mt-2 text-left leading-relaxed">{asrNote}</p>}
+        {/* 感受：微信语音输入法直接输入，大文本框随写随长 */}
+        <div className="card-paper p-5">
+          <p className="font-bold text-lg text-left">说说你的感受</p>
+          <p className="text-xs text-inkmuted mt-1 text-left">用微信语音输入法直接说，预算、氛围、适合谁都可以说，写多少装多少</p>
+          <textarea
+            ref={taRef}
+            className="field-input min-h-[300px] mt-3 text-[16px] leading-relaxed overflow-hidden"
+            placeholder="点这里，用微信语音输入法开始说…"
+            value={transcript} onChange={(e) => setTranscript(e.target.value)}
+          />
         </div>
 
         <button className="btn-primary w-full py-3.5 text-lg" disabled={!canNext || busy} onClick={next}>
-          {busy ? '处理照片中…' : !hasPlace ? '先选择地点，再交给 AI 整理 →' : !hasContent ? '添加照片或说说感受' : '交给 AI 整理 →'}
+          {busy ? '处理照片中…' : !hasPlace ? '先选择地点，再交给 AI 整理 →' : !hasContent ? '添加照片或写写感受' : '交给 AI 整理 →'}
         </button>
       </div>
     </div>

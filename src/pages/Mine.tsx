@@ -201,7 +201,6 @@ export default function Mine() {
         {/* 隐私与 AI */}
         <div className="card-paper p-4 space-y-2.5 text-sm">
           <p className="font-bold text-base">🔒 隐私与 AI</p>
-          <Line label="语音转写（腾讯 ASR）">{await2()}</Line>
           <Line label="AI 整理（大模型）">{aiLine()}</Line>
           <Line label="地图（高德）">{amapConfigured() ? '已配置' : '未配置 · 分享地图用示意底图'}</Line>
           <p className="text-xs text-inkmuted leading-relaxed pt-1">
@@ -225,20 +224,6 @@ export default function Mine() {
   )
 }
 
-function await2() {
-  // 腾讯 ASR 是服务端变量，浏览器无法直接探测——通过一次探针调用判断
-  return <AsrStatus />
-}
-function AsrStatus() {
-  const [s, setS] = useState('检测中…')
-  useEffect2(() => {
-    // 501=密钥未配置；400=已配置（缺音频）；405/404=函数未部署
-    fetch('/api/transcribe', { method: 'POST', body: new FormData() }).then((r) => {
-      setS(r.status === 501 ? '未配置' : r.ok || r.status === 400 ? '已配置' : `未部署(${r.status})`)
-    }).catch(() => setS('未部署（本地开发模式）'))
-  })
-  return <>{s}</>
-}
 function useEffect2(fn: () => void) { useEffect(fn, []) }
 
 function aiLine() {

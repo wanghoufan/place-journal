@@ -22,7 +22,6 @@ async function loadHandler(name) {
 }
 
 const handlers = {
-  '/api/transcribe': await loadHandler('transcribe'),
   '/api/ai-organize': await loadHandler('ai-organize'),
   '/api/ocr': await loadHandler('ocr'),
 }
@@ -68,8 +67,7 @@ const server = http.createServer(async (req, res) => {
   // 健康端点（部署验证 §5.1：容器 Up/HTTP 200 仅代表 Runtime 层）
   if (url === '/healthz') return sendJson(res, 200, { ok: true, uptime: process.uptime() })
 
-  // /api：与 Vercel Functions 完全同一实现（transcribe 自行解析流式 multipart；
-  // ai-organize 需要预挂 req.body）
+  // /api：与 Vercel Functions 完全同一实现（JSON 接口需要预挂 req.body）
   if (url.startsWith('/api/')) {
     const h = handlers[url]
     if (!h) return sendJson(res, 501, { ok: false, reason: 'not_configured' })
