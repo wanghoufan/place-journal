@@ -213,8 +213,12 @@ async function ensurePlacesInCloud(sb: SupabaseClient, owner: string, placeId: s
 // 3) 每轮结果写入 meta 'last_sync_result'：「我的」页据此展示成功/失败/报错，
 //    不再只看 last_sync 时间戳（失败时它也会更新，等于报喜不报忧；且 reload 会清空内存报错）。
 const SYNCING_STALE_MS = 10 * 60 * 1000
-const MAX_ATTEMPTS = 8
+const MAX_ATTEMPTS = 5
 const PARK_MS = 24 * 60 * 60 * 1000
+// 上传阶段整体上限：弱网下单张照片可能搬很久，超时转失败不停放整个同步；
+const PUSH_TIMEOUT_MS = 90000
+// 拉取阶段整体上限：拉取与上传相互独立，上传卡死绝不耽误拉取（单向假象的根治）
+const PULL_TIMEOUT_MS = 30000
 
 export interface SyncResult { at: string; done: number; failed: number; parked: number; error?: string }
 export async function lastSyncResult(): Promise<SyncResult | undefined> {
@@ -670,12 +674,15 @@ export async function autoSync() {
   // 残留锁（页面在同步中途被杀）超过 10 分钟自动接管，不再永久静默跳过
   if (!(await acquireSyncLock())) return
   try {
-    await withTimeout((async () => { await syncOnce(); await pullRemote() })(), 120000, '同步')
-  } catch (e: any) {
-    // 超时也落盘：我的页能看到明确原因，且本函数永不抛错（按钮的 then(reload) 照常刷新）
-    const msg = e?.message || String(e)
-    lastSyncError = msg
-    await setMeta('last_sync_result', { at: new Date().toISOString(), done: 0, failed: 0, parked: 0, error: msg } satisfies SyncResult)
+    // 上传：超时转可见失败（落盘+计数），不拦后面的拉取
+    try { await withTimeout(syncOnce(), PUSH_TIMEOUT_MS, '上传') } catch (e: any) {
+      const msg = e?.message || String(e)
+      lastSyncError = msg
+      await setMeta('last_sync_result', { at: new Date().toISOString(), done: 0, failed: 0, parked: 0, error: msg } satisfies SyncResult)
+    }
+    // 拉取：独立超时，上传 hang 也照拉不误。超时/失败静默，下轮再拉。
+    // 注意：超时的上传请求可能仍在后台跑，与下轮并发重推——幂等键保证重推安全。
+    try { await withTimeout(pullRemote(), PULL_TIMEOUT_MS, '拉取') } catch { /* 下轮再拉 */ }
   } finally { await setMeta('syncing', false) }
 }
 
