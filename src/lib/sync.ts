@@ -661,8 +661,8 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
       }
     }
   }
-  await bulkPut('places', mergedPlaces)
-  await bulkPut('entries', mergedEntries)
+  await bulkPut('places', await respectFreshEdits('places', mergedPlaces))
+  await bulkPut('entries', await respectFreshEdits('entries', mergedEntries))
   await bulkPut('media', mergedMedia)
   await bulkPut('dimensions', localDims)
   await bulkPut('tags', localTags)
@@ -671,6 +671,20 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
   const withRemote = mergedMedia.filter((m) => (m.remotePath || m.remoteThumbPath) && !m.display && !m.thumb)
   void Promise.allSettled(withRemote.slice(0, 200).map((m) => getRemoteMediaUrl(m, 'thumb')))
   return { entries: mergedEntries.length, media: mergedMedia.length }
+}
+
+// 最终裁决（改名保存撞上后台拉取的根治）：上面的合并基于拉取开始时读到的内存快照；
+// 若用户在拉取途中保存过（改名/编辑/搬家），库内行已变脏，直接 bulkPut 会用旧快照
+// 盖掉新保存——表现为“保存完马上变回旧名”。落盘前重读一次：库内仍脏的行以库内为准。
+// 脏行稍后由自己的 outbox op 推上云；若云端确有更新，推送时走冲突裁决，绝不静默丢。
+async function respectFreshEdits<T extends { id: string }>(store: 'places' | 'entries', merged: T[]): Promise<T[]> {
+  const cur = (await repo[store]()) as any[]
+  const byId = new Map(cur.map((x) => [x.id, x]))
+  return merged.map((m) => {
+    const c = byId.get(m.id)
+    if (c && ((c.sync && c.sync !== 'synced') || ((c.revision ?? 0) !== (c.baseRevision ?? c.revision ?? 0)))) return c as T
+    return m
+  })
 }
 
 export async function autoSync() {

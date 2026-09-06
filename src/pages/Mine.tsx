@@ -218,6 +218,7 @@ export default function Mine() {
         <p className="text-center text-xs text-inkmuted pb-2">
           {cloudConfigured() ? '' : '本地模式：数据仅保存在本机浏览器，可随时导出备份。'}
         </p>
+        <BuildMark />
       </div>
 
       <Sheet open={exportOpen} onClose={() => setExportOpen(false)} title="导出数据">
@@ -232,6 +233,19 @@ export default function Mine() {
 }
 
 function useEffect2(fn: () => void) { useEffect(fn, []) }
+
+// 前端版本号：读 index.html 引用的 bundle hash，验“测的是不是新包”只看这一行
+function BuildMark() {
+  const [h, setH] = useState('')
+  useEffect2(() => {
+    fetch('/index.html', { cache: 'no-store' }).then((r) => r.text()).then((t) => {
+      const m = /assets\/index-([A-Za-z0-9_-]+)\.js/.exec(t)
+      if (m) setH(m[1].slice(0, 8))
+    }).catch(() => {})
+  })
+  if (!h) return null
+  return <p className="text-center text-[10px] text-inkmuted/60 pb-2">前端版本 {h} · 若刚更新过请杀后台重进</p>
+}
 
 function aiLine() {
   return <AiStatus />
