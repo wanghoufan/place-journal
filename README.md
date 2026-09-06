@@ -1,12 +1,12 @@
 # 我的地点 · 私人打卡手账（PWA）
 
-以手机为主的私人地点手账：拍多张照片并说出感受 → AI 整理为可筛选的地点记录 → 自然语言找地点 → 生成可撤销的公开分享（单地点卡 / 多地点清单 / 地图总览）。
+以手机为主的私人地点手账：拍多张照片并写下感受 → AI 整理为可筛选的地点记录 → 自然语言找地点 → 生成可撤销的公开分享（单地点卡 / 多地点清单 / 地图总览）。
 
 规格来源：`docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md`（SSOT，V1.0）。视觉基准：`docs/visuals/01–07`。
 
-## 当前状态（2026-09-05 快照，开发暂停；权威状态见 `docs/handoff/HANDOFF.md` §0）
+## 当前状态（2026-09-07 在役；权威状态见 `docs/handoff/HANDOFF.md` §0）
 
-✅ **全部页面与流程已实现**：画廊（按记录/按地点）、记录（多图+按住说话+手动）、AI 确认、记录详情（含编辑）、地点时间线归档、找地点（自然语言+结构化筛选）、标签与维度（父→子两层，含父链补推）、我的（导出/同步/隐私/冲突裁决）、单地点分享页、多地点清单分享、地图总览（编号名牌）、本地 IndexedDB + Supabase 同步引擎（含 `ensureTagsInCloud`/`ensurePlacesInCloud`/`sweepDirtyRows` 自愈）、图片压缩上传、PWA 安装。`tsc && vite build` 通过（PWA precache 7 entries / 504KB）。
+✅ **全部页面与流程已实现**：画廊（按记录/按地点）、记录（多图+大正文/微信语音输入+感受与公开理由分框填写）、AI 确认、记录详情（含编辑：地点改名/搬家）、地点时间线归档、找地点（自然语言+结构化筛选）、标签与维度（父→子两层，含父链补推）、我的（导出/同步结果可视化/待上传与报错/AI 连通性测试/冲突裁决）、单地点分享页、多地点清单分享、地图总览（编号名牌）、本地 IndexedDB + Supabase 同步引擎（含 `ensureTagsInCloud`/`ensurePlacesInCloud`/`sweepDirtyRows` 自愈、锁超时、毒丸停放、推拉解耦）、图片压缩上传、灯箱相册（点图放大+左右滑+显式设封面）、Cover 自适应铺满、PWA 安装。`tsc && vite build` 通过。
 
 ✅ **Supabase 云端已打通**（`yacgnikzvutbpoqvokth` / `habit_tracker`）：Migration `20260903141849` 已发布并线上核对（8 表 RLS、策略 32、anon 零表权限）、Expose 已勾选；L2 真实写入验收 **L2_PASS**（Google OAuth → POST 201 → 重登 7/7 回读）、标签同步回归 **TAG_FIX_PASS**（6/6）、QA V0.2 整轮回归 **QA_V02_PASS**（25/25）。证据见 `docs/acceptance-l2/` 与 `docs/qa/`。单设备定位，不做双设备/并发验收。
 
@@ -15,8 +15,8 @@
 | 能力 | 环境变量 | 状态 |
 |---|---|---|
 | Supabase 云端 | `VITE_SUPABASE_URL` `VITE_SUPABASE_PUBLISHABLE_KEY` | 已填 `.env.local` 并验证 Expose/RLS；Publishable key 可进前端 |
-| Google 登录 | Supabase Dashboard 配置（见方案 7.4） | 已验证真登录；Redirect 白名单含 `http://localhost:5173` |
-| 腾讯 ASR | `TENCENT_ASR_SECRET_ID` `TENCENT_ASR_SECRET_KEY` | ✅ 2026-09-04 真转写 PASS；未配置时降级手动填写 |
+| Google 登录 | Supabase Dashboard 配置（见方案 7.4） | 已验证真登录；Redirect 白名单含 `localhost:5173`/`localhost:8081`/`192.168.31.60:8081` 及 Vercel 域名 |
+| 按住录音/腾讯 ASR | — | ❌ 2026-09-07 已整条下线（录音按钮、`api/transcribe.ts`、`src/lib/audio.ts` 全删）；改走微信语音输入法直输大文本框（随写随长） |
 | AI 整理 | `OPENROUTER_API_KEY` / `DEEPSEEK_API_KEY` / `OPENCODE_*` | ✅ 2026-09-04 全通，当前 `OPENCODE_MODEL=glm-5.3-flash`（12s 超时降级保留）；未配置时本地推测预填 |
 | 高德地图 | `VITE_AMAP_KEY` `VITE_AMAP_SECURITY_JSCODE` | 已填待联调（分享页地图待验，需重建镜像）；未配置时示意底图 |
 | Storage buckets | — | ✅ ENV-1 已关闭（2026-09-04）：两桶已上线 + 9 项实测 + 管理员复审通过，证据 `docs/db/ENV1-实测记录丨2026-09-04.md` |
@@ -35,7 +35,7 @@ npm run dev        # http://localhost:5173
 1. 推送到 GitHub 仓库（本项目不自动 commit/push，需确认后执行）。
 2. Vercel → Add New Project → Import Git Repository（无需改配置，已含 `vercel.json`）。
 3. 在 Vercel Project → Settings → Environment Variables 按 `.env.example` 填入真实值（注意区分前端 `VITE_` 前缀与服务端变量）。
-   生产现役：`https://place-journal-xi.vercel.app`（2026-09-04 上线，HEAD `6dafc82`，transcribe 真音频 PASS；09-05 四批后三端同码）。
+   生产现役：`https://place-journal-xi.vercel.app`（2026-09-04 上线，push 自动部署；历史：`6dafc82` 时 transcribe 真音频 PASS，该链路 09-07 已下线）。
 4. 部署得到 Preview/Production URL 后：
    - Supabase Auth URL Configuration 加入正式 URL；Google OAuth 回调见方案 7.4；
    - 高德 JS API Key 的域名白名单加入正式域名。
@@ -62,8 +62,8 @@ npm run dev        # http://localhost:5173
 
 ## 待办 / 待真实验收
 
-- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）；ENV-1 九项实测（ENV-1 关闭）；ASR 真转写 + AI 全通；Docker 8081 上线（healthy）；RQA-V 真机修复（`6705e26`）；09-05 四批：删除链路根治（`delete_entry`）+ 评分 5 档 + 现场建标签 + demo 三通道防上云；Vercel 生产上线+验收（transcribe 真音频 PASS，手机 HTTPS 录音用户实测成功）。
-- ⏳ 待办：高德 Key 联调（Vercel/8081 两端补变量后重建/重部署）；历史验收标签清理待示下；`coordination/`＋`docs/review/` 去留待示下；Realtime 其余部分冻结；单设备定位（Tailscale 已被 Vercel 取代）。
+- ✅ 已验证：Google 真登录、Supabase 真实写入（201 + revision）、云端回读、RLS 按用户隔离（L2_PASS）；标签父链补推与自愈（TAG_FIX_PASS）；页面滚动、编辑、分享撤销等 25 项（QA_V02_PASS）；ENV-1 九项实测（ENV-1 关闭）；AI 全通（历史：ASR 真转写曾 PASS，整条链路 09-07 已按用户决定下线）；Docker 8081 上线（healthy）；RQA-V 真机修复（`6705e26`）；09-05 四批：删除链路根治（`delete_entry`）+ 评分 5 档 + 现场建标签 + demo 三通道防上云；09-06/07 七批（`8351fd9`→`d1b2e4b`）：灯箱相册＋换设备远端图根治、同步可靠性（锁超时/毒丸停放/推拉解耦/结果可视化）、地点改名/搬家/搬空清理（QA 第二轮 P1 PASS）、感受与公开理由分框、Cover 自适应铺满、AI 连通性测试；封面 OCR 曾上线后因 GLM 单次 8–17s（Vercel 15s 装不下）按用户决定整条下线（`b227ddc`）；Vercel 生产上线+验收（手机 HTTPS 实测成功）；QA 第二轮（`docs/qa/QA报告丨第二轮丨2026-09-06.md`）：P1 PASS，P2/P3-2 归因后修复发版、待重跑，P0 待真机三行。
+- ⏳ 待办：高德 Key 联调（Vercel/8081 两端补变量后重建/重部署）；历史验收标签清理待示下；Realtime 其余部分冻结；L3 并发验收仍取消，但双端日常使用（手机记＋电脑看）已成主要场景，同步可靠性按此保障；`coordination/`＋`docs/review/` 已保留入库（`d81ebcd`，关闭）。
 - ⚠️ 09-04 新增原始报告 `docs/qa/QA回归报告丨2026-09-04.md`（QA_FAIL）与 `docs/qa/视觉验收报告丨2026-09-04.md`（VA_FAIL）为执行快照，甄别结论以 `docs/handoff/HANDOFF.md` §0.5 为准（真问题 2 个已修）。
 
 ## 共享 Supabase 数据库管理员角色交接（2026-09-03）

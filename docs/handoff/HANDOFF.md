@@ -1,8 +1,8 @@
-# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-05 收工快照（删除链路根治 + 评分筛选 5 档 + 现场建标签，收工）
+# HANDOFF 丨 个人打卡小工具（地点手账 PWA）丨 2026-09-07 在役快照（同步可靠性＋地点编辑＋双框＋Cover，OCR/ASR 下线）
 
 > 用途：新智能体接续恢复开发的**唯一入口文档**。先读本文，再按「必读文档」顺序补齐上下文。
 > 项目路径：`/Users/zzymima0000/Developer/coding/1.Active/ing 丨0831个人打卡小工具 MACMINI GL`
-> 项目一句话：移动优先的地点手账 PWA——拍照/语音记录 → AI 整理入库 → 按地点/标签/时间回顾 → 自然语言找地点 → 分享快照。本地优先（IndexedDB）+ Supabase 云同步。
+> 项目一句话：移动优先的地点手账 PWA——拍照/写感受 → AI 整理入库 → 按地点/标签/时间回顾 → 自然语言找地点 → 分享快照。本地优先（IndexedDB）+ Supabase 云同步。
 
 > ⚠️ **2026-09-03 路径变更**：数据库治理材料（规范 V1.2、写入方案与审查意见、Migration 草案、平台仓库）已迁至
 > `/Users/zzymima0000/Developer/coding/1.Active/alw丨数据库管理专家/`。
@@ -48,6 +48,13 @@
 | 评分筛选扩 5 档（2026-09-05 下午） | ✅ 已实测并上线三端（commit `6227d56`） | 用户反馈改 1 星后无低分档可选 → 档位由 3 档扩为 **1/2/3/4/5 星** 五档（`Find.tsx` 一行）；实测五档计数与数据全吻合（demo 6 地点：1/2/3星以上=6、4星以上=5、5星=1）；8081 镜像 606efa9037af。**澄清两点**：筛选结果是动态的（UI 改评分后 Find 结果正确反映）；评分是记录数字字段、不属于标签维度体系（Mine「标签与维度」里没有属设计） |
 | 现场新建标签 + demo 显式保存防泄漏（2026-09-05 下午） | ✅ 已实测并上线三端（commit `08bae21`） | ① EntryDetail 编辑表单标签区末尾「**＋ 新标签**」入口 → Sheet（名称 + 维度 chips，默认自定义维度/无则第一维度）→ 创建即自动勾选；**同名标签提示并「选用现有标签」**不产生重复；新标签自动进对应维度分组（标签与维度页、Find 筛选条均可见）。② 连带堵漏：demo 记录被**显式编辑保存**仍会上云（saveEdit 入队 upsert_entry 直推）→ `sync.upsert_entry` 分支遇 demo 行直接丢弃 op（与 sweep 同口径），实测 op 丢弃、云端保持 0。③ 实测：创建→自动勾选→保存→tagIds 持久化→云端三层（tag/entry/entry_tags）同步正确（测后云端 QA 数据已再清零）；8081 镜像 997aea868460 |
 | 收工状态 | 📌 **2026-09-05 最终收工（HEAD=`d81ebcd`）** | 当日上线批次：删除链路补全+delete_entry 根治复活+云端大扫除（`9f0eeb7`）→ 评分筛选（`00c115d`）→ 5 档（`6227d56`）→ 现场建标签（`08bae21`）→ 收工快照（`6dafc82`）→ **复盘产物入库+洁癖收尾（`d81ebcd`：AGENTS/HANDOFF/README 快照推至 09-05 现役；`coordination/`+`docs/review/` 保留入库；09-04/05 日志补档）**。三端同码：5173 dev / 8081 Docker（镜像 997aea868460，healthz 200）/ Vercel `https://place-journal-xi.vercel.app`。云端业务表 0 行（白纸），demo 数据已三通道防上云（sweep/显式保存/大扫除）。/tmp 已清理：qa-profile-vercel-31574 已删（trash）；chrome-cdp-profile 保留（含 5173 登录态，Chrome PID 15060 运行中，下轮 QA 复用） |
+| 09-06/07 记录页四批 | ✅ 已上线三端 | ① 感受与公开理由分框（`RecordDraft.notePublic` 透传；AiConfirm 不再拿感受 auto-fill 公开理由，AI 只整理感受）② `useAutoGrow` 文本框随写随长（记录页大正文＋详情编辑两框）③ 灯箱相册 `Lightbox`（点图放大＋左右滑＋显式设封面；QA 第二轮 P3-1 桌面 PASS，单图页滑不可验）④ `Cover` 自适应铺满（比例不变：记录卡 4:5、其余正方形）。commit `8351fd9`（含换设备远端图根治，见下）→ `c2c6c80` → `d1b2e4b` |
+| 09-06/07 同步可靠性四批 | ✅ 已上线三端 | 手机推、电脑拉不动排查：① 换设备图空白根因=`Thumb` 远端死分支（恒 `undefined`）＋`pullRemote` 丢 `remoteThumbPath`＋签名串行 200 次 → 统一解析＋补路径＋并行只取小图、网格 `preferThumb` ② `syncing` 锁时间戳（残留超 10min 接管；Realtime 同口径）③ 毒丸 8→5 次停放 24h（sweep 不捞，行标 failed，不拦补拉）④ 超时（整轮→分段：上传 90s/拉取 30s，超时落盘）⑤ 推拉解耦（上传 hang 照拉，治“单向”假象）⑥ 我的页结果可视化（上次成功/失败数、待上传、报错原文、停放提示）＋ `withTimeout`。commit `c3863ae` → `573a75c` → `0b8607d`。**P0 待真机三行闭环**（现场曾有 1 项 VPN 下上传 hang，超时机制已覆盖） |
+| 09-06/07 地点编辑 | ✅ **QA 第二轮 P1_PASS** | EntryDetail 编辑新增地点区：改名/改区域（多记录共用提示一起生效）、更换地点搬家（记录＋照片换归属、有本地图的重传、搬空老地点 `deletePlace` 级联）。`idb.deletePlace` 新增。闭环实测＋T- 数据已清。commit `20a7558` |
+| 录音/ASR 下线 | ✅ 整条下线（用户决定） | 改走微信语音输入法直输：录音按钮、`api/transcribe.ts`、`src/lib/audio.ts`、转写探针、模板 Key 占位全删（`c2c6c80`，-256 行）；不再占用麦克风。Tencent 密钥仍在两端 env（无害，待清） |
+| 封面 OCR 上/下线 | ⚠️ 整条下线（用户决定） | vision 版曾上线（OpenCode→OpenRouter→DeepSeek failover，`8351fd9`／超时放宽 `16f3068`）：GLM 直调实证**看图可用**、中文准确、JSON 合规，但单次 8–17s——Vercel 15s 装不下、等待体验差 → `api/ocr.ts` 及全链路 `b227ddc` 删除（-218 行）。P2 归因详见 QA 第二轮报告处置节。教训：vision 超时预算按最慢通道给，单通道时 failover 等于没有 |
+| AI 连通性测试 | ✅ 已上线 | 我的页 AI 行加「测试连通性」按钮：实调一次报通道名＋耗时（微量调用，不落数据）。`OPENCODE_MODEL=glm-5.3-flash`（Docker 已切；**Vercel 待用户改变量**）。`16f3068` |
+| 收工状态 | 📌 **2026-09-07 在役（HEAD=`d1b2e4b`）** | 九连发 `8351fd9` → `c2c6c80` → `c3863ae` → `573a75c` → `20a7558` → `0b8607d` → `16f3068` → `b227ddc` → `d1b2e4b`（全在 origin/master，已验证一致）。三端：5173 dev ／ 8081 Docker（镜像 `faf33ce08989`，healthz 200，`/api/ocr` 501、`/api/ai-organize` 400 实证）／ Vercel（push 自动部署，页面级未逐一复验）。QA 第二轮见 [`docs/qa/QA报告丨第二轮丨2026-09-06.md`](docs/qa/QA报告丨第二轮丨2026-09-06.md)（P1 PASS；P2/P3-2 已修待重跑——重跑必须用 8081 且确认新包；P0 待真机三行） |
 
 ### 0.2 下一步任务（按优先级）
 
@@ -78,11 +85,11 @@
 2. **密钥红线**：前端只允许 publishable/anon key（已在 `.env.local`，勿入 git）；service_role/数据库密码绝不进前端、不进文档；HAR/截图归档前必须脱敏。
 3. **路径变更**：数据库治理材料在 `alw丨数据库管理专家/`（项目审查丨habit_tracker/ 与 平台丨共享 Supabase 数据库/）；本项目 `docs/db/` 只放送审清单，`supabase/migrations/0001_init.sql` 已不是权威版本。
 4. **送审格式**：凡有文件需转送其他智能体/管理员，写入项目 `.md` 清单，给用户**绝对路径纯文本**（不用 file:// 链接），一个入口文件 + 全部材料路径。
-5. **单设备约束**：不为双设备/并发场景做开发或验收；同步协议里的冲突处理只作数据安全兜底。
+5. **单设备约束**：不为双设备/并发场景做开发或验收；同步协议里的冲突处理只作数据安全兜底。（2026-09-07 补：L3 验收仍取消；但用户实际已双端日常使用〈手机记＋电脑看〉，同步可靠性修复按此保障。）
 6. **验证纪律**：云端写入验收以 REST 回执/云端直读为准，页面显示≠同步成功；RLS 验证必须用 authenticated/anon 角色（superuser 绕过 RLS）。
 7. **prompt_manager 是相邻项目**：共用 Supabase 但互不归属；本项目的 bug 不要顺手改它（2026-09-03 曾发生两项目交叉混淆，用户已叫停）。
 8. **Chrome 验收自动化坑（2026-09-04）**：QA Chrome 启动参数 `--user-data-dir=/tmp/chrome-cdp-profile --remote-debugging-port=9334`；TRAE 沙箱会拦 Chrome 的系统访问（Crashpad/Keychain），Chrome 相关命令需 `dangerouslyDisableSandbox`；**强杀（pkill -9）Chrome 会挂死该 profile 的 IndexedDB**（`ensureSeeded` 永不落地 → 应用白屏且零 console 报错），退出尽量走优雅路径；Google OAuth 登录不得代输凭据，必须用户亲自完成；复用同一 profile 免重复登录。
-9. **手机局域网实测坑（2026-09-04）**：`http://192.168.31.60:8081` 是非安全上下文——① `navigator.mediaDevices` 为 undefined，录音直接不可用（浏览器硬限制，只能靠 HTTPS 解锁，代码提示已改准确）；② `crypto.randomUUID` 不存在（已修：`src/lib/uuid.ts` polyfill，commit `6fc3cd5`）。手机验证一律用 8081 部署版，**改代码后必须重建镜像**（仅重启容器不生效）。
+9. **手机局域网实测坑（2026-09-04）**：`http://192.168.31.60:8081` 是非安全上下文——① ~~`navigator.mediaDevices` 为 undefined，录音直接不可用~~（2026-09-07 录音/ASR 整条下线，改走微信语音输入，此条作废）；② `crypto.randomUUID` 不存在（已修：`src/lib/uuid.ts` polyfill，commit `6fc3cd5`）。手机验证一律用 8081 部署版，**改代码后必须重建镜像**（仅重启容器不生效）。
 10. **浏览器自动化补充坑（2026-09-05）**：① `/tmp/chrome-cdp-profile`（CDP 9334）在 5173 origin 有有效登录态可复用，接管前先 `curl http://127.0.0.1:9334/json/list` 探活；② Stars 评分组件是 **aria-label button**（内容为 SVG），eval 里用 `document.querySelector('[aria-label="5 星"]')` 定位，textContent 匹配必落空；③ 验证 bundle 是否含新代码时注意模板拼接字符串（如 `${n} 星以上`），grep 关键词要选字面量（如 `星以上`、`\[1,2,3,4,5\]\.map`）；④ `agent-browser click ref=` 的引用可能过期，点击后必须实测校验（本轮曾误判「弹窗没开」实为已点确认删除）。
 
 ---
