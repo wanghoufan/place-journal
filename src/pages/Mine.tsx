@@ -238,12 +238,44 @@ function aiLine() {
 }
 function AiStatus() {
   const [s, setS] = useState('检测中…')
+  const [testing, setTesting] = useState(false)
   useEffect2(() => {
+    // 被动探针：空包只看 Key 配没配（400=已配置），不消耗大模型调用
     fetch('/api/ai-organize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then((r) => {
       setS(r.status === 501 ? '未配置' : r.status === 400 ? '已配置' : `未部署(${r.status})`)
     }).catch(() => setS('未部署（本地开发模式）'))
   })
-  return <>{s}</>
+  // 主动测试：实打实调一次大模型，报通道名+耗时（消耗一次微量调用）
+  async function test() {
+    if (testing) return
+    setTesting(true)
+    setS('测试中…')
+    const t0 = Date.now()
+    try {
+      const ctl = new AbortController()
+      const timer = setTimeout(() => ctl.abort(), 15000)
+      let r: Response
+      try {
+        r = await fetch('/api/ai-organize', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript: '连通性测试：今天去了海边咖啡馆，人均45，很放松', placeName: '测试', tags: [] }),
+          signal: ctl.signal,
+        })
+      } finally { clearTimeout(timer) }
+      const j = await r.json().catch(() => ({} as any))
+      if (r.ok && j.ok) setS(`可用（${j.provider ?? '大模型'}，${((Date.now() - t0) / 1000).toFixed(1)}s）`)
+      else if (r.status === 501) setS('未配置')
+      else setS(`不可用：${String(j.error || `HTTP ${r.status}`).slice(0, 60)}`)
+    } catch (e: any) {
+      setS(e?.name === 'AbortError' ? '不可用：15秒超时' : `不可用：${e?.message || '网络失败'}`)
+    } finally { setTesting(false) }
+  }
+  return (
+    <span className="inline-flex items-center gap-2 justify-end flex-wrap">
+      <span>{s}</span>
+      <button onClick={test} disabled={testing} className="chip !py-1">{testing ? '测试中…' : '测试连通性'}</button>
+    </span>
+  )
 }
 
 function Line({ label, children }: { label: string; children: React.ReactNode }) {

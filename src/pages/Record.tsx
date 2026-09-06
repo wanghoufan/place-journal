@@ -1,8 +1,8 @@
 // 记录页：先照片和地点，再写感受（微信语音输入法直接输入）；交给 AI 整理（方案 8.1 图2）
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { uuid } from '../lib/uuid'
-import { PageHeader, useDBData } from '../components/ui'
+import { PageHeader, useAutoGrow, useDBData } from '../components/ui'
 import { compressImage, humanSize } from '../lib/image'
 import Lightbox from '../components/Lightbox'
 import { recognizeCoverText } from '../lib/organize'
@@ -28,14 +28,8 @@ export default function Record() {
   const [ocrCands, setOcrCands] = useState<string[]>([])
   const [ocrNote, setOcrNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const taRef = useRef<HTMLTextAreaElement>(null)
   // 正文框随内容自动撑高：语音输入写多少排多少，页面跟着往下走
-  useEffect(() => {
-    const el = taRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [transcript])
+  const taRef = useAutoGrow<HTMLTextAreaElement>(transcript)
 
   const matchedPlaces = useMemo(() => {
     if (!data || !placeQuery.trim()) return data?.places.slice(0, 5) ?? []

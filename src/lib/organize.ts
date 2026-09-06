@@ -31,7 +31,7 @@ export async function recognizeCoverText(blob?: Blob): Promise<{ ok: true; texts
       img.src = url
     })
     const ac = new AbortController()
-    const timer = setTimeout(() => ac.abort(), 15000)
+    const timer = setTimeout(() => ac.abort(), 60000)
     try {
       const r = await fetch('/api/ocr', {
         method: 'POST',
@@ -48,7 +48,7 @@ export async function recognizeCoverText(blob?: Blob): Promise<{ ok: true; texts
       clearTimeout(timer)
     }
   } catch (e: any) {
-    if (e?.name === 'AbortError') return { ok: false, reason: 'error', message: '识别超时(15秒)' }
+    if (e?.name === 'AbortError') return { ok: false, reason: 'error', message: '识别超时(60秒)' }
     return { ok: false, reason: 'error', message: e?.message || '识别失败' }
   }
 }

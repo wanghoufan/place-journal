@@ -1,7 +1,7 @@
 // 记录详情：多图相册、封面切换、公开/私密笔记、标签、分享入口（方案 3.2）+ 编辑已有记录（2026-09-03）
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { PageHeader, Stars, useDBData, Thumb, SyncDot, Sheet, useAllMediaUrls } from '../components/ui'
+import { PageHeader, Stars, useAutoGrow, useDBData, Thumb, SyncDot, Sheet, useAllMediaUrls } from '../components/ui'
 import Lightbox from '../components/Lightbox'
 import { repo, bulkPut, enqueue } from '../lib/idb'
 import { uuid } from '../lib/uuid'
@@ -46,6 +46,8 @@ export default function EntryDetail() {
   const [lightIndex, setLightIndex] = useState<number | null>(null)
   const mediaList = (data?.media.filter((m) => m.entryId === id).sort((a, b) => a.order - b.order)) ?? []
   const albumUrls = useAllMediaUrls(mediaList, 'display')
+  const fTranscriptRef = useAutoGrow<HTMLTextAreaElement>(fTranscript)
+  const fNotePublicRef = useAutoGrow<HTMLTextAreaElement>(fNotePublic)
   if (!data) return null
   const entry = data.entries.find((e) => e.id === id)
   if (!entry) return <div className="p-8 text-center text-inkmuted">记录不存在或已被删除。<Link to="/" className="underline text-terra">回画廊</Link></div>
@@ -232,11 +234,11 @@ export default function EntryDetail() {
               </div>
               <div>
                 <p className="text-sm font-bold mb-1.5">我的感受（私密）</p>
-                <textarea className="field-input min-h-[70px]" value={fTranscript} onChange={(e) => setFTranscript(e.target.value)} />
+                <textarea ref={fTranscriptRef} className="field-input min-h-[70px] overflow-hidden" value={fTranscript} onChange={(e) => setFTranscript(e.target.value)} />
               </div>
               <div>
                 <p className="text-sm font-bold mb-1.5">公开推荐理由（分享时展示）</p>
-                <textarea className="field-input min-h-[60px]" value={fNotePublic} onChange={(e) => setFNotePublic(e.target.value)} />
+                <textarea ref={fNotePublicRef} className="field-input min-h-[60px] overflow-hidden" value={fNotePublic} onChange={(e) => setFNotePublic(e.target.value)} />
               </div>
               <div>
                 <p className="text-sm font-bold mb-2">标签</p>

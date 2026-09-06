@@ -1,5 +1,5 @@
 // 基础 UI 组件（手账风）
-import { ReactNode, useEffect, useState, useCallback } from 'react'
+import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getVersion, subscribe, repo } from '../lib/idb'
 import type { Entry, MediaItem } from '../lib/types'
@@ -119,6 +119,19 @@ export function FieldRow({ icon, label, children }: { icon: ReactNode; label: st
       <span className="text-right min-w-0">{children}</span>
     </div>
   )
+}
+
+// ---- 文本框随内容自动撑高（记录页大正文/详情编辑共用）：写多少排多少，
+ // 页面跟着往下走，不在框内憋滚动条
+export function useAutoGrow<T extends HTMLTextAreaElement>(value: string) {
+  const ref = useRef<T | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+  return ref
 }
 
 // ---- 图片：blob URL 管理 ----

@@ -43,9 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!image) return res.status(400).json({ ok: false, error: 'image required' })
   if (!image.startsWith('data:image/')) image = `data:image/jpeg;base64,${image.replace(/^data:image\/\w+;base64,/, '')}`
 
-  // Vercel 15s 上限：单通道 6s，全局 13s（留 2s 余量），超时快速 failover 下一个
-  const UPSTREAM_TIMEOUT_MS = 6000
-  const DEADLINE_MS = 13000
+  // 超时策略（2026-09-07 P2 FAIL：GLM 文本曾慢至 64s，vision 只给 6s 必超时；
+  // 且当时只配了 OpenCode 一家、无处 failover）：Vercel Hobby 15s 上限内收紧，
+  // 自托管 Docker 无此限制，给慢模型留足时间。
+  const ON_VERCEL = process.env.VERCEL === '1'
+  const UPSTREAM_TIMEOUT_MS = ON_VERCEL ? 10000 : 25000
+  const DEADLINE_MS = ON_VERCEL ? 13000 : 55000
   const t0 = Date.now()
 
   let lastErr = ''
