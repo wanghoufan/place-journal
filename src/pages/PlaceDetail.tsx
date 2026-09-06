@@ -1,6 +1,6 @@
 // 地点详情：同一地点全部到访的时间线（方案 3.2），不是独立底部 Tab
 import { Link, useParams } from 'react-router-dom'
-import { PageHeader, Stars, useDBData, Thumb } from '../components/ui'
+import { PageHeader, Stars, useDBData, Cover } from '../components/ui'
 
 export default function PlaceDetail() {
   const { id } = useParams()
@@ -30,7 +30,7 @@ export default function PlaceDetail() {
             <Link key={e.id} to={`/entry/${e.id}`} className="block relative card-paper p-3 active:scale-[0.99] transition">
               <span className="absolute -left-[18px] top-5 w-3 h-3 rounded-full bg-terra border-2 border-paper" />
               <div className="flex gap-3">
-                <Thumb m={data.media.find((m) => m.id === e.coverMediaId) ?? data.media.find((m) => m.entryId === e.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} preferThumb className="w-16 h-16 rounded-lg shrink-0" />
+                <Cover m={data.media.find((m) => m.id === e.coverMediaId) ?? data.media.find((m) => m.entryId === e.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} className="w-16 h-16 rounded-lg shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm text-inkmuted">{e.visitDate.replace(/-/g, ' . ')}</p>
                   <Stars value={e.rating} size={12} />

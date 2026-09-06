@@ -47,7 +47,7 @@ export default function ShareSingle() {
   return (
     <div className="min-h-screen" style={{ background: '#efe7d7' }}>
       {/* 大图 */}
-      <div className="w-full aspect-[4/5]">
+      <div className="w-full aspect-[4/5] bg-carddeep">
         {it.coverUri ? <img src={it.coverUri} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-carddeep" />}
       </div>
       <div className="relative -mt-8 bg-paper rounded-t-3xl px-5 pt-6 pb-8 min-h-[46vh]">

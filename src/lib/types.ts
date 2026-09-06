@@ -107,7 +107,8 @@ export interface RecordDraft {
   placeId?: string
   newPlaceName?: string
   newPlaceArea?: string
-  transcript?: string
+  transcript?: string            // 我的感受（私密）：只给 AI 整理用
+  notePublic?: string            // 公开分享理由：原样透传，不经 AI 改写
   ai?: AiOrganizeResult
   aiMock?: boolean
 }

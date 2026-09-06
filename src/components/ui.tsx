@@ -149,7 +149,18 @@ export function useBlobUrl(blob?: Blob): string | undefined {
 export function Thumb({ m, className, preferThumb }: { m: MediaItem; className?: string; preferThumb?: boolean }) {
   const src = useMediaUrl(m, preferThumb ? 'thumb' : 'display')
   if (!src) return <div className={`bg-carddeep animate-pulse ${className ?? ''}`} />
-  return <img src={src} alt="" loading="lazy" className={`object-cover ${className ?? ''}`} />
+  return <img src={src} alt="" loading="lazy" className={`object-cover bg-carddeep ${className ?? ''}`} />
+}
+
+// ---- 封面：定比框 + 绝对铺满，任何照片都自适应填满、无白边 ──
+// 用法：比例 class（如 aspect-[4/5]/aspect-square）放 Cover 上，里面的图永远铺满裁切。
+// 画廊记录卡 4:5，其余封面统一正方形（与现行设计一致，只改结构不改比例）。
+export function Cover({ m, className, preferThumb = true }: { m: MediaItem; className?: string; preferThumb?: boolean }) {
+  return (
+    <div className={`relative overflow-hidden bg-carddeep ${className ?? ''}`}>
+      <Thumb m={m} preferThumb={preferThumb} className="absolute inset-0 h-full w-full" />
+    </div>
+  )
 }
 
 // 统一图片地址解析：本地 Blob → 演示 data URI → 远端签名 URL（缩略图优先）。

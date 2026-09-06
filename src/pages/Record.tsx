@@ -20,11 +20,13 @@ export default function Record() {
   const [newName, setNewName] = useState('')
   const [newArea, setNewArea] = useState('')
   const [transcript, setTranscript] = useState('')
+  const [notePublic, setNotePublic] = useState('')
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   // 正文框随内容自动撑高：语音输入写多少排多少，页面跟着往下走
   const taRef = useAutoGrow<HTMLTextAreaElement>(transcript)
+  const noteRef = useAutoGrow<HTMLTextAreaElement>(notePublic)
 
   const matchedPlaces = useMemo(() => {
     if (!data || !placeQuery.trim()) return data?.places.slice(0, 5) ?? []
@@ -35,7 +37,7 @@ export default function Record() {
   const selectedPlace = data?.places.find((p) => p.id === placeId)
   const previewUrls = useMemo(() => photos.map((p) => (p.display ? URL.createObjectURL(p.display) : p.demoUri)), [photos])
   const hasPlace = !!(selectedPlace || (newMode && newName.trim()))
-  const hasContent = !!(transcript.trim() || photos.length)
+  const hasContent = !!(transcript.trim() || notePublic.trim() || photos.length)
   const canNext = hasPlace && hasContent
 
   // 设为封面：把选中的照片移到第一位（第一张即封面）
@@ -73,6 +75,7 @@ export default function Record() {
       newPlaceName: newMode ? newName.trim() : undefined,
       newPlaceArea: newMode ? newArea.trim() : undefined,
       transcript: transcript.trim() || undefined,
+      notePublic: notePublic.trim() || undefined,
     }
     setDraft(draft)
     nav('/confirm')
@@ -137,13 +140,21 @@ export default function Record() {
 
         {/* 感受：微信语音输入法直接输入，大文本框随写随长 */}
         <div className="card-paper p-5">
-          <p className="font-bold text-lg text-left">说说你的感受</p>
+          <p className="font-bold text-lg text-left">说说你的感受 <span className="text-xs font-normal text-inkmuted">· 仅自己可见</span></p>
           <p className="text-xs text-inkmuted mt-1 text-left">用微信语音输入法直接说，预算、氛围、适合谁都可以说，写多少装多少</p>
           <textarea
             ref={taRef}
             className="field-input min-h-[300px] mt-3 text-[16px] leading-relaxed overflow-hidden"
             placeholder="点这里，用微信语音输入法开始说…"
             value={transcript} onChange={(e) => setTranscript(e.target.value)}
+          />
+          <p className="font-bold text-lg text-left mt-5">公开分享理由 <span className="text-xs font-normal text-inkmuted">· 分享时展示</span></p>
+          <p className="text-xs text-inkmuted mt-1 text-left">写给朋友看的一句话，不写也行；原样展示，AI 不改它</p>
+          <textarea
+            ref={noteRef}
+            className="field-input min-h-[110px] mt-3 text-[16px] leading-relaxed overflow-hidden"
+            placeholder="如：夜景超美，适合拍照，人均也不贵…"
+            value={notePublic} onChange={(e) => setNotePublic(e.target.value)}
           />
         </div>
 

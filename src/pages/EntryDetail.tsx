@@ -1,7 +1,7 @@
 // 记录详情：多图相册、封面切换、公开/私密笔记、标签、分享入口（方案 3.2）+ 编辑已有记录（2026-09-03）
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { PageHeader, Stars, useAutoGrow, useDBData, Thumb, SyncDot, Sheet, useAllMediaUrls } from '../components/ui'
+import { PageHeader, Stars, useAutoGrow, useDBData, Cover, SyncDot, Sheet, useAllMediaUrls } from '../components/ui'
 import Lightbox from '../components/Lightbox'
 import { repo, bulkPut, enqueue } from '../lib/idb'
 import { uuid } from '../lib/uuid'
@@ -152,7 +152,7 @@ export default function EntryDetail() {
           {media.map((m, i) => (
             <div key={m.id} className="relative rounded-xl overflow-hidden">
               <button onClick={() => setLightIndex(i)} className="block w-full" title="点击放大查看">
-                <Thumb m={m} preferThumb className="w-full aspect-square" />
+                <Cover m={m} className="w-full aspect-square" />
               </button>
               {entry.coverMediaId === m.id
                 ? <span className="absolute top-1 left-1 bg-terra text-white text-[10px] px-1.5 py-0.5 rounded-full">封面</span>

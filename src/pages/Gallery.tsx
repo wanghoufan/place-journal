@@ -1,7 +1,7 @@
 // 画廊首页：照片第一；按记录 / 按地点 双视图；顶部常用场景筛选（方案 3.2 / 8.1 图1）
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PageHeader, useDBData, CloudBanner, Stars, SyncDot, Thumb, EmptyState, useCloudState } from '../components/ui'
+import { PageHeader, useDBData, CloudBanner, Stars, SyncDot, Cover, EmptyState, useCloudState } from '../components/ui'
 import { expandTagIds } from '../lib/search'
 import type { Entry, Place } from '../lib/types'
 
@@ -100,7 +100,7 @@ function sceneEmoji(name: string) {
 export function CoverOf({ entry, data, className }: { entry: Entry; data: NonNullable<ReturnType<typeof useDBData>>; className?: string }) {
   const m = data.media.find((x) => x.id === entry.coverMediaId) ?? data.media.find((x) => x.entryId === entry.id)
   if (!m) return <div className={`bg-carddeep ${className ?? ''}`} />
-  return <Thumb m={m} preferThumb className={className} />
+  return <Cover m={m} className={className} />
 }
 
 function EntryCard({ entry, data, onClick }: { entry: Entry; data: NonNullable<ReturnType<typeof useDBData>>; onClick: () => void }) {

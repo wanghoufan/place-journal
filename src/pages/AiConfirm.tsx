@@ -42,14 +42,15 @@ export default function AiConfirm() {
           setRating(res.score)
           setBudget(res.budget)
           setSummary(res.summary ?? '')
-          setNotePublic(d.transcript)
+          // 公开理由只取记录页单独填的那份，不拿感受自动填充，两块互不混淆
+          setNotePublic(d.notePublic ?? '')
           setSelectedTagIds(res.matched_tags.map((n) => tagList.find((t) => t.name === n)?.id).filter(Boolean) as string[])
           setUnmatched(res.unmatched_suggestions ?? [])
         } else {
           const h = localHeuristics({ transcript: d.transcript, tags: tagList })
           setAiMock(true)
           setAiNote(r.reason === 'not_configured' ? 'AI 未配置（需在部署环境填入大模型 Key）。已按本地推测预填，请逐项确认修改。' : `AI 调用失败：${r.message}。已按本地推测预填。`)
-          setRating(h.score); setBudget(h.budget); setSummary(h.summary ?? ''); setNotePublic(d.transcript)
+          setRating(h.score); setBudget(h.budget); setSummary(h.summary ?? ''); setNotePublic(d.notePublic ?? '')
           setSelectedTagIds(h.matched_tags.map((n) => tagList.find((t) => t.name === n)?.id).filter(Boolean) as string[])
           setUnmatched(h.unmatched_suggestions ?? [])
         }
