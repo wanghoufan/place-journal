@@ -7,7 +7,7 @@
 //     unique (snapshot_id, client_id)，重试不产生重复行。
 //   - pullRemote：仅「本机该行无未确认写入（sync === 'synced'）」时按
 //     revision/updated_at 刷新；冲突行（conflict）与未确认行一律不覆盖。
-import { repo, outboxAll, outboxRemove, outboxFail, enqueue, getMeta, setMeta, bulkPut } from './idb'
+import { repo, outboxAll, outboxRemove, outboxFail, enqueue, getMeta, setMeta, bulkPut, type OutboxOp } from './idb'
 import { cloudConfigured } from './env'
 import { supabase, currentUserId, getSession, table, DB_SCHEMA } from './supabase'
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
@@ -203,22 +203,74 @@ async function ensurePlacesInCloud(sb: SupabaseClient, owner: string, placeId: s
   else throw new Error(r.error ?? 'unknown')
 }
 
+// ── 同步锁 + 毒丸停放 + 结果落盘（2026-09-07 手机推电脑拉不动排查）────────────────
+// 1) 'syncing' 锁带时间戳：页面在同步中途被杀/刷新会导致旧布尔锁永久卡死，
+//    此后 autoSync 与手动同步全部静默跳过（页面还照常 reload，看起来像“点了没用”）。
+//    超过 SYNCING_STALE_MS 的锁视为残留，新一轮直接接管。
+// 2) 毒丸 op：某条 op 永远失败（如配置/RLS 问题）会一直占着 outbox，
+//    连带拦住 Realtime 补拉（scheduleRealtimePull 见队列非空就回）。达到 MAX_ATTEMPTS
+//    后移出队列并停放 PARK_MS，期间 sweep 不再捞起；手动编辑该记录会产生新 op 照常重试。
+// 3) 每轮结果写入 meta 'last_sync_result'：「我的」页据此展示成功/失败/报错，
+//    不再只看 last_sync 时间戳（失败时它也会更新，等于报喜不报忧；且 reload 会清空内存报错）。
+const SYNCING_STALE_MS = 10 * 60 * 1000
+const MAX_ATTEMPTS = 8
+const PARK_MS = 24 * 60 * 60 * 1000
+
+export interface SyncResult { at: string; done: number; failed: number; parked: number; error?: string }
+export async function lastSyncResult(): Promise<SyncResult | undefined> {
+  return getMeta<SyncResult>('last_sync_result')
+}
+
+function opKey(op: OutboxOp): string {
+  if (op.kind === 'upsert_tags') return 'upsert_tags:'
+  if (op.kind === 'delete_tags') return `delete_tags:${op.ids.join(',')}`
+  return `${op.kind}:${(op as { id: string }).id}`
+}
+async function getParked(): Promise<Record<string, number>> {
+  return (await getMeta<Record<string, number>>('parked_ops')) ?? {}
+}
+async function parkOp(key: string) {
+  const m = await getParked()
+  m[key] = Date.now()
+  // 顺手清理过期停放，避免无限膨胀
+  for (const k of Object.keys(m)) if (Date.now() - m[k] > PARK_MS) delete m[k]
+  await setMeta('parked_ops', m)
+}
+
+async function syncLocked(): Promise<boolean> {
+  const raw = await getMeta<any>('syncing')
+  if (!raw) return false
+  // 兼容旧版存的布尔 true：一律视为残留锁，直接接管
+  if (typeof raw !== 'string') return false
+  const at = Date.parse(raw)
+  if (Number.isNaN(at)) return false
+  return Date.now() - at < SYNCING_STALE_MS
+}
+async function acquireSyncLock(): Promise<boolean> {
+  if (await syncLocked()) return false
+  await setMeta('syncing', new Date().toISOString())
+  return true
+}
+
 // 自愈清扫（QA V0.2 ENV-2 后续）：硬失败等曾把行留在 sync='local'/'failed' 且已不在
 // outbox 的状态——这些行会永远失去同步机会。每轮同步前把「本地脏但不在队列」的行
 // 重新入队；upsert_entry 分支内的 ensurePlacesInCloud 会顺带补推缺失的归属地点。
+// 停放期内的毒丸 op 不再捞起（parkOp），避免死循环占队列拦住 Realtime 补拉。
 async function sweepDirtyRows(): Promise<void> {
-  const queued = new Set((await outboxAll()).map((r) => (r.op.kind === 'upsert_tags' ? 'upsert_tags:' : r.op.kind === 'delete_tags' ? `delete_tags:${r.op.ids.join(',')}` : `${r.op.kind}:${r.op.id}`)))
+  const queued = new Set((await outboxAll()).map((r) => opKey(r.op)))
+  const parked = await getParked()
+  const fresh = (k: string) => parked[k] != null && Date.now() - parked[k] < PARK_MS
   const allEntries = await repo.entries()
   for (const p of await repo.places()) {
     // 防复发（2026-09-05 云端大扫除）：纯演示地点不上云（demo 行 sync='local' 会被本函数反复捞起重推，
     // 历轮 QA 的万绿园×4 等僵尸即此通道产生）。仅当存在真实（非 demo）记录引用时才放行
     // ——此时 upsert_entry 分支的 ensurePlacesInCloud 本来也会补推，与该设计对称。
     if (p.demo && !allEntries.some((e) => e.placeId === p.id && !e.demo)) continue
-    if ((p.sync === 'local' || p.sync === 'failed') && !queued.has(`upsert_place:${p.id}`)) await enqueue({ kind: 'upsert_place', id: p.id })
+    if ((p.sync === 'local' || p.sync === 'failed') && !queued.has(`upsert_place:${p.id}`) && !fresh(`upsert_place:${p.id}`)) await enqueue({ kind: 'upsert_place', id: p.id })
   }
   for (const e of allEntries) {
     if (e.demo) continue // 演示记录永不上云（demo 播种只写本地，不走 outbox；sweep 是唯一泄漏通道）
-    if ((e.sync === 'local' || e.sync === 'failed') && !queued.has(`upsert_entry:${e.id}`)) await enqueue({ kind: 'upsert_entry', id: e.id })
+    if ((e.sync === 'local' || e.sync === 'failed') && !queued.has(`upsert_entry:${e.id}`) && !fresh(`upsert_entry:${e.id}`)) await enqueue({ kind: 'upsert_entry', id: e.id })
   }
 }
 
@@ -228,7 +280,7 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
   const sb = supabase()
   await sweepDirtyRows()
   const rows = (await outboxAll()).sort((a, b) => (a.seq! - b.seq!))
-  let done = 0, failed = 0
+  let done = 0, failed = 0, parked = 0
   lastSyncError = ''
 
   for (const row of rows) {
@@ -433,13 +485,22 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
       done++
     } catch (err: any) {
       lastSyncError = err?.message || String(err)
-      // media 上传在环境问题（如 Storage bucket 未创建，QA V0.2 ENV-1）下重试无意义：
-      // 达到上限后放弃出队并标记 sync='failed'；bucket 建好后重新保存记录即可恢复上传。
-      if (row.op.kind === 'upload_media' && (row.attempts ?? 0) >= 5) {
+      // 毒丸停放：同一 op 反复失败达到上限后移出队列并停放 24h（期间 sweep 不捞起），
+      // 避免死循环占队列拦住 Realtime 补拉；对应行标 failed（红点），手动编辑可再次触发。
+      if ((row.attempts ?? 0) >= MAX_ATTEMPTS) {
         await outboxRemove(row.seq!)
-        const mediaId = row.op.kind === 'upload_media' ? row.op.id : ''
-        const m = mediaId ? (await repo.media()).find((x) => x.id === mediaId) : undefined
-        if (m) await bulkPut('media', [{ ...m, sync: 'failed' as const }])
+        await parkOp(opKey(row.op))
+        parked++
+        if (row.op.kind === 'upload_media') {
+          const m = (await repo.media()).find((x) => x.id === (row.op as { id: string }).id)
+          if (m) await bulkPut('media', [{ ...m, sync: 'failed' as const }])
+        } else if (row.op.kind === 'upsert_entry') {
+          const e = (await repo.entries()).find((x) => x.id === (row.op as { id: string }).id)
+          if (e && e.sync !== 'synced') await bulkPut('entries', [{ ...e, sync: 'failed' as const, syncError: lastSyncError }])
+        } else if (row.op.kind === 'upsert_place') {
+          const p = (await repo.places()).find((x) => x.id === (row.op as { id: string }).id)
+          if (p && (p.sync === 'local' || p.sync === 'failed')) await bulkPut('places', [{ ...p, sync: 'failed' as const }])
+        }
       } else {
         await outboxFail(row.seq!, lastSyncError)
       }
@@ -448,6 +509,7 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
     }
   }
   await setMeta('last_sync', new Date().toISOString())
+  await setMeta('last_sync_result', { at: new Date().toISOString(), done, failed, parked, error: lastSyncError || undefined } satisfies SyncResult)
   return { done, failed }
 }
 
@@ -594,9 +656,8 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
 export async function autoSync() {
   const st = await cloudState()
   if (st !== 'idle') return
-  const busy = await getMeta<boolean>('syncing')
-  if (busy) return
-  await setMeta('syncing', true)
+  // 残留锁（页面在同步中途被杀）超过 10 分钟自动接管，不再永久静默跳过
+  if (!(await acquireSyncLock())) return
   try { await syncOnce(); await pullRemote() } finally { await setMeta('syncing', false) }
 }
 
@@ -610,7 +671,7 @@ function scheduleRealtimePull() {
   if (rtPullTimer) clearTimeout(rtPullTimer)
   rtPullTimer = setTimeout(async () => {
     try {
-      if ((await getMeta<boolean>('syncing')) || (await outboxAll()).length) return
+      if ((await syncLocked()) || (await outboxAll()).length) return
       await pullRemote()
     } catch { /* 补读失败静默；下次事件或手动刷新重试 */ }
   }, 2000)

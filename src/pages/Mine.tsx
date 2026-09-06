@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader, useDBData, useCloudState, Sheet } from '../components/ui'
-import { getMeta, repo } from '../lib/idb'
+import { getMeta, outboxAll, repo } from '../lib/idb'
 import { signInGoogle, signOut } from '../lib/supabase'
-import { autoSync, listConflicts, resolveConflict, type ConflictRecord } from '../lib/sync'
+import { autoSync, lastSyncResult, listConflicts, resolveConflict, type ConflictRecord, type SyncResult } from '../lib/sync'
 import { exportJson, exportCsv, storageUsage } from '../lib/exporter'
 import { copyText, shareUrl } from '../lib/shares'
 import { amapConfigured, cloudConfigured } from '../lib/env'
@@ -16,6 +16,8 @@ export default function Mine() {
   const [exportOpen, setExportOpen] = useState(false)
   const [loginMsg, setLoginMsg] = useState('')
   const [lastSync, setLastSync] = useState<string>()
+  const [outboxN, setOutboxN] = useState(0)
+  const [syncRes, setSyncRes] = useState<SyncResult | undefined>()
   const [usage, setUsage] = useState('—')
   const [copiedId, setCopiedId] = useState('')
   const [conflicts, setConflicts] = useState<ConflictRecord[]>([])
@@ -26,6 +28,8 @@ export default function Mine() {
     getMeta<string>('last_sync').then((v) => v && setLastSync(new Date(v).toLocaleString('zh-CN')))
     storageUsage().then(setUsage)
     listConflicts().then(setConflicts)
+    outboxAll().then((rows) => setOutboxN(rows.length)).catch(() => {})
+    lastSyncResult().then(setSyncRes).catch(() => {})
   }, [cloud])
 
   if (!data) return null
@@ -54,7 +58,10 @@ export default function Mine() {
         <div className="card-paper p-4 space-y-2.5 text-sm">
           <p className="font-bold text-base">🌿 账号与同步</p>
           <Line label="云端">{cloudLine[cloud === 'loading' ? 'unconfigured' : cloud]}</Line>
-          <Line label="上次同步">{lastSync ?? '—'}</Line>
+          <Line label="上次同步">{syncRes ? `${new Date(syncRes.at).toLocaleString('zh-CN')} · 成功 ${syncRes.done} / 失败 ${syncRes.failed}` : (lastSync ?? '—')}</Line>
+          {outboxN > 0 && <Line label="待上传">{outboxN} 项（还在本机排队）</Line>}
+          {syncRes?.parked ? <p className="text-xs text-terradeep leading-relaxed">有 {syncRes.parked} 项多次失败已暂停自动重试，手动编辑对应记录可再次触发。</p> : null}
+          {syncRes?.error ? <p className="text-xs text-terradeep leading-relaxed break-all">最近报错：{syncRes.error.slice(0, 200)}</p> : null}
           {cloud === 'signed-out' && (
             <button className="btn-primary w-full py-2.5 mt-1" onClick={doLogin}>使用 Google 登录</button>
           )}
