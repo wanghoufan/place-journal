@@ -5,7 +5,6 @@ import { uuid } from '../lib/uuid'
 import { PageHeader, useAutoGrow, useDBData } from '../components/ui'
 import { compressImage, humanSize } from '../lib/image'
 import Lightbox from '../components/Lightbox'
-import { recognizeCoverText } from '../lib/organize'
 import { repo } from '../lib/idb'
 import { setDraft } from '../lib/draft'
 import type { DraftPhoto, RecordDraft } from '../lib/types'
@@ -23,10 +22,6 @@ export default function Record() {
   const [transcript, setTranscript] = useState('')
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<number | null>(null)
-  // 封面 OCR：识别门头文字 → 匹配老地点 / 预填新地点
-  const [ocrBusy, setOcrBusy] = useState(false)
-  const [ocrCands, setOcrCands] = useState<string[]>([])
-  const [ocrNote, setOcrNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   // 正文框随内容自动撑高：语音输入写多少排多少，页面跟着往下走
   const taRef = useAutoGrow<HTMLTextAreaElement>(transcript)
@@ -39,45 +34,6 @@ export default function Record() {
 
   const selectedPlace = data?.places.find((p) => p.id === placeId)
   const previewUrls = useMemo(() => photos.map((p) => (p.display ? URL.createObjectURL(p.display) : p.demoUri)), [photos])
-
-  // OCR 候选匹配老地点：店名含候选，或候选含完整店名（≥2字才算，避免单字误撞）
-  function matchPlace(cand: string) {
-    const t = cand.replace(/[\s,.，。、!！?？:：;；|｜/\\\-_'"“”‘’()（）[\]【】·•×]/g, '')
-    if (t.length < 2 || !data) return undefined
-    return data.places.find((p) => {
-      const n = p.name.replace(/\s/g, '')
-      return n.includes(t) || (t.length >= 3 && t.includes(n))
-    })
-  }
-  function applyCandidate(t: string) {
-    const hit = matchPlace(t)
-    if (hit) {
-      setPlaceId(hit.id); setNewMode(false)
-      setOcrNote(`已匹配到老地点：${hit.name}`)
-    } else {
-      setPlaceId(null); setNewMode(true); setNewName(t)
-      setOcrNote('没找到老地点，已填入新地点名称，确认下就好。')
-    }
-  }
-  async function doOcr() {
-    if (!photos.length || ocrBusy) return
-    setOcrBusy(true); setOcrNote(null)
-    const r = await recognizeCoverText(photos[0].display)
-    setOcrBusy(false)
-    if (!r.ok) {
-      setOcrNote(r.reason === 'not_configured'
-        ? '文字识别未配置（需部署环境填入腾讯云密钥并开通 OCR）。可手动填写地点。'
-        : `识别失败：${r.message}。可手动填写。`)
-      return
-    }
-    if (!r.texts.length) {
-      setOcrCands([])
-      setOcrNote('封面上没认出文字，换张正对门头的照片试试，或手动填写。')
-      return
-    }
-    setOcrCands(r.texts)
-    applyCandidate(r.texts[0])
-  }
   const hasPlace = !!(selectedPlace || (newMode && newName.trim()))
   const hasContent = !!(transcript.trim() || photos.length)
   const canNext = hasPlace && hasContent
@@ -154,24 +110,6 @@ export default function Record() {
 
         {/* 地点 */}
         <div className="card-paper p-3">
-          {/* 封面 OCR：门头照片认字，自动匹配老地点 / 预填新地点 */}
-          <div className="mb-2">
-            <button
-              onClick={doOcr} disabled={!photos.length || ocrBusy}
-              className="w-full py-2.5 rounded-xl border-2 border-dashed border-terra/50 text-terradeep text-sm font-bold active:scale-[0.99] transition disabled:opacity-40">
-              {ocrBusy ? '正在识别封面文字…' : photos.length ? '🔍 AI识别封面文字，自动填地点' : '先添加照片，再 AI识别封面文字'}
-            </button>
-            {ocrCands.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {ocrCands.map((t) => (
-                  <button key={t} className="chip" onClick={() => applyCandidate(t)} title={matchPlace(t) ? `匹配到老地点：${matchPlace(t)!.name}` : '填入新地点名称'}>
-                    {t}{matchPlace(t) ? ' ✓' : ''}
-                  </button>
-                ))}
-              </div>
-            )}
-            {ocrNote && <p className="text-xs text-terradeep mt-1.5 leading-relaxed">{ocrNote}</p>}
-          </div>
           {newMode ? (
             <div className="space-y-2">
               <input className="field-input" placeholder="新地点名称，如：西海岸日落咖啡" value={newName} onChange={(e) => setNewName(e.target.value)} />

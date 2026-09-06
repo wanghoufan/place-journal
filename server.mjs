@@ -23,7 +23,6 @@ async function loadHandler(name) {
 
 const handlers = {
   '/api/ai-organize': await loadHandler('ai-organize'),
-  '/api/ocr': await loadHandler('ocr'),
 }
 
 const MIME = {
@@ -75,7 +74,7 @@ const server = http.createServer(async (req, res) => {
     res.status = (code) => { res.statusCode = code; return res }
     res.json = (obj) => { sendJson(res, res.statusCode, obj); return res }
     try {
-      if (url === '/api/ai-organize' || url === '/api/ocr') await readJsonBody(req)
+      if (url === '/api/ai-organize') await readJsonBody(req)
       await h(req, res)
     } catch (e) {
       if (!res.headersSent) sendJson(res, 500, { ok: false, error: e?.message || 'internal error' })
