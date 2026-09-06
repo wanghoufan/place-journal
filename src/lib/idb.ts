@@ -109,12 +109,13 @@ export const repo = {
   async shares(): Promise<ShareSnapshot[]> { return all('shares') },
 
   async savePlace(p: Place, syncQueue = true) {
-    // 规范（V1.2 §5.2）：核心实体每次本地保存 revision +1
-    await put('places', { ...p, revision: (p.revision ?? 0) + 1 })
+    // 规范（V1.2 §5.2）：核心实体每次本地保存 revision +1，并标为本地脏行；
+    // 脏行在推送确认前不被 pullRemote 覆盖（未确认写入保护，改名退回 bug 的根治）
+    await put('places', { ...p, revision: (p.revision ?? 0) + 1, sync: 'local' as const })
     if (syncQueue) await enqueue({ kind: 'upsert_place', id: p.id })
   },
   async saveEntry(e: Entry, syncQueue = true) {
-    await put('entries', { ...e, revision: (e.revision ?? 0) + 1 })
+    await put('entries', { ...e, revision: (e.revision ?? 0) + 1, sync: 'local' as const, syncError: undefined })
     if (syncQueue) await enqueue({ kind: 'upsert_entry', id: e.id })
   },
   async saveMedia(m: MediaItem, syncQueue = true) {

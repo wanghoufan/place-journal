@@ -605,6 +605,9 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
       if (idx < 0) { local.push(map(r)); continue }
       const l = local[idx] as any
       if (l.sync && l.sync !== 'synced') continue // 未确认本机写入/冲突行不被覆盖（V1.2 §9.2.4）
+      // 地点没有 sync 字段：用 revision≠baseRevision 识别未确认的本机写入，同样不覆盖
+      // （改名保存后被云端旧行盖掉的根治；推送成功后两者相等，保护自动解除）
+      if ((l.revision ?? 0) !== (l.baseRevision ?? l.revision ?? 0)) continue
       if (r.updated_at && r.updated_at > (l.updatedAt ?? '')) local[idx] = map(r, local[idx])
     }
     return local
@@ -641,7 +644,8 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
     if (!l) localDims.push({ id: r.id, name: r.name, kind: r.kind, sortOrder: r.sort_order ?? 0, revision: r.revision ?? 1, baseRevision: r.revision ?? 1 })
     else {
       const st = (l as any).sync as SyncStatus | undefined
-      if ((!st || st === 'synced') && (r.revision ?? 1) > (l.baseRevision ?? l.revision ?? 0)) {
+      const dirty = (l.revision ?? 0) !== (l.baseRevision ?? l.revision ?? 0)
+      if (!dirty && (!st || st === 'synced') && (r.revision ?? 1) > (l.baseRevision ?? l.revision ?? 0)) {
         Object.assign(l, { name: r.name, kind: r.kind, sortOrder: r.sort_order ?? 0, revision: r.revision ?? 1, baseRevision: r.revision ?? 1 })
       }
     }
@@ -651,7 +655,8 @@ export async function pullRemote(): Promise<{ entries: number; media: number }> 
     if (!l) localTags.push({ id: r.id, dimensionId: r.dimension_id, parentId: r.parent_id, name: r.name, alias: r.alias ?? undefined, sortOrder: r.sort_order ?? 0, revision: r.revision ?? 1, baseRevision: r.revision ?? 1 })
     else {
       const st = (l as any).sync as SyncStatus | undefined
-      if ((!st || st === 'synced') && (r.revision ?? 1) > (l.baseRevision ?? l.revision ?? 0)) {
+      const dirty = (l.revision ?? 0) !== (l.baseRevision ?? l.revision ?? 0)
+      if (!dirty && (!st || st === 'synced') && (r.revision ?? 1) > (l.baseRevision ?? l.revision ?? 0)) {
         Object.assign(l, { dimensionId: r.dimension_id, parentId: r.parent_id, name: r.name, alias: r.alias ?? undefined, sortOrder: r.sort_order ?? 0, revision: r.revision ?? 1, baseRevision: r.revision ?? 1 })
       }
     }
