@@ -4,7 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": { "api/*.ts": { "maxDuration": 15 } },
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!api/|manifest\\.webmanifest|sw\\.js|registerSW\\.js|workbox-.*\\.js|pwa-.*\\.png|icon\\.svg|assets/).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/s/(.*)",

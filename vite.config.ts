@@ -7,8 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
       manifest: {
+        id: '/',
         name: '我的地点 · 私人打卡手账',
         short_name: '我的地点',
         description: '拍照片、说感受，整理成可筛选、可分享的私人地点手账',
@@ -16,10 +17,13 @@ export default defineConfig({
         theme_color: '#f7f1e5',
         background_color: '#f7f1e5',
         display: 'standalone',
+        scope: '/',
         start_url: '/',
         icons: [
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
       workbox: {
