@@ -37,7 +37,7 @@
    if not req<=set(o): print(f'L{n}: 缺键',sorted(req-set(o))); bad+=1
    if o.get('used') != '主': print(f'L{n}: used非常量主:',o.get('used')); bad+=1
    if o.get('result') not in ('PASS','FAIL'): print(f'L{n}: result枚举错:',o.get('result')); bad+=1
-   if o.get('runtime') not in ('本窗口','codex','opencode','codebuddy','—'): print(f'L{n}: runtime枚举错:',o.get('runtime')); bad+=1
+   if o.get('runtime') not in ('本窗口','codebuddy','codex','opencode','—'): print(f'L{n}: runtime枚举错:',o.get('runtime')); bad+=1
   sys.exit(1 if bad else 0)
   " docs/model/DISPATCH-LOG.jsonl
   ```

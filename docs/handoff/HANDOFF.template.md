@@ -22,5 +22,5 @@
 
 ## 恢复读盘（全体系唯一顺序，别乱）
 
-1. AGENTS；2. 角色卡；3. 根 `USER_MODEL_OVERRIDE.md`；4. 本 HANDOFF；5. 根 `经验一句话.md`；6. 任务目标放最后。
+1. AGENTS；2. 角色卡；3. 根 `USER_MODEL_OVERRIDE.md`；4. 本 HANDOFF；5. 经验文档（母版＝根 `经验一句话.md`；本项目＝`docs/handoff/DEV_EXPERIENCE.md`）；6. 任务目标放最后。
 冲突才扩大读。

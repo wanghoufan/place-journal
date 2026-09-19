@@ -15,15 +15,15 @@
 - 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：暂停封存，**无在途 Task**。上一 Task=TASK-DEV-13 已收工 PASS（reviewer 打回 1 次已闭环；supervisor 口径打回 0/2）。本轮新增 T062 阻塞诊断（根因已定位，未派 builder）。
 - 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：DEV-12 收工；DEV-13 初审打回→返工→R2放行→qa→supervisor 全闭环收工。本轮 neat-freak 文档对齐收工（本窗口 subagent）。
 - 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；AI 真整理未接；neat-freak 提案 P-1～P-10 未拍板（见 §3.5）。
-- docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`docs/prompts/Orca 通用编排者持续推进协议.md`（十卡→十一卡）、`docs/templates/归位表.md`（账本/软链表述改不可过期口径）、本 HANDOFF；`DISPATCH-LOG.jsonl` +1 行（89→90，neat-freak 派工）；收尾续改——`.gitignore`（+/temp/）、`AGENTS.md`（runtime 枚举+`codebuddy`）、`docs/roles/supervisor.md`（脚本枚举同步）、`docs/pm/PRODUCT_PLAN_V1.0.md`→`V1.5.md`（改名+文头状态注）、`mobile/src/db/schema.ts:5`（仅注释内计划文件路径）、`docs/handoff/接续恢复开发提示词丨2026-09-19.md`（新增，永久留档）。
+- docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`docs/prompts/Orca 通用编排者持续推进协议.md`（十卡→十一卡）、`docs/templates/归位表.md`（账本/软链表述改不可过期口径）、本 HANDOFF；`DISPATCH-LOG.jsonl` +1 行（89→90，neat-freak 派工）；收尾续改——`.gitignore`（+/temp/）、`AGENTS.md`（runtime 枚举+`codebuddy`）、`docs/roles/supervisor.md`（脚本枚举同步）、`docs/pm/PRODUCT_PLAN_V1.0.md`→`V1.5.md`（改名+文头状态注）、`mobile/src/db/schema.ts:5`（仅注释内计划文件路径）、`docs/handoff/接续恢复开发提示词丨2026-09-19.md`（新增，永久留档）；P-1 落地 7 处——`AGENTS.md`×2、根 `编排者提示词.md`×2、`docs/roles/experience-recorder.md`、`docs/handoff/HANDOFF.template.md`、`docs/templates/归位表.md`。
 - 下一步（Next Single Action）：见 **§2.1**——解 T062 阻塞（构建路线已定＝本地构建；动构建/装环境等用户批准）。
 - 人要拍什么板（列出来问，不问不许开工）：见 **§2.4**（4 项，含 commit/push 目标分支）。
 - permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：—
-- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过——机械错位 4 处已修；归属不明文件 **无**；未决 10 项已列（§3.5）；临时文件无残留；**已 commit + push**（ee4aad6 → origin/master 主干）。
+- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过——机械错位 4 处已修；归属不明文件 **无**；未决 10 项已列（§3.5）；临时文件无残留；**已 commit + push**（ee4aad6 → origin/master 主干）。同日续：P-1/P-2/P-3/P-4/P-10 已决并落地（含两包同步三处 diff 全零），余 P-5/P-6/P-7/P-8/P-9 为低危提案，不阻塞，待有空处理。
 
 ## 恢复读盘（全体系唯一顺序，别乱）
 
-1. AGENTS；2. 角色卡；3. 根 `USER_MODEL_OVERRIDE.md`；4. 本 HANDOFF；5. 经验一句话（**注意：本项目实际落在 `docs/handoff/DEV_EXPERIENCE.md`，根目录无 `经验一句话.md`，见 §3.5 P-1**）；6. 任务目标放最后。
+1. AGENTS；2. 角色卡；3. 根 `USER_MODEL_OVERRIDE.md`；4. 本 HANDOFF；5. 经验文档＝`docs/handoff/DEV_EXPERIENCE.md`（本项目定案，原“根 经验一句话.md”弃用，见 §3.5 P-1）；6. 任务目标放最后。
 冲突才扩大读。
 
 ---
@@ -107,8 +107,8 @@
 - **Expo Go 只配做 UI/SQLite 探针**；OAuth／scheme／权限／APK 相关验收一律 Development Build 起步（§1.3）。
 
 **3.5 文档待拍板（neat-freak 本轮产出，均未动手）**
-- **P-1｜`经验一句话.md` 不存在**：根目录无此文件且 `git log --all` 无历史（从未入库）；现存经验文档是 `docs/handoff/DEV_EXPERIENCE.md`。引用点 6 处：`AGENTS.md:28`、`AGENTS.md:66`、本 HANDOFF 原读盘序、`docs/handoff/HANDOFF.template.md:25`、`docs/roles/experience-recorder.md:5`、根 `编排者提示词.md:12/:25`。**建议 A（推荐）**：读盘序与 recorder 口径统一改指 `DEV_EXPERIENCE.md`，不再新开「一句话」文件（避免两份经验真源漂移）。**B**：保留原设计，首派 recorder 时新建。
-- **P-2｜runtime 枚举【已决，2026-09-19 用户拍板：加 `codebuddy`】**：`AGENTS.md`（逐派记录 schema 行）与 `docs/roles/supervisor.md:40`（校验脚本枚举）均已加，5 行存量转正。原核验记录：账本 89 行时分布＝opencode 58/本窗口 17/codex 9/codebuddy 5；supervisor 校验脚本曾与真账本硬冲突（报 `runtime枚举错` exit 1）。
+- **P-1｜经验文档真源【已决，2026-09-19 用户拍板：方案 A】**：读盘序与 recorder 口径统一改指 `docs/handoff/DEV_EXPERIENCE.md`，不再新建「一句话」文件（避免两份经验真源漂移）。已改 7 处：`AGENTS.md`（谁写哪表＋缓存五条）、根 `编排者提示词.md`（读盘序＋落盘清单）、`docs/roles/experience-recorder.md`（输出行）、`docs/handoff/HANDOFF.template.md`、`docs/templates/归位表.md`、本 HANDOFF 恢复读盘。**母版两包不动**（包内有根 `经验一句话.md`，机制对母版自洽）。
+- **P-2｜runtime 枚举【已决并落地，2026-09-19】**：**真因＝母版本就带 `codebuddy`（母版 AGENTS 逐派行与 supervisor 脚本均为 `本窗口/codebuddy/codex/opencode/—`），本项目迁移副本丢失**；已按母版原序补齐本项目两处（AGENTS＋`docs/roles/supervisor.md:40`），账本 5 行存量转正，校验脚本对 90 行真账本实测 `bad=0, exit=0`。
 - **P-3｜`PRODUCT_PLAN_V1.0.md` 名/内容分叉【已决，2026-09-19 用户拍板：改名】**：已 `git mv` 为 `docs/pm/PRODUCT_PLAN_V1.5.md`＋文头加状态注（声明文中 `PROJECT_PHASE: PLAN`/`PLAN_GATE: READY_FOR_HUMAN_REVIEW` 为批准前快照，真源＝HANDOFF）；活动引注已同步（`mobile/src/db/schema.ts:5` 注释、本 HANDOFF）；4 份历史 RESEARCH_REVIEW 保原文不改（属历史审计记录）。原核验记录：文件名 V1.0／内容 V1.5，且 `:5/:239/:241` 为批准前快照；该问题早已登记（`docs/review/RESEARCH_REVIEW_PLAN-V1.4-R5.md:12` R5-N2）。
 - **P-4｜T062 前置未登记**：PRODUCT_PLAN 无需改（本就写明须 Development Build）；缺口是没人把本轮 adb 实证写进文档——**本 HANDOFF §1.3 已补**，并把 Development Build 列为 T062 硬前置。
 - **P-5｜本机口径不准**：HANDOFF 旧文写「本机无 Java/SDK」不准确——**SDK 在，缺的是 Java 与 build-tools**；另根 `AGENTS.md:98` Node 路径写 `22.22.2-2`，实际是 `22.22.2-3`（含 `current` 软链）；`AGENTS.md:108` 旧状态仍写 `HEAD=d1b2e4b`（现 ee4aad6）。**§1.4 已更正本 HANDOFF 口径；根 AGENTS 属附录历史段，建议只加注。**
@@ -116,7 +116,7 @@
 - **P-7｜2 张角色卡复述模型 ID**：`docs/roles/planner.md:6`、`docs/roles/senior-expert.md:4` 硬写 `codex/gpt-5.6-sol`，其余 9 张均为「见 override 表」。当前值无错但会静默过期，建议改成同口径。
 - **P-8｜他人文件引注漂移（neat-freak 未越权改）**：`docs/handoff/DEV_EXPERIENCE.md:52` 称「HANDOFF.md:25 登记了 HD-01 交付切片」——**该引文在 HANDOFF 全文不存在**，实际出自 `PRODUCT_PLAN_V1.0.md:224`。建议交 experience-recorder 修。
 - **P-9｜行号引注过期**：`docs/qa/BUGS_DEV-13.md:38` 引 `HANDOFF.md:59`（实际在 `:55`）；`BUGS_DEV-12.md:28` 引 HANDOFF:59「仍写现为软链」已过期；`mobile/docs/AUTH_REDIRECT.md §2` 仍写「HD-03 待办／无法代加 allow list」，与「已加白实证」矛盾。**本 HANDOFF 已重写，行号引注需在恢复后统一校正。**
-- **P-10｜两包同步**：neat-freak 本轮改的 `docs/prompts/Orca 通用编排者持续推进协议.md`、`docs/templates/归位表.md` 源自母版/源包，按 AGENTS「两包同步」需同步 `新项目模板包/`、`老项目迁移模板包/` 并记一行。**待用户拍板后执行。**
+- **P-10｜两包同步【已执行，2026-09-19】**：本轮唯一母版级治理改动＝`Orca 通用编排者持续推进协议.md`（十卡→十一卡两行，neat-freak 修）；已同步 `新项目模板包/`、`老项目迁移模板包/`，**三处 diff 全零复核通过**（包间、包↔项目）。AGENTS/supervisor 卡经查**母版本就含 `codebuddy`**（项目迁移副本丢失，已按母版对齐），无需回写母版；P-1 为本项目特例，不同步母版。两包路径见 §存档。
 
 ---
 
