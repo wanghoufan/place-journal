@@ -2,7 +2,7 @@
 
 > 旧版字段（governance-state / Evidence / Human Gate / Promotion / Dispatch ID）已废弃，不填。
 
-- Captured at（YYYY-MM-DD HH:MM）：2026-09-19 12:34（大交接封存；neat-freak 已过，仅刷新现状，基线不动）
+- Captured at（YYYY-MM-DD HH:MM）：2026-09-19 12:37（大交接封存；neat-freak 已过，仅刷新现状，基线不动）
 - PROJECT_PHASE：（DEVELOP——暂停中，恢复后继续；基线锁定 V1.5 不动）
 - PLAN_VERSION：（PRODUCT_PLAN_V1.5）
 - PLAN_READINESS_SCORE：（92）
@@ -14,12 +14,12 @@
   - **T062 真机登录（阻塞中）**——需 Development Build；Expo Go 做不了自定义 scheme 回跳，根因与实证见 §1.3。
 - 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：暂停封存，**无在途 Task**。上一 Task=TASK-DEV-13 已收工 PASS（reviewer 打回 1 次已闭环；supervisor 口径打回 0/2）。本轮新增 T062 阻塞诊断（根因已定位，未派 builder）。
 - 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：DEV-12 收工；DEV-13 初审打回→返工→R2放行→qa→supervisor 全闭环收工。本轮 neat-freak 文档对齐收工（本窗口 subagent）。
-- 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；AI 真整理未接；neat-freak 提案 P-1～P-9 未拍板（见 §3.5）。
+- 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；AI 真整理未接；neat-freak 提案 P-1～P-10 未拍板（见 §3.5）。
 - docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`docs/prompts/Orca 通用编排者持续推进协议.md`（十卡→十一卡）、`docs/templates/归位表.md`（账本/软链表述改不可过期口径）、本 HANDOFF；`DISPATCH-LOG.jsonl` +1 行（89→90，neat-freak 派工）。
 - 下一步（Next Single Action）：见 **§2.1**——先解 T062 阻塞（三选一）。
 - 人要拍什么板（列出来问，不问不许开工）：见 **§2.4**（4 项，含 commit/push 目标分支）。
 - permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：—
-- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过——机械错位 4 处已修；归属不明文件 **无**；未决 9 项已列（§3.5）；临时文件无残留；**未 commit**。
+- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过——机械错位 4 处已修；归属不明文件 **无**；未决 10 项已列（§3.5）；临时文件无残留；**已 commit + push**（ee4aad6 → origin/master 主干）。
 
 ## 恢复读盘（全体系唯一顺序，别乱）
 
@@ -61,9 +61,11 @@
 - runtime 分布：`opencode` 58 / `本窗口` 17 / `codex` 9 / **`codebuddy` 5**（L81/83/85/86/88，**不在 AGENTS 声明枚举内**，待拍板见 §3.5 P-2）。
 - 无 `_example` 示例行残留。
 
-**1.6 git**
-- 分支 `wanghoufan/master`，**HEAD=`9414c7a` 已推**（`origin/master` 与 `origin/wanghoufan/master` 同在 9414c7a）；仓库**无 `main` 分支**。
-- **工作树脏、全部未 commit**：`USER_MODEL_OVERRIDE.md`(类型变更)、本 HANDOFF、两账本、根 AGENTS 无改动；`mobile/` 源码 19 个文件；`docs/` 下 3 个 `CODE_REVIEW_DEV-11/12/13.md`＋3 个 `BUGS_DEV-11/12/13.md`＋若干 evidence png 均为未跟踪新件。
+**1.6 git（已提交并推主干）**
+- **HEAD=`ee4aad6` 已推 `origin/master`（主干）**；本地 `wanghoufan/master` 同在 ee4aad6；`origin/wanghoufan/master` 仍停在 `9414c7a`（本轮只推主干，用户拍板）。仓库**无 `main` 分支**。
+- 本轮提交 38 个文件（+2101/−60）：`USER_MODEL_OVERRIDE.md`(软链→实文件)、本 HANDOFF、两账本、neat-freak 改的 2 个 docs、`mobile/` 源码 19 改＋6 新增（分享页/冷启动接线）、`CODE_REVIEW_DEV-11/12/13.md`＋`BUGS_DEV-11/12/13.md`＋4 张 evidence png。
+- **工作树现已干净**；`mobile/.env` 经 `git check-ignore` 确认被忽略，未入提交。
+- 旁注：另一 worktree 的本机 `master` 分支（`…/coding/1.Active/011-ing-个人打卡小工具`）落后 origin/master 4 个提交，**本轮未动它**。
 
 ### 2. 下一步任务（按序）
 
@@ -77,11 +79,12 @@
 
 **2.3 分享真云发布 + 打包**：分享随 T062 一起验；打包（Development Build／EAS）**用户明确批准前冻结不动**。
 
-**2.4 人要拍什么板（4 项，不问不许开工）**
+**2.4 人要拍什么板（3 项，不问不许开工）**
 1. **T062 走 A／B／C**（§2.1）。
-2. **commit + push 的目标分支**：用户本轮口令是「commit + push（main）」，但**仓库没有 `main`**——只有 `master`（origin/HEAD，主干）与 `wanghoufan/master`（本地工作分支，两者当前同在 9414c7a）。需确认推哪个：推 `origin/master`（主干）还是只推 `origin/wanghoufan/master`。
-3. **`DISPATCH-LOG` 的 runtime 枚举加不加 `codebuddy`**（§3.5 P-2）。
-4. **`PRODUCT_PLAN_V1.0.md` 要不要改名 `_V1.5` + 对齐内部状态字段**（§3.5 P-3）。
+2. **`DISPATCH-LOG` 的 runtime 枚举加不加 `codebuddy`**（§3.5 P-2）。
+3. **`PRODUCT_PLAN_V1.0.md` 要不要改名 `_V1.5` + 对齐内部状态字段**（§3.5 P-3）。
+
+> 已决并执行：commit/push 目标＝`origin/master`（主干），2026-09-19 完成，HEAD=ee4aad6。
 
 ### 3. 注意事项及相关规矩
 
@@ -111,7 +114,7 @@
 - **P-2｜runtime 枚举**：`AGENTS.md:60` 与 `docs/roles/supervisor.md:40` 的枚举是 `本窗口/codex/opencode/—`，但账本有 5 行 `codebuddy`。**现行 supervisor 校验脚本会对真账本报错 `exit 1`，工具与数据硬冲突**。二选一：**加 `codebuddy`（建议，改 2 处文本＋1 处脚本）** 或把这 5 行改写成「本窗口」。
 - **P-3｜`PRODUCT_PLAN_V1.0.md` 名/内容分叉**：文件名 V1.0，内容 V1.5；且 `:5 PROJECT_PHASE：PLAN`、`:239/:241 PLAN_GATE=READY_FOR_HUMAN_REVIEW` 是「批准前快照」，与现役 DEVELOP/APPROVED 不一致。该问题**早已登记**（`docs/review/RESEARCH_REVIEW_PLAN-V1.4-R5.md:12` R5-N2，P2 非 Gate）。**建议打包**：改名为 `PRODUCT_PLAN_V1.5.md`＋同步状态字段＋改 6+ 处引用（4 份历史 REVIEW 可保原文只加注）。**属已批准基线的 Plan 变更，须用户/TM 拍板，不得自行动手。**
 - **P-4｜T062 前置未登记**：PRODUCT_PLAN 无需改（本就写明须 Development Build）；缺口是没人把本轮 adb 实证写进文档——**本 HANDOFF §1.3 已补**，并把 Development Build 列为 T062 硬前置。
-- **P-5｜本机口径不准**：HANDOFF 旧文写「本机无 Java/SDK」不准确——**SDK 在，缺的是 Java 与 build-tools**；另根 `AGENTS.md:98` Node 路径写 `22.22.2-2`，实际是 `22.22.2-3`（含 `current` 软链）；`AGENTS.md:108` 旧状态仍写 `HEAD=d1b2e4b`（现 9414c7a）。**§1.4 已更正本 HANDOFF 口径；根 AGENTS 属附录历史段，建议只加注。**
+- **P-5｜本机口径不准**：HANDOFF 旧文写「本机无 Java/SDK」不准确——**SDK 在，缺的是 Java 与 build-tools**；另根 `AGENTS.md:98` Node 路径写 `22.22.2-2`，实际是 `22.22.2-3`（含 `current` 软链）；`AGENTS.md:108` 旧状态仍写 `HEAD=d1b2e4b`（现 ee4aad6）。**§1.4 已更正本 HANDOFF 口径；根 AGENTS 属附录历史段，建议只加注。**
 - **P-6｜软链制与实文件冲突**：`AGENTS.md:45` 仍写「分工表软链制…禁拷实文件」，现实是本项目已按用户指令转实文件。建议补一句「本项目按用户 2026-09-18 指令用实文件，软链制仅约束未转实文件的项目」。
 - **P-7｜2 张角色卡复述模型 ID**：`docs/roles/planner.md:6`、`docs/roles/senior-expert.md:4` 硬写 `codex/gpt-5.6-sol`，其余 9 张均为「见 override 表」。当前值无错但会静默过期，建议改成同口径。
 - **P-8｜他人文件引注漂移（neat-freak 未越权改）**：`docs/handoff/DEV_EXPERIENCE.md:52` 称「HANDOFF.md:25 登记了 HD-01 交付切片」——**该引文在 HANDOFF 全文不存在**，实际出自 `PRODUCT_PLAN_V1.0.md:224`。建议交 experience-recorder 修。
