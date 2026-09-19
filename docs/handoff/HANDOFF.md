@@ -62,7 +62,7 @@
 - 无 `_example` 示例行残留。
 
 **1.6 git（已提交并推主干）**
-- **HEAD=`ee4aad6` 已推 `origin/master`（主干）**；本地 `wanghoufan/master` 同在 ee4aad6；`origin/wanghoufan/master` 仍停在 `9414c7a`（本轮只推主干，用户拍板）。仓库**无 `main` 分支**。
+- **本轮提交已推 `origin/master`（主干）**：主提交＝`chore: DEV-11→13 收工封存 + 大交接`（`ee4aad6`），其后为 HANDOFF 同步小提交；**精确 HEAD 以 `git log` 为准**（本文件自身在提交内，不写死自身 HEAD）。本地 `wanghoufan/master` 同进度；`origin/wanghoufan/master` 仍停在 `9414c7a`（本轮只推主干，用户拍板）。仓库**无 `main` 分支**。
 - 本轮提交 38 个文件（+2101/−60）：`USER_MODEL_OVERRIDE.md`(软链→实文件)、本 HANDOFF、两账本、neat-freak 改的 2 个 docs、`mobile/` 源码 19 改＋6 新增（分享页/冷启动接线）、`CODE_REVIEW_DEV-11/12/13.md`＋`BUGS_DEV-11/12/13.md`＋4 张 evidence png。
 - **工作树现已干净**；`mobile/.env` 经 `git check-ignore` 确认被忽略，未入提交。
 - 旁注：另一 worktree 的本机 `master` 分支（`…/coding/1.Active/011-ing-个人打卡小工具`）落后 origin/master 4 个提交，**本轮未动它**。
