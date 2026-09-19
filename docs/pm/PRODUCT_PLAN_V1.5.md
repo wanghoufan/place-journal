@@ -1,5 +1,7 @@
 # PRODUCT_PLAN｜Place Journal Android V1
 
+> 状态注（2026-09-19）：本文件即 V1.5 基线（文件名已由 `PRODUCT_PLAN_V1.0.md` 对齐为 `PRODUCT_PLAN_V1.5.md`，用户拍板）。文中 `PROJECT_PHASE: PLAN`、`PLAN_GATE: READY_FOR_HUMAN_REVIEW` 等字段为**批准前快照**，现役状态唯一真源＝`docs/handoff/HANDOFF.md`（DEVELOP / APPROVED / V1.5）。
+
 - Plan Version：PRODUCT_PLAN_V1.5（2026-09-18；输入基线：Android SDD V1.2）
 - Version Change：V1.0 的增量 Android、local-first、共用现役云合同与零生产 DB migration 结论不变；V1.1 补齐媒体依赖图、OAuth PKCE 回调合同及 R1 八项 Required Fixes；V1.2 补齐 OAuth 回调去重与中断恢复状态机，关闭 R2-03；V1.3 以 `unzip -p` 从权威 zip 重建 T012/T040/T050/T054/T062/T067/T077 可审计原文证据链，增加 RF-01～RF-08 覆盖矩阵，并将 MVP Gate 与完整 V1 Gate 固化为互不冲突的任务切片，关闭 R3-01/R3-02（即 R2-01/R2-02）；V1.4 收敛 token 存储口径为唯一可审计表述（code 原文禁落盘一切存储；access/refresh token 仅由 SecureStore adapter 持久化）、理顺 HD 与 Gate blocking P1 的计数口径、补写 PKCE code verifier 持久化与重叠流策略、标注 Appendix A zip 路径基准，关闭 R4-01～R4-04；V1.5 按 Human Gate 决议（2026-09-18）落字：HD-01=B 连续开发（MVP Gate 降为 TM 内部检查点、相关“暂停验收”表述同步为连续开发）、HD-02/HD-05 确认、HD-03 操作人＝实施方并列为 Phase2 前置动作、HD-04 单机 Redmi Note 12 Pro 且 T062 双账号 mismatch 拆条降级为接受风险＋延后，其余不动。
 - PROJECT_PHASE：PLAN

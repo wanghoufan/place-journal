@@ -2,7 +2,7 @@
 
 > 旧版字段（governance-state / Evidence / Human Gate / Promotion / Dispatch ID）已废弃，不填。
 
-- Captured at（YYYY-MM-DD HH:MM）：2026-09-19 12:37（大交接封存；neat-freak 已过，仅刷新现状，基线不动）
+- Captured at（YYYY-MM-DD HH:MM）：2026-09-19 12:37 初稿（大交接封存；neat-freak 已过）；同日续修订——构建路线更新（EAS 10-01 前停用，改本地构建）、治理两案落地（runtime 枚举＋计划文件改名）
 - PROJECT_PHASE：（DEVELOP——暂停中，恢复后继续；基线锁定 V1.5 不动）
 - PLAN_VERSION：（PRODUCT_PLAN_V1.5）
 - PLAN_READINESS_SCORE：（92）
@@ -11,12 +11,12 @@
 - CHANGE_REQUEST：（NONE）
 - Stage ID（本阶段叫什么）：DEVELOP-安卓APP连续开发（基线 V1.5；MVP Gate T001–T085 为内部检查点）
 - 剩 P0（没完的才列，多一条都不行）：
-  - **T062 真机登录（阻塞中）**——需 Development Build；Expo Go 做不了自定义 scheme 回跳，根因与实证见 §1.3。
+  - **T062 真机登录（阻塞中）**——需 Development Build；Expo Go 做不了自定义 scheme 回跳，根因与实证见 §1.3。**构建路线＝本地构建（EAS 10-01 前停用，用户 2026-09-19 定）；动构建前须用户批准。**
 - 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：暂停封存，**无在途 Task**。上一 Task=TASK-DEV-13 已收工 PASS（reviewer 打回 1 次已闭环；supervisor 口径打回 0/2）。本轮新增 T062 阻塞诊断（根因已定位，未派 builder）。
 - 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：DEV-12 收工；DEV-13 初审打回→返工→R2放行→qa→supervisor 全闭环收工。本轮 neat-freak 文档对齐收工（本窗口 subagent）。
 - 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；AI 真整理未接；neat-freak 提案 P-1～P-10 未拍板（见 §3.5）。
-- docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`docs/prompts/Orca 通用编排者持续推进协议.md`（十卡→十一卡）、`docs/templates/归位表.md`（账本/软链表述改不可过期口径）、本 HANDOFF；`DISPATCH-LOG.jsonl` +1 行（89→90，neat-freak 派工）。
-- 下一步（Next Single Action）：见 **§2.1**——先解 T062 阻塞（三选一）。
+- docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`docs/prompts/Orca 通用编排者持续推进协议.md`（十卡→十一卡）、`docs/templates/归位表.md`（账本/软链表述改不可过期口径）、本 HANDOFF；`DISPATCH-LOG.jsonl` +1 行（89→90，neat-freak 派工）；收尾续改——`.gitignore`（+/temp/）、`AGENTS.md`（runtime 枚举+`codebuddy`）、`docs/roles/supervisor.md`（脚本枚举同步）、`docs/pm/PRODUCT_PLAN_V1.0.md`→`V1.5.md`（改名+文头状态注）、`mobile/src/db/schema.ts:5`（仅注释内计划文件路径）、`docs/handoff/接续恢复开发提示词丨2026-09-19.md`（新增，永久留档）。
+- 下一步（Next Single Action）：见 **§2.1**——解 T062 阻塞（构建路线已定＝本地构建；动构建/装环境等用户批准）。
 - 人要拍什么板（列出来问，不问不许开工）：见 **§2.4**（4 项，含 commit/push 目标分支）。
 - permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：—
 - 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过——机械错位 4 处已修；归属不明文件 **无**；未决 10 项已列（§3.5）；临时文件无残留；**已 commit + push**（ee4aad6 → origin/master 主干）。
@@ -33,7 +33,7 @@
 ### 1. 当前工作进展
 
 **1.1 计划（已锁定，不动）**
-- `PRODUCT_PLAN_V1.5`（**注意文件名仍是 `docs/pm/PRODUCT_PLAN_V1.0.md`，内容 Plan Version=V1.5**，见 §3.5 P-3），Readiness 92，R5 终审，`PLAN_GATE=APPROVED`，`DEV_BASELINE` 锁定，HD-01=B 连续开发。
+- `PRODUCT_PLAN_V1.5`（文件已对齐为 `docs/pm/PRODUCT_PLAN_V1.5.md`——2026-09-19 用户拍板由 V1.0 名改名并加文头状态注），Readiness 92，R5 终审，`PLAN_GATE=APPROVED`，`DEV_BASELINE` 锁定，HD-01=B 连续开发。
 - 分工表已按母版转本项目**实文件**（旧软链已删，备份 `USER_MODEL_OVERRIDE.md.旧版-2026-09-13` 留存）；builder=codebuddy/deepseek-v4.1-flash，主备链见表。
 
 **1.2 开发（全部收工）**
@@ -58,7 +58,7 @@
 
 **1.5 账本（实测已校验）**
 - `docs/model/TASK-MODEL-LOG.jsonl` **19 行**（role 仅 planner 1 / builder 18）；`docs/model/DISPATCH-LOG.jsonl` **90 行**，**全部 JSON 合法**、键集合统一 8 键。
-- runtime 分布：`opencode` 58 / `本窗口` 17 / `codex` 9 / **`codebuddy` 5**（L81/83/85/86/88，**不在 AGENTS 声明枚举内**，待拍板见 §3.5 P-2）。
+- runtime 分布：`opencode` 58 / `本窗口` 17 / `codex` 9 / `codebuddy` 5（L81/83/85/86/88）。**枚举已扩**：2026-09-19 用户拍板把 `codebuddy` 加入 AGENTS 与 supervisor 脚本枚举，5 行存量转正（P-2 关闭）。
 - 无 `_example` 示例行残留。
 
 **1.6 git（已提交并推主干）**
@@ -69,22 +69,19 @@
 
 ### 2. 下一步任务（按序）
 
-**2.1 第一件事：解 T062 阻塞（三选一，需用户拍板）**
-- **A｜EAS 云构建（推荐）**：`eas build -p android --profile development`。先确认云构建网络通；再要 Expo 账号登录；需用户明确批准（构建冻结铁律）。产出可装 dev client APK，装上后 T062 才真跑得通。
-- **B｜本地构建**：先装 JDK 17＋用 `sdkmanager` 补 build-tools，再 `npx expo run:android`。要动本机环境，耗时更长。
-- **C｜先绕开登录**：转 AI 页（需 `OPENCODE key`）或直接谈打包（同样要批准）；T062 挂起。
-- 无论走哪条，`expo-dev-client` 都要加回依赖（HANDOFF 早前记的「dev-client 已移除」即此）。
+**2.1 第一件事：解 T062 阻塞（构建路线已定，时机待用户拍板）**
+- **构建路线（2026-09-19 用户已定，铁律）**：EAS 云构建免费额度耗尽（10-01 才恢复）→ **云构建停用**；今后一律**本地构建**（`npx expo run:android`）。
+- **本地构建前置**：装 JDK 17＋`sdkmanager` 补 build-tools＋`expo-dev-client` 加回依赖——**动构建/装环境前必须用户明确批准（构建冻结）**。
+- **备选**：等 10-01 EAS 恢复走云构建；或先绕开登录转 AI 页（需 `OPENCODE key`），T062 挂起。
 
 **2.2 AI 页真接入**：需 `OPENCODE key`（用户给）；随后编辑确认；失败可跳过不阻断保存。
 
 **2.3 分享真云发布 + 打包**：分享随 T062 一起验；打包（Development Build／EAS）**用户明确批准前冻结不动**。
 
-**2.4 人要拍什么板（3 项，不问不许开工）**
-1. **T062 走 A／B／C**（§2.1）。
-2. **`DISPATCH-LOG` 的 runtime 枚举加不加 `codebuddy`**（§3.5 P-2）。
-3. **`PRODUCT_PLAN_V1.0.md` 要不要改名 `_V1.5` + 对齐内部状态字段**（§3.5 P-3）。
+**2.4 人要拍什么板（1 项，不问不许开工）**
+1. **T062 时机**：批准补本地构建环境并开工（§2.1）／等 10-01 走 EAS／先转 AI 页。
 
-> 已决并执行：commit/push 目标＝`origin/master`（主干），2026-09-19 完成，HEAD=ee4aad6。
+> 已决并执行（2026-09-19）：commit/push 目标＝`origin/master` 主干；runtime 枚举加 `codebuddy`；`PRODUCT_PLAN` 改名对齐 V1.5；**构建路线＝本地构建、EAS 10-01 前停用**；构建冻结维持。
 
 ### 3. 注意事项及相关规矩
 
@@ -111,8 +108,8 @@
 
 **3.5 文档待拍板（neat-freak 本轮产出，均未动手）**
 - **P-1｜`经验一句话.md` 不存在**：根目录无此文件且 `git log --all` 无历史（从未入库）；现存经验文档是 `docs/handoff/DEV_EXPERIENCE.md`。引用点 6 处：`AGENTS.md:28`、`AGENTS.md:66`、本 HANDOFF 原读盘序、`docs/handoff/HANDOFF.template.md:25`、`docs/roles/experience-recorder.md:5`、根 `编排者提示词.md:12/:25`。**建议 A（推荐）**：读盘序与 recorder 口径统一改指 `DEV_EXPERIENCE.md`，不再新开「一句话」文件（避免两份经验真源漂移）。**B**：保留原设计，首派 recorder 时新建。
-- **P-2｜runtime 枚举**：`AGENTS.md:60` 与 `docs/roles/supervisor.md:40` 的枚举是 `本窗口/codex/opencode/—`，但账本有 5 行 `codebuddy`。**现行 supervisor 校验脚本会对真账本报错 `exit 1`，工具与数据硬冲突**。二选一：**加 `codebuddy`（建议，改 2 处文本＋1 处脚本）** 或把这 5 行改写成「本窗口」。
-- **P-3｜`PRODUCT_PLAN_V1.0.md` 名/内容分叉**：文件名 V1.0，内容 V1.5；且 `:5 PROJECT_PHASE：PLAN`、`:239/:241 PLAN_GATE=READY_FOR_HUMAN_REVIEW` 是「批准前快照」，与现役 DEVELOP/APPROVED 不一致。该问题**早已登记**（`docs/review/RESEARCH_REVIEW_PLAN-V1.4-R5.md:12` R5-N2，P2 非 Gate）。**建议打包**：改名为 `PRODUCT_PLAN_V1.5.md`＋同步状态字段＋改 6+ 处引用（4 份历史 REVIEW 可保原文只加注）。**属已批准基线的 Plan 变更，须用户/TM 拍板，不得自行动手。**
+- **P-2｜runtime 枚举【已决，2026-09-19 用户拍板：加 `codebuddy`】**：`AGENTS.md`（逐派记录 schema 行）与 `docs/roles/supervisor.md:40`（校验脚本枚举）均已加，5 行存量转正。原核验记录：账本 89 行时分布＝opencode 58/本窗口 17/codex 9/codebuddy 5；supervisor 校验脚本曾与真账本硬冲突（报 `runtime枚举错` exit 1）。
+- **P-3｜`PRODUCT_PLAN_V1.0.md` 名/内容分叉【已决，2026-09-19 用户拍板：改名】**：已 `git mv` 为 `docs/pm/PRODUCT_PLAN_V1.5.md`＋文头加状态注（声明文中 `PROJECT_PHASE: PLAN`/`PLAN_GATE: READY_FOR_HUMAN_REVIEW` 为批准前快照，真源＝HANDOFF）；活动引注已同步（`mobile/src/db/schema.ts:5` 注释、本 HANDOFF）；4 份历史 RESEARCH_REVIEW 保原文不改（属历史审计记录）。原核验记录：文件名 V1.0／内容 V1.5，且 `:5/:239/:241` 为批准前快照；该问题早已登记（`docs/review/RESEARCH_REVIEW_PLAN-V1.4-R5.md:12` R5-N2）。
 - **P-4｜T062 前置未登记**：PRODUCT_PLAN 无需改（本就写明须 Development Build）；缺口是没人把本轮 adb 实证写进文档——**本 HANDOFF §1.3 已补**，并把 Development Build 列为 T062 硬前置。
 - **P-5｜本机口径不准**：HANDOFF 旧文写「本机无 Java/SDK」不准确——**SDK 在，缺的是 Java 与 build-tools**；另根 `AGENTS.md:98` Node 路径写 `22.22.2-2`，实际是 `22.22.2-3`（含 `current` 软链）；`AGENTS.md:108` 旧状态仍写 `HEAD=d1b2e4b`（现 ee4aad6）。**§1.4 已更正本 HANDOFF 口径；根 AGENTS 属附录历史段，建议只加注。**
 - **P-6｜软链制与实文件冲突**：`AGENTS.md:45` 仍写「分工表软链制…禁拷实文件」，现实是本项目已按用户指令转实文件。建议补一句「本项目按用户 2026-09-18 指令用实文件，软链制仅约束未转实文件的项目」。

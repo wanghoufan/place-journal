@@ -9,3 +9,4 @@ dev-dist
 tsconfig.tsbuildinfo
 .trae-cn
 /tagfix-*.png
+/temp/

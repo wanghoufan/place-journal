@@ -2,7 +2,7 @@
 //
 // 真源对照：
 //   - 领域实体字段：`mobile/src/domain/types.ts`（列名 snake_case，与云端线合同同名）
-//   - 状态语义：`docs/pm/PRODUCT_PLAN_V1.0.md` §6 Data Model / SDD-PLAN §6.1–6.5
+//   - 状态语义：`docs/pm/PRODUCT_PLAN_V1.5.md` §6 Data Model / SDD-PLAN §6.1–6.5
 //   - 云端 8 表：`CLOUD_TABLES`（places/entries/media/tag_dimensions/tags/entry_tags/
 //     share_snapshots/share_items），本地另加 meta/outbox/conflicts 与迁移账本。
 //
