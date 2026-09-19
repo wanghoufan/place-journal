@@ -19,17 +19,10 @@ import {
   Sheet,
   TextField,
 } from '@/components/ui'
-import { listTagsGrouped, type TagGroup, type TagWithUsage } from '@/features/queries'
+import { listTagsGrouped, tagUsageWithChildren, type TagGroup, type TagWithUsage } from '@/features/queries'
 import { createDimension, createTag, deleteTag, renameTag } from '@/features/recordActions'
+import { dimensionKindLabel } from '@/features/format'
 import { colors } from '@/theme'
-
-const KIND_LABEL: Record<string, string> = {
-  region: '地区',
-  type: '类型',
-  scene: '场景',
-  crowd: '人群',
-  custom: '自定义',
-}
 
 interface AddTarget {
   dimensionId: string
@@ -128,6 +121,8 @@ export default function TagsScreen() {
   if (error) return <ErrorState message={error} onRetry={load} />
 
   const menuIsParent = menuTarget ? !menuTarget.parentId : false
+  // 菜单副标题与父标签行同口径（P1-2）：父标签聚合父+子，子标签只算自身。
+  const menuUsed = menuTarget ? tagUsageWithChildren(groups.flatMap((group) => group.tags), menuTarget) : 0
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
@@ -148,7 +143,7 @@ export default function TagsScreen() {
               <SectionTitle
                 right={
                   <Text style={styles.kind}>
-                    {KIND_LABEL[group.dimension.kind] ?? group.dimension.kind} · {group.tags.length}
+                    {dimensionKindLabel(group.dimension.kind)} · {group.tags.length}
                   </Text>
                 }
               >
@@ -158,7 +153,7 @@ export default function TagsScreen() {
               <View>
                 {parents.map((parent) => {
                   const children = group.tags.filter((tag) => tag.parentId === parent.id)
-                  const used = parent.usage + children.reduce((sum, child) => sum + child.usage, 0)
+                  const used = tagUsageWithChildren(group.tags, parent)
                   return (
                     <View key={parent.id} style={styles.parentBlock}>
                       <View style={styles.parentRow}>
@@ -228,7 +223,7 @@ export default function TagsScreen() {
       {/* 操作菜单：改名 / ＋子标签（仅父标签） / 删除 */}
       <Sheet open={!!menuTarget} onClose={() => setMenuTarget(null)} title={menuTarget?.name ?? ''}>
         <Text style={styles.muted}>
-          {menuIsParent ? '父标签' : '子标签'} · {menuTarget && menuTarget.usage > 0 ? `被 ${menuTarget.usage} 条记录使用` : '未被记录使用'}
+          {menuIsParent ? '父标签' : '子标签'} · {menuUsed > 0 ? `被 ${menuUsed} 条记录使用` : '未被记录使用'}
         </Text>
         <AppButton
           label="✎ 改名"

@@ -30,6 +30,7 @@ import {
   type TagGroup,
 } from '@/features/queries'
 import { deleteEntry, saveRecord } from '@/features/recordActions'
+import { createEntryShare } from '@/features/shares'
 import { colors } from '@/theme'
 
 export default function EntryDetailScreen() {
@@ -109,6 +110,17 @@ export default function EntryDetailScreen() {
       setSaving(false)
     }
   }, [budget, detail, load, notePrivate, notePublic, placeId, rating, saving, tagIds, visitDate])
+
+  const doShare = useCallback(() => {
+    if (!detail) return
+    try {
+      const { db, repo } = getAppRepository()
+      const snapshot = createEntryShare(db, repo, { entryId: detail.entry.id })
+      router.push(`/share/${snapshot.slug}`)
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err))
+    }
+  }, [detail])
 
   const doDelete = useCallback(() => {
     if (!detail) return
@@ -240,6 +252,8 @@ export default function EntryDetailScreen() {
               ) : null}
             </Card>
           ) : null}
+
+          <AppButton label="分享这条记录" onPress={doShare} />
 
           <View style={styles.actions}>
             <AppButton label="编辑" onPress={startEdit} style={styles.flex} />

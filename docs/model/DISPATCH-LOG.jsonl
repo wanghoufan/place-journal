@@ -70,3 +70,21 @@
 {"date":"2026-09-18","model":"opencode/muse-spark-1.3-contributor-free","note":"code-reviewer本窗口复核DEV-10：PASS，口径差异P1-1/P1-2 backlog","result":"PASS","role":"code-reviewer","runtime":"本窗口","task":"TASK-DEV-10","used":"主"}
 {"date":"2026-09-18","model":"opencode-go/deepseek-v4.1-flash","note":"qa用户指定模型亲手执行全过，PASS","result":"PASS","role":"qa","runtime":"opencode","task":"TASK-DEV-10","used":"主"}
 {"date":"2026-09-18","model":"opencode-go/muse-spark-1.3-contributor","note":"supervisor复检DEV-10","result":"PASS","role":"supervisor","runtime":"opencode","task":"TASK-DEV-10","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/deepseek-v4.1-flash","note":"Builder DEV-11 PASS：冷启动接线220tests","result":"PASS","role":"builder","runtime":"opencode","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode/muse-spark-1.3-contributor-free","note":"code-reviewer本窗口复核DEV-11：PASS，已落盘","result":"PASS","role":"code-reviewer","runtime":"本窗口","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/deepseek-v4.1-flash","note":"qa用户指定模型亲手执行全过，PASS","result":"PASS","role":"qa","runtime":"opencode","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/muse-spark-1.3-contributor","note":"supervisor复检DEV-11：放行，六查全过","result":"PASS","role":"supervisor","runtime":"opencode","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/deepseek-v4.1-flash","note":"Builder DEV-11 PASS：冷启动接线220tests","result":"PASS","role":"builder","runtime":"opencode","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode/muse-spark-1.3-contributor-free","note":"code-reviewer本窗口复核DEV-11：PASS，已落盘","result":"PASS","role":"code-reviewer","runtime":"本窗口","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/deepseek-v4.1-flash","note":"qa用户指定模型亲手执行全过，PASS","result":"PASS","role":"qa","runtime":"opencode","task":"TASK-DEV-11","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/muse-spark-1.3-contributor","note":"supervisor复检DEV-11：放行，六查全过","result":"PASS","role":"supervisor","runtime":"opencode","task":"TASK-DEV-11","used":"主"}
+{"date": "2026-09-18", "model": "codebuddy/deepseek-v4.1-flash", "note": "Builder DEV-12 PASS：分享页233tests（codebuddy通道首派）", "result": "PASS", "role": "builder", "runtime": "codebuddy", "used": "主", "task": "TASK-DEV-12"}
+{"date":"2026-09-18","model":"opencode/muse-spark-1.3-contributor-free","note":"code-reviewer本窗口复核DEV-12：PASS有条件，已落盘","result":"PASS","role":"code-reviewer","runtime":"本窗口","task":"TASK-DEV-12","used":"主"}
+{"date":"2026-09-18","model":"codebuddy/deepseek-v4.1-flash","note":"qa用户指定codebuddy亲手执行全过，PASS有条件","result":"PASS","role":"qa","runtime":"codebuddy","task":"TASK-DEV-12","used":"主"}
+{"date":"2026-09-18","model":"opencode-go/muse-spark-1.3-contributor","note":"supervisor复检DEV-12：无打回，QA-DEV12-01不记偏离","result":"PASS","role":"supervisor","runtime":"opencode","task":"TASK-DEV-12","used":"主"}
+{"date":"2026-09-19","model":"codebuddy/deepseek-v4.1-flash","note":"Builder DEV-13 PASS：P2六项240tests","result":"PASS","role":"builder","runtime":"codebuddy","task":"TASK-DEV-13","used":"主"}
+{"date":"2026-09-19","model":"codebuddy/deepseek-v4.1-flash","note":"Builder DEV-13返工PASS：budget守卫","result":"PASS","role":"builder","runtime":"codebuddy","task":"TASK-DEV-13-REWORK","used":"主"}
+{"date":"2026-09-19","model":"opencode/muse-spark-1.3-contributor-free","note":"code-reviewer本窗口初审打回（证据口径），R2复核放行，已落盘","result":"PASS","role":"code-reviewer","runtime":"本窗口","task":"TASK-DEV-13","used":"主"}
+{"date":"2026-09-19","model":"codebuddy/deepseek-v4.1-flash","note":"qa用户指定codebuddy亲手执行全过，PASS有条件","result":"PASS","role":"qa","runtime":"codebuddy","task":"TASK-DEV-13","used":"主"}
+{"date":"2026-09-19","model":"opencode-go/muse-spark-1.3-contributor","note":"supervisor复检DEV-13：无打回，六查全过","result":"PASS","role":"supervisor","runtime":"opencode","task":"TASK-DEV-13","used":"主"}
+{"date":"2026-09-19","model":"opencode/muse-spark-1.3-contributor-free","note":"大交接文档对齐：机械错位4处已修（十卡→十一卡、归位表两处、软链表述）；列P-1～P-10待拍板；归属不明文件0","result":"PASS","role":"neat-freak","runtime":"本窗口","task":"TASK-HANDOFF-01","used":"主"}

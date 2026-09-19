@@ -8,7 +8,7 @@ import { getAppRepository } from '@/db/app'
 import { AppButton, Card, ConfirmDialog, ErrorState, LoadingState, SectionTitle, SyncBadge } from '@/components/ui'
 import { getAuthService, isSupabaseConfigured, type LoginOutcome } from '@/supabase'
 import { getSyncSummary, type SyncSummary } from '@/features/status'
-import { localCounts } from '@/features/queries'
+import { localCounts, shareSnapshotCount } from '@/features/queries'
 import { clearDemo, demoCount, seedDemo } from '@/features/demo'
 import { formatDateTime } from '@/features/format'
 import { colors } from '@/theme'
@@ -37,6 +37,7 @@ function describeLogin(outcome: LoginOutcome): string {
 export default function MineScreen() {
   const [summary, setSummary] = useState<SyncSummary | null>(null)
   const [counts, setCounts] = useState<{ places: number; entries: number; media: number; tags: number } | null>(null)
+  const [shareCount, setShareCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [accountMessage, setAccountMessage] = useState('')
@@ -51,6 +52,7 @@ export default function MineScreen() {
       const { db } = getAppRepository()
       setSummary(getSyncSummary(db))
       setCounts(localCounts(db))
+      setShareCount(shareSnapshotCount(db))
       setDemoTotal(demoCount(db))
       setError(null)
     } catch (err) {
@@ -225,6 +227,17 @@ export default function MineScreen() {
           ) : null}
         </View>
       </Card>
+
+      <Pressable
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+        onPress={() => router.push('/shares')}
+      >
+        <View style={styles.rowBetween}>
+          <Text style={styles.cardTitle}>🔗 分享快照</Text>
+          <Text style={styles.cardValue}>{shareCount} 条 ›</Text>
+        </View>
+      </Pressable>
 
       <Pressable
         accessibilityRole="button"

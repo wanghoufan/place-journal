@@ -272,13 +272,17 @@ export function publicShareToSnapshot(
     title: s.title,
     ownerName: s.owner_display_name ?? '',
     items: (result.items ?? []).map((raw) => {
-      const i = raw.item
+      // 与 Web `fetchCloudShare`（`src/lib/shares.ts` L96）同口径：现役 RPC 返回嵌套
+      // `{id,item,sort_order}`，历史/扁平结构直接是白名单 payload 本身（P2-5）。
+      const i = (raw as { item?: ShareItemPayload }).item ?? (raw as unknown as ShareItemPayload)
+      // 远端 budget 可能是脏字符串（'abc'）或非有限数：Number() 后非有限一律回退 undefined。
+      const budget = i.budget != null ? Number(i.budget) : undefined
       return {
         clientId: '',
         placeName: i.name,
         area: i.area ?? undefined,
         rating: i.rating ?? undefined,
-        budget: i.budget != null ? Number(i.budget) : undefined,
+        budget: Number.isFinite(budget) ? budget : undefined,
         reason: i.note_public ?? undefined,
         tags: i.tags ?? undefined,
         coverUri: i.cover_url ?? undefined,

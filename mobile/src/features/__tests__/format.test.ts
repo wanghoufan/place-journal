@@ -1,4 +1,5 @@
 import {
+  dimensionKindLabel,
   formatDateTime,
   formatVisitDate,
   parseOptionalBudget,
@@ -48,6 +49,16 @@ describe('format: 日期与状态', () => {
     expect(starsText(4)).toBe('★★★★☆')
     expect(truncate('abcdef', 3)).toBe('abc…')
     expect(truncate(undefined)).toBe('')
+  })
+
+  it('dimensionKindLabel 文案与 Web 对齐（region 带「（系统）」）', () => {
+    expect(dimensionKindLabel('region')).toBe('地区（系统）')
+    expect(dimensionKindLabel('type')).toBe('类型')
+    expect(dimensionKindLabel('scene')).toBe('场景')
+    expect(dimensionKindLabel('crowd')).toBe('人群')
+    expect(dimensionKindLabel('custom')).toBe('自定义')
+    // 未知 kind 原样回显，不吞信息。
+    expect(dimensionKindLabel('weather')).toBe('weather')
   })
 })
 

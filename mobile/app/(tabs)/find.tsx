@@ -8,6 +8,7 @@ import { router, useFocusEffect } from 'expo-router'
 import { getAppRepository } from '@/db/app'
 import { Chip, EmptyState, ErrorState, LoadingState, Stars, TextField } from '@/components/ui'
 import {
+  countDistinctPlaces,
   filterGalleryEntries,
   listGalleryEntries,
   listTagsGrouped,
@@ -53,6 +54,9 @@ export default function FindScreen() {
   )
 
   const tierCounts = useMemo(() => ratingTierCounts(entries), [entries])
+
+  // 量词按 place 聚合（对标 Web Find「找到 N 个私藏地点」）；下方列表仍是 entry 明细链路。
+  const placeCount = useMemo(() => countDistinctPlaces(hits), [hits])
 
   const filterTags = useMemo(() => {
     const usage = new Map<string, number>()
@@ -113,7 +117,9 @@ export default function FindScreen() {
               </View>
             </View>
           ))}
-          <Text style={styles.resultCount}>🌿 找到 {hits.length} 条记录</Text>
+          <Text style={styles.resultCount}>
+            🌿 找到 {placeCount} 个私藏地点 · 共 {hits.length} 条记录
+          </Text>
         </View>
       }
       ListEmptyComponent={

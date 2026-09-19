@@ -6,6 +6,7 @@
 
 import {
   AUTH_CALLBACK_PATHNAME,
+  OAUTH_EXCHANGE_UNCERTAIN_MS,
   OAUTH_FINGERPRINT_DOMAIN,
   OAUTH_FINGERPRINT_TTL_MS,
   OAUTH_FLOW_STATUSES,
@@ -49,6 +50,25 @@ export function makeFingerprintRecord(
 export function isFingerprintExpired(record: OAuthFingerprintRecord, nowMs: number): boolean {
   const at = Date.parse(record.expiresAt)
   return Number.isNaN(at) || at <= nowMs
+}
+
+/**
+ * 判断 `exchanging` 记录是否「结果不确定」（计划 §OAuth 回调去重状态机）。
+ * 两种情形任一成立即不确定：
+ *   1) 进程/网络中断（冷启动一律视为中断，`processInterrupted = true`）；
+ *   2) `exchanging` 已超过 `OAUTH_EXCHANGE_UNCERTAIN_MS`（默认 2 分钟，P1-2 真实使用该常量）。
+ * 非 `exchanging` 状态永不为不确定（received 由调用侧单独处理）。
+ */
+export function isExchangeUncertain(
+  record: OAuthFingerprintRecord,
+  nowMs: number,
+  options: { processInterrupted: boolean } = { processInterrupted: false },
+): boolean {
+  if (record.status !== 'exchanging') return false
+  if (options.processInterrupted) return true
+  const updatedAt = Date.parse(record.updatedAt)
+  if (Number.isNaN(updatedAt)) return true
+  return nowMs - updatedAt >= OAUTH_EXCHANGE_UNCERTAIN_MS
 }
 
 function isValidRecord(value: unknown): value is OAuthFingerprintRecord {

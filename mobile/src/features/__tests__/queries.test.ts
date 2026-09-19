@@ -3,6 +3,7 @@ import { applyConnectionPragmas, type SqlDatabase } from '../../db/database'
 import { runMigrations } from '../../db/migrations'
 import { createRepository, type Repository } from '../../db/repository'
 import {
+  countDistinctPlaces,
   filterGalleryEntries,
   getEntryDetail,
   getPlaceDetail,
@@ -12,7 +13,10 @@ import {
   localCounts,
   ratingTierCounts,
   searchGalleryEntries,
+  tagUsageWithChildren,
   type GalleryEntry,
+  type TagGroup,
+  type TagWithUsage,
 } from '../queries'
 
 function setup(): { db: SqlDatabase; repo: Repository } {
@@ -206,6 +210,33 @@ describe('queries: 过滤与计数', () => {
   it('ratingTierCounts 按「N 星以上」动态计数', () => {
     expect(ratingTierCounts(entries)).toEqual({ 1: 2, 2: 2, 3: 1, 4: 1, 5: 1 })
     expect(ratingTierCounts([])).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 })
+  })
+
+  it('countDistinctPlaces 按地点去重（量词与 Web 一致）', () => {
+    expect(countDistinctPlaces(entries)).toBe(2)
+    // 同一地点的多条记录只算一个私藏地点。
+    expect(countDistinctPlaces([entries[0], { ...entries[0], id: 'e3', visitDate: '2026-09-01' }])).toBe(1)
+    expect(countDistinctPlaces([])).toBe(0)
+  })
+
+  it('tagUsageWithChildren 父标签聚合父+子，子标签只算自身', () => {
+    const groups: TagGroup[] = [
+      {
+        dimension: { id: 'd1', name: '场景', kind: 'scene', sortOrder: 0 },
+        tags: [
+          { id: 'p1', dimensionId: 'd1', parentId: null, name: '户外', sortOrder: 0, usage: 3 },
+          { id: 'c1', dimensionId: 'd1', parentId: 'p1', name: '海边', sortOrder: 1, usage: 4 },
+          { id: 'c2', dimensionId: 'd1', parentId: 'p1', name: '山上', sortOrder: 2, usage: 1 },
+          { id: 'p2', dimensionId: 'd1', parentId: null, name: '室内', sortOrder: 3, usage: 2 },
+        ],
+      },
+    ]
+    const tags = groups[0].tags
+    const byId = (id: string): TagWithUsage => tags.find((t) => t.id === id)!
+
+    expect(tagUsageWithChildren(tags, byId('p1'))).toBe(8) // 父 3 + 子 4 + 子 1
+    expect(tagUsageWithChildren(tags, byId('p2'))).toBe(2) // 无子标签，等于自身
+    expect(tagUsageWithChildren(tags, byId('c1'))).toBe(4) // 子标签只算自身
   })
 
   it('searchGalleryEntries 组合 DB 与过滤；localCounts 正确', () => {

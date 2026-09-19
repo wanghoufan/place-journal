@@ -6,7 +6,7 @@ import {
   type AuthSession,
   type OwnerStore,
 } from '../auth'
-import { AUTH_REDIRECT_URI, OAUTH_FINGERPRINT_TTL_MS } from '../constants'
+import { AUTH_REDIRECT_URI, OAUTH_EXCHANGE_UNCERTAIN_MS, OAUTH_FINGERPRINT_TTL_MS } from '../constants'
 import { computeCallbackFingerprint, createOAuthFingerprintRepo, makeFingerprintRecord } from '../fingerprint'
 import { createMemorySecureStoreBackend, createSecureJsonStore, type SecureStoreBackend } from '../secureStore'
 
@@ -158,6 +158,40 @@ describe('auth: uncertain / missing verifier (R4-03)', () => {
 
     const outcome = await h.service.handleCallback(`${CALLBACK}?code=ghost`)
     expect(outcome).toEqual({ status: 'terminal_reauth', errorClass: 'session_not_persisted' })
+  })
+})
+
+describe('auth: uncertain exchanging uses OAUTH_EXCHANGE_UNCERTAIN_MS (P1-2)', () => {
+  it('resolves a stale exchanging flow via session-first without re-exchanging', async () => {
+    const h = setup({ session: { user: { id: 'owner-1' } } })
+    const hash = computeCallbackFingerprint('slow-code')
+    await h.repo.upsert(makeFingerprintRecord(hash, 'exchanging', T0 - OAUTH_EXCHANGE_UNCERTAIN_MS - 1))
+
+    const outcome = await h.service.handleCallback(`${CALLBACK}?code=slow-code`)
+    expect(outcome).toEqual({ status: 'succeeded', userId: 'owner-1', binding: 'unbound' })
+    expect((await h.repo.get(hash))?.status).toBe('succeeded')
+    expect(h.auth.exchangeCodeForSession).not.toHaveBeenCalled()
+  })
+
+  it('downgrades a stale exchanging flow with no session to terminal_reauth', async () => {
+    const h = setup()
+    const hash = computeCallbackFingerprint('slow-code')
+    await h.repo.upsert(makeFingerprintRecord(hash, 'exchanging', T0 - OAUTH_EXCHANGE_UNCERTAIN_MS - 1))
+
+    const outcome = await h.service.handleCallback(`${CALLBACK}?code=slow-code`)
+    expect(outcome).toEqual({ status: 'terminal_reauth', errorClass: 'interrupted_no_session' })
+    expect((await h.repo.get(hash))?.status).toBe('terminal_reauth')
+    expect(h.auth.exchangeCodeForSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps a fresh exchanging callback idempotent (inside the window)', async () => {
+    const h = setup({ session: { user: { id: 'owner-1' } } })
+    const hash = computeCallbackFingerprint('fresh-code')
+    await h.repo.upsert(makeFingerprintRecord(hash, 'exchanging', T0))
+
+    const outcome = await h.service.handleCallback(`${CALLBACK}?code=fresh-code`)
+    expect(outcome).toEqual({ status: 'duplicate', flowStatus: 'exchanging' })
+    expect(h.auth.exchangeCodeForSession).not.toHaveBeenCalled()
   })
 })
 

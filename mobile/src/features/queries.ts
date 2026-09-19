@@ -4,6 +4,9 @@
 // 过滤/排序的纯逻辑（`filterGalleryEntries`）独立导出，便于单测；本文件不 import Expo。
 
 import type { SqlDatabase } from '../db/database'
+import type { EntityRow } from '../db/repository'
+import type { ShareItem, ShareKind, ShareStatus } from '../domain/types'
+import { shareItemFromRow } from './shares'
 
 export interface GalleryEntry {
   id: string
@@ -318,6 +321,23 @@ export function filterGalleryEntries(entries: GalleryEntry[], filters: SearchFil
 }
 
 /**
+ * 结果量词：命中记录按 place 去重后的地点数（对标 Web Find「找到 N 个私藏地点」）。
+ * 纯函数；列表明细仍走 entry 链路，量词只按地点聚合。
+ */
+export function countDistinctPlaces(entries: GalleryEntry[]): number {
+  return new Set(entries.map((entry) => entry.placeId)).size
+}
+
+/**
+ * 标签计数口径：父标签聚合「父 + 直接子标签」的被引用次数，子标签只算自身。
+ * 与 Web TagsPage 父标签行 `used` 同口径；供父标签行与操作菜单副标题共用。
+ */
+export function tagUsageWithChildren(tags: TagWithUsage[], tag: TagWithUsage): number {
+  if (tag.parentId) return tag.usage
+  return tag.usage + tags.filter((t) => t.parentId === tag.id).reduce((sum, t) => sum + t.usage, 0)
+}
+
+/**
  * 评分档动态计数：`counts[n]` = 评分 ≥ n 的记录数（与 Find「N 星以上」筛选同口径）。
  * 纯函数，供 Find 页在 chips 上展示每档命中数。
  */
@@ -343,4 +363,73 @@ export function localCounts(db: SqlDatabase): { places: number; entries: number;
     media: db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM media')?.n ?? 0,
     tags: db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM tags')?.n ?? 0,
   }
+}
+
+// ── 分享快照（TASK-DEV-12 只读侧）────────────────────────────────────────────
+
+export interface ShareSnapshotSummary {
+  id: string
+  slug: string
+  kind: ShareKind
+  title: string
+  ownerName?: string
+  status: ShareStatus
+  itemCount: number
+  createdAt: string
+}
+
+export interface ShareSnapshotDetail {
+  snapshot: ShareSnapshotSummary
+  items: ShareItem[]
+}
+
+interface ShareSnapshotSqlRow {
+  id: string
+  slug: string
+  kind: string
+  title: string
+  owner_name: string | null
+  status: string
+  created_at: string
+  item_count: number
+}
+
+const SHARE_SNAPSHOT_SELECT = `
+SELECT s.id, s.slug, s.kind, s.title, s.owner_name, s.status, s.created_at,
+       (SELECT COUNT(*) FROM share_items i WHERE i.snapshot_id = s.id) AS item_count
+FROM share_snapshots s`
+
+function mapShareSnapshot(row: ShareSnapshotSqlRow): ShareSnapshotSummary {
+  return {
+    id: row.id,
+    slug: row.slug,
+    kind: row.kind as ShareKind,
+    title: row.title,
+    ownerName: opt(row.owner_name),
+    status: row.status === 'revoked' ? 'revoked' : 'active',
+    itemCount: row.item_count ?? 0,
+    createdAt: row.created_at,
+  }
+}
+
+/** 全部分享快照（新的在前）；含 revoked，供列表页区分状态。 */
+export function listShareSnapshots(db: SqlDatabase): ShareSnapshotSummary[] {
+  return db
+    .getAllSync<ShareSnapshotSqlRow>(`${SHARE_SNAPSHOT_SELECT} ORDER BY s.created_at DESC, s.id DESC`)
+    .map(mapShareSnapshot)
+}
+
+/** 分享快照数（Mine 入口展示）。 */
+export function shareSnapshotCount(db: SqlDatabase): number {
+  return db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM share_snapshots')?.n ?? 0
+}
+
+/** 按 slug 取快照 + 分享项（本地快照内容，不含任何私密字段）。不存在返回 null。 */
+export function getShareSnapshotBySlug(db: SqlDatabase, slug: string): ShareSnapshotDetail | null {
+  const row = db.getFirstSync<ShareSnapshotSqlRow>(`${SHARE_SNAPSHOT_SELECT} WHERE s.slug = ?`, slug)
+  if (!row) return null
+  const items = db
+    .getAllSync<EntityRow>('SELECT * FROM share_items WHERE snapshot_id = ? ORDER BY sort_order ASC', row.id)
+    .map(shareItemFromRow)
+  return { snapshot: mapShareSnapshot(row), items }
 }

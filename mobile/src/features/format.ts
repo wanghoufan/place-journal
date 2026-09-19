@@ -75,6 +75,20 @@ export function truncate(text: string | undefined, max = 60): string {
   return text.length > max ? `${text.slice(0, max)}…` : text
 }
 
+/** 标签维度类型文案（与 Web `src/pages/TagsPage.tsx` KIND_LABEL 逐字对齐）。 */
+const DIMENSION_KIND_LABEL: Record<string, string> = {
+  region: '地区（系统）',
+  type: '类型',
+  scene: '场景',
+  crowd: '人群',
+  custom: '自定义',
+}
+
+/** 维度 kind → 中文；未知 kind 原样回显，不丢信息。 */
+export function dimensionKindLabel(kind: string): string {
+  return DIMENSION_KIND_LABEL[kind] ?? kind
+}
+
 /** 数字输入安全解析：空/非法 → undefined。 */
 export function parseOptionalInt(value: string, min = 1, max = 99999): number | undefined {
   const trimmed = value.trim()

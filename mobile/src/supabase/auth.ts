@@ -13,6 +13,7 @@ import {
 } from './constants'
 import {
   computeCallbackFingerprint,
+  isExchangeUncertain,
   isFingerprintExpired,
   makeFingerprintRecord,
   type OAuthFingerprintRecord,
@@ -191,7 +192,19 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
     const existing = await deps.fingerprints.get(hash)
     if (existing && !isFingerprintExpired(existing, nowMs)) {
       // 四态中任一状态都不二次换码：重复/迟到回调幂等返回既有状态。
-      return { status: 'duplicate', flowStatus: existing.status }
+      // P1-2（TASK-DEV-11 决议）：真实使用 OAUTH_EXCHANGE_UNCERTAIN_MS——`exchanging` 超过
+      // 2 分钟即结果不确定，按 session-first 收敛（有 session → succeeded，无 → terminal_reauth），
+      // 仍不重用旧 code；未超时/其它状态维持幂等 duplicate。
+      if (existing.status !== 'exchanging' || !isExchangeUncertain(existing, nowMs)) {
+        return { status: 'duplicate', flowStatus: existing.status }
+      }
+      const session = await safeGetSession()
+      if (session) {
+        await setStatus(hash, 'succeeded', nowMs)
+        return outcomeForUser(session.user.id)
+      }
+      await setStatus(hash, 'terminal_reauth', nowMs, 'interrupted_no_session')
+      return { status: 'terminal_reauth', errorClass: 'interrupted_no_session' }
     }
 
     await deps.fingerprints.upsert(makeFingerprintRecord(hash, 'received', nowMs))
@@ -279,6 +292,9 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
       const nowMs = now()
       await deps.fingerprints.sweep(nowMs)
 
+      // 冷启动即进程中断：按 P1-2 决议，所有未完成 flow（received/exchanging）一律视为
+      // 结果不确定（不区分时长），先读有效 session；无 session 则收敛 terminal_reauth，
+      // 绝不重用旧 code（`isExchangeUncertain` 的 processInterrupted 分支即此语义）。
       const session = await safeGetSession()
       const ranIncomplete = await markIncomplete(
         session ? 'succeeded' : 'terminal_reauth',
