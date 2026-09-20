@@ -100,6 +100,22 @@ export async function outboxFail(seq: number, err: string) {
 }
 
 // ---- 业务仓库 ----
+// 内容比对用快照键：排除 revision/baseRevision（版本号不是内容）。
+// 用途：Dimension/Tag 没有 updatedAt，saveTags 必须像 savePlace/saveEntry 一样对
+// 内容有变化的行 revision+1，否则 sync.writeBackIfUnchanged 的「窗口内是否被改过」
+// 判定对标签/维度恒为「没变」，标签改名会被推送前的旧快照盖回旧名（2026-09-20 P1-1）。
+function contentKey(row: Record<string, any>): string {
+  const { revision, baseRevision, ...rest } = row
+  return JSON.stringify(Object.keys(rest).sort().map((k) => [k, rest[k]]))
+}
+function bumpChangedRows<T extends { id: string; revision?: number }>(prev: T[], next: T[]): T[] {
+  const byId = new Map(prev.map((r) => [r.id, r]))
+  return next.map((r) => {
+    const old = byId.get(r.id)
+    return !old || contentKey(old as any) !== contentKey(r as any) ? { ...r, revision: (r.revision ?? 0) + 1 } : r
+  })
+}
+
 export const repo = {
   async places(): Promise<Place[]> { return all('places') },
   async entries(): Promise<Entry[]> { return all('entries') },
@@ -165,8 +181,11 @@ export const repo = {
     // 注意：云端 entries 行删除仍未实现（pullRemote 可能拉回复活）——见 HANDOFF §0.2-10，需另行设计
   },
   async saveTags(dimensions: Dimension[], tags: Tag[]) {
-    await bulkPut('dimensions', dimensions)
-    await bulkPut('tags', tags)
+    // 内容有变化的行 revision+1（新行同口径 0→1），与 savePlace/saveEntry 一致：
+    // 让推送回写端能认出「本行在推送窗口内被改过」，不改动 places/entries 行为。
+    const [prevDims, prevTags] = await Promise.all([all('dimensions'), all('tags')])
+    await bulkPut('dimensions', bumpChangedRows(prevDims, dimensions))
+    await bulkPut('tags', bumpChangedRows(prevTags, tags))
     await enqueue({ kind: 'upsert_tags' })
   },
   // 真删除：bulkPut 是 upsert 语义（只写不删），此前 TagsPage 删除传「缺失后的全量数组」等于没删

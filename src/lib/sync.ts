@@ -140,13 +140,37 @@ async function fetchRemoteRow(sb: SupabaseClient, name: EntityName, id: string):
 }
 
 type ConflictStore = 'places' | 'entries' | 'dimensions' | 'tags'
+
+// ── 推送结果回写：并发编辑保护（2026-09-20 改名保存后变回旧名的根治）────────────
+// 推送是「读快照 → 网络往返 → 回写」：若这段窗口里用户又改了同一行（改名/编辑），
+// 用推送前的旧快照回写就会把新内容盖回去（现象＝保存后立刻变回旧名）；紧接着该行
+// 自带的 outbox op 会把旧名推上云，本地与云端一起退回旧名，且 outbox 被清空 =
+// 永久丢失、不再自愈。手机弱网 / 上传超时后 syncOnce 仍在后台跑时最容易撞上。
+// 因此回写前重读库内行：
+//   - 没变：整行按 patch 落盘（revision/baseRevision/sync 照旧对齐，行为不变）；
+//   - 变了：只把 baseRevision 对齐到本次已确认的云端 revision，内容一律保留库内新值、
+//     sync 保持 local——下轮推送新内容时 expected 正好是刚确认的 revision，
+//     既不会把改名盖回旧名，也不会制造假冲突。
+async function writeBackIfUnchanged(store: ConflictStore, snapshot: any, patch: Record<string, any>, confirmedRevision?: number): Promise<void> {
+  const read = { places: repo.places, entries: repo.entries, dimensions: repo.dimensions, tags: repo.tags }[store]
+  const cur = ((await read()) as any[]).find((r) => r.id === snapshot.id)
+  // 窗口内该行已被删除（deletePlace/deleteEntry 已删库内行并入队 delete op）：删除意图优先于
+  // 推送确认，直接返回；否则末尾 bulkPut 会以 synced 把已删行复活成永久本地僵尸（P1-2）。
+  if (!cur) return
+  if (cur.updatedAt !== snapshot.updatedAt || cur.revision !== snapshot.revision) {
+    if (confirmedRevision != null && cur.baseRevision !== confirmedRevision) await bulkPut(store, [{ ...cur, baseRevision: confirmedRevision }])
+    return
+  }
+  await bulkPut(store, [{ ...snapshot, ...patch }])
+}
+
 // 冲突登记：本地行标为 conflict（内容原样保留，绝不丢失），远端行存入 meta。
 async function registerConflict(kind: ConflictRecord['kind'], id: string, expected: number | undefined, remote: any | null, localRow: any | null, storeName: ConflictStore) {
   const list = await getConflicts()
   const rec: ConflictRecord = { id, kind, expected: expected ?? 1, remote, at: new Date().toISOString() }
   const others = list.filter((c) => c.id !== id)
   await putConflicts([...others, rec])
-  if (localRow) { localRow.sync = 'conflict' as SyncStatus; await bulkPut(storeName, [localRow]) }
+  if (localRow) await writeBackIfUnchanged(storeName, localRow, { sync: 'conflict' as SyncStatus })
 }
 
 // 确保引用的标签/维度已在云端：演示数据（seed）从未上云时，entry_tags 的
@@ -177,13 +201,13 @@ async function ensureTagsInCloud(sb: SupabaseClient, owner: string, neededTagIds
   const needDims = new Set(missing.map((t) => t.dimensionId))
   for (const d of dims.filter((d) => needDims.has(d.id))) {
     const r = await pushEntity(sb, 'tag_dimensions', dimRow(d, owner), d.baseRevision)
-    if (r.ok) await bulkPut('dimensions', [{ ...d, revision: r.revision, baseRevision: r.revision }])
+    if (r.ok) await writeBackIfUnchanged('dimensions', d, { revision: r.revision, baseRevision: r.revision }, r.revision)
     else if (r.conflict !== undefined) await registerConflict('dimension', d.id, d.baseRevision, r.conflict, { ...d }, 'dimensions')
     else throw new Error(r.error ?? 'unknown')
   }
   for (const t of missing) {
     const r = await pushEntity(sb, 'tags', tagRow(t, owner), t.baseRevision)
-    if (r.ok) await bulkPut('tags', [{ ...t, revision: r.revision, baseRevision: r.revision }])
+    if (r.ok) await writeBackIfUnchanged('tags', t, { revision: r.revision, baseRevision: r.revision }, r.revision)
     else if (r.conflict !== undefined) await registerConflict('tag', t.id, t.baseRevision, r.conflict, { ...t }, 'tags')
     else throw new Error(r.error ?? 'unknown')
   }
@@ -198,7 +222,7 @@ async function ensurePlacesInCloud(sb: SupabaseClient, owner: string, placeId: s
   const { data: remote } = await table(sb, 'places').select('id').eq('id', placeId)
   if (remote && remote.length) return
   const r = await pushEntity(sb, 'places', placeRow(p, owner), p.baseRevision)
-  if (r.ok) await bulkPut('places', [{ ...p, revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }])
+  if (r.ok) await writeBackIfUnchanged('places', p, { revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }, r.revision)
   else if (r.conflict !== undefined) await registerConflict('place', p.id, p.baseRevision, r.conflict, { ...p }, 'places')
   else throw new Error(r.error ?? 'unknown')
 }
@@ -309,7 +333,7 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
             if (r.conflict !== undefined) { await registerConflict('place', p.id, p.baseRevision, r.conflict, { ...p }, 'places'); await outboxRemove(row.seq!); done++; continue }
             throw new Error(r.error)
           }
-          await bulkPut('places', [{ ...p, revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }])
+          await writeBackIfUnchanged('places', p, { revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }, r.revision)
         }
       } else if (op.kind === 'upsert_entry') {
         const e = (await repo.entries()).find((x) => x.id === op.id)
@@ -335,7 +359,7 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
             if (r.conflict !== undefined) { await registerConflict('entry', e.id, e.baseRevision, r.conflict, { ...e }, 'entries'); await outboxRemove(row.seq!); done++; continue }
             throw new Error(r.error)
           }
-          await bulkPut('entries', [{ ...e, revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }])
+          await writeBackIfUnchanged('entries', e, { revision: r.revision, baseRevision: r.revision, sync: 'synced' as const, syncError: undefined }, r.revision)
           // 规范（V1.2 §5.2）：标签关系变化「先新增、后删除」，中断不丢关系
           await ensureTagsInCloud(sb, owner, e.tagIds)
           const remoteIds = new Set(
@@ -371,13 +395,13 @@ export async function syncOnce(): Promise<{ done: number; failed: number }> {
         let hardErr = ''
         for (const d of dims) {
           const r = await pushEntity(sb, 'tag_dimensions', dimRow(d, owner), d.baseRevision)
-          if (r.ok) await bulkPut('dimensions', [{ ...d, revision: r.revision, baseRevision: r.revision }])
+          if (r.ok) await writeBackIfUnchanged('dimensions', d, { revision: r.revision, baseRevision: r.revision }, r.revision)
           else if (r.conflict !== undefined) await registerConflict('dimension', d.id, d.baseRevision, r.conflict, { ...d }, 'dimensions')
           else hardErr = r.error ?? 'unknown'
         }
         for (const t of orderedTags) {
           const r = await pushEntity(sb, 'tags', tagRow(t, owner), t.baseRevision)
-          if (r.ok) await bulkPut('tags', [{ ...t, revision: r.revision, baseRevision: r.revision }])
+          if (r.ok) await writeBackIfUnchanged('tags', t, { revision: r.revision, baseRevision: r.revision }, r.revision)
           else if (r.conflict !== undefined) await registerConflict('tag', t.id, t.baseRevision, r.conflict, { ...t }, 'tags')
           else hardErr = r.error ?? 'unknown'
         }

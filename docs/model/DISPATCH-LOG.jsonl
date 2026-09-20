@@ -118,3 +118,9 @@
 {"date": "2026-09-20", "task": "T062收口", "role": "qa", "model": "本窗口直驱", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "真机三连已记TASK-LOG，用户拍板收口PASS"}
 {"date": "2026-09-20", "task": "PWA-AI真调", "role": "builder", "model": "本窗口直调", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "DeepSeek直调200＋handler全链200(provider deepseek)，首试超时为偶发"}
 {"date": "2026-09-20", "task": "PWA-AI线上真调", "role": "builder", "model": "本窗口直调", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "computer-use点Redeploy未果改CLI redeploy，线上/api 200 provider=deepseek"}
+{"date": "2026-09-20", "task": "收工封存", "role": "task-manager", "model": "本窗口直调", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "commit 14d72e9 已推origin/master，用户两度确认"}
+{"date": "2026-09-20", "task": "TASK-PLACE-rename-01", "role": "builder", "model": "codebuddy/deepseek-v4.1-flash", "used": "主", "runtime": "codebuddy", "result": "FAIL", "note": "初版600s超时无报告，落盘半截在"}
+{"date": "2026-09-20", "task": "TASK-PLACE-rename-01", "role": "builder", "model": "codebuddy/deepseek-v4.1-flash", "used": "主", "runtime": "codebuddy", "result": "PASS", "note": "返工P1x2闭环（saveTags revision+1/if(!cur)return）"}
+{"date": "2026-09-20", "task": "TASK-PLACE-rename-01", "role": "code-reviewer", "model": "opencode/muse-spark-1.3-contributor-free", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "初审打回P1x2，复验通过"}
+{"date": "2026-09-20", "task": "TASK-PLACE-rename-01", "role": "qa", "model": "codebuddy/deepseek-v4.1-flash", "used": "主", "runtime": "codebuddy", "result": "PASS", "note": "回归PASS，附DV公社5步清单，真机并发NOT_VERIFIED"}
+{"date": "2026-09-20", "task": "TASK-PLACE-rename-01", "role": "supervisor", "model": "opencode-go/muse-spark-1.3-contributor", "used": "主", "runtime": "opencode", "result": "PASS", "note": "supervisor PASS 0/2"}
