@@ -2,8 +2,8 @@
 
 > 旧版字段（governance-state / Evidence / Human Gate / Promotion / Dispatch ID）已废弃，不填。
 
-- Captured at（YYYY-MM-DD HH:MM）：2026-09-20 14:00 大交接（用户口令「【大交接】开发先到这里暂时结束」）；本轮 DEV-14/15、PWA-01 均收工，详见下方「本次小交接快照」§1～§3（已重写）；历史大交接与审计记录保留
-- PROJECT_PHASE：（DEVELOP——暂停中，恢复后继续；基线锁定 V1.5 不动）
+- Captured at（YYYY-MM-DD HH:MM）：2026-09-20晚收工封存（jcp洁癖已过）；本轮新增收工：TASK-PLACE-rename-01（supervisor 0/2）＋线上computer-use实测PASS（双写误会已消用户确认）＋AI Key线上真调PASS＋T062收口PASS；E-002/E-003/E-004＋AGENTS硬守则（E-002）已落；HEAD以git log为准
+- PROJECT_PHASE：（DEVELOP——在役；基线锁定 V1.5 不动）
 - PLAN_VERSION：（PRODUCT_PLAN_V1.5）
 - PLAN_READINESS_SCORE：（92）
 - PLAN_GATE：（APPROVED——用户以“继续推进开发”批准 V1.5）
@@ -11,8 +11,8 @@
 - CHANGE_REQUEST：（NONE）
 - Stage ID（本阶段叫什么）：DEVELOP-安卓APP连续开发（基线 V1.5；MVP Gate T001–T085 为内部检查点）
 - 剩 P0（没完的才列，多一条都不行）：
-  - 无。PWA-AI 本地＋线上真调均 PASS（2026-09-20晚）：Vercel 变量由本窗口 CLI 落定（DEEPSEEK_API_KEY 三环境占位后用户网页填值、DEEPSEEK_MODEL=deepseek-flash、AI_PROVIDER_ORDER=deepseek）；`vercel redeploy` 重发生产（35s Ready）；线上 `/api/ai-organize` 实测 200（provider=deepseek，人均40/拍照命中/conf0.85）。注：线上跑的是旧代码（新设置页等 push 后才有），旧码认环境变量模型名故照样通。
-- 已收口（2026-09-20晚，用户拍板）：**T062 PASS**——真机三连3/3（绑定持久＋退出数据保留地点6/7/照片14/标签26不变＋错号登录callback阻断原话）；附带同步实跑成功6/失败2；证据本窗口adb直驱＋截图（待入库）。
+  - 无。T062已收口PASS；PWA-AI本地＋线上真调PASS；改名回退根治＋线上实测PASS（用户确认可以了）。
+- 已收口（2026-09-20晚，用户拍板）：**T062 PASS**——真机三连3/3（绑定持久＋退出数据保留地点6/7/照片14/标签26不变＋错号登录callback阻断原话）；附带同步实跑成功6/失败2；证据本窗口adb直驱＋截图（已入库evidence-android-t062）。**改名回退 PASS**——根因推送回写窗口并发覆盖，sync.ts writeBackIfUnchanged＋idb.ts saveTags revision+1根治（reviewer P1×2闭环）；线上computer-use实测改名→刷新→同步→改回全程不回退。
 - 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：**停工封存，无在途 Task**。本轮收工链：TASK-DEV-14 PASS（绑定确认UI＋退出/文案/mismatch；reviewer打回P1×3闭环；回归260全绿；真机①②③PASS；supervisor 0/2）→ TASK-DEV-15 PASS（双机分发，新老两机均Success；后用户改令只调Note12Pro）→ TASK-PWA-01 PASS（AI三件套：洗感受/筛标签/2-3句公开理由；summary退役；reviewer打回P1×1闭环；qa回归PASS；supervisor 0/2）→ 黑屏根治（dev-client默认读8081，曾错载补光灯包，`tcp:8081→8084`映射后正常）→ 演示7条已播（Note12Pro画廊可见）→ Chrome浏览器实测（确认页降级链全对：4星/50元/3标签/理由空等手填，未点保存零写入）。codebuddy通道已恢复（本轮6派全EXIT=0）；codex额度约13:43恢复（未经验证）。
 - 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：builder×3（codebuddy/deepseek：DEV-14初版＋返工、PWA-01初版＋返工，均直调无session）／reviewer×2（本窗口subagent：CODE_REVIEW_DEV-14、CODE_REVIEW_PWA-01）／qa回归×2（codebuddy，用户口令因codex额度耗尽改道，表未改）／qa真机×1（本窗口adb直驱DEV-14）／supervisor×2（opencode直调，均PASS 0/2）／neat-freak×1（本窗口subagent，大交接收尾，AGENTS附录2行，未碰DEV_EXPERIENCE见U-18）。Metro 现役 **8084**（pid 19893，/status 200；8083已停，8082他项，3000/3100禁用）；Note12Pro 映射 `8081→8084`＋`8083`＋`8084`（恢复原状前勿动Expo Go补光灯）；PWA vite 5173（pid 50004，`--host 0.0.0.0`，本机/Tailscale`100.125.100.15`/局域网`192.168.31.60`均200）。
 - 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；review P2 backlog（PWA-01 P2×2：80字/300字口径、exporter注释）；qa观察项（O-1～O-3、O-1～O-5）；文档提案余 P-7/P-8/P-9（U-9/U-11相关）；未决 **U-1～U-19**（U-1～U-3/U-5闭环，U-4可判闭环，余见§3.5及本次U-14～U-19）。
@@ -20,7 +20,7 @@
 - 下一步（Next Single Action）：**等用户恢复口令**。恢复后按序：①T062收口判定（拍板）；②DEV-16手机端照抄PWA（画廊详情＋记录页，用户已喊停工前投诉，方案待定）；③PWA-AI真调（配Key部署验）；④P2-1/P2-2/P2-3、AI真整理、分享真云发布。
 - 人要拍什么板（列出来问，不问不许开工）：①T062收口放行否；②DEV-16是否开工（手机端照抄PWA）；③QA长期走codebuddy是否改override表（本轮两次用户口头改道，表未动）；④工作树20+改动是否commit＋push origin/master（早前jcp口令后被打断，未执行）；⑤改系统代理/shell/签名/卸载设备应用另行确认。
 - permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：本轮三次用户口令改道——codebuddy复活验证、QA改走codebuddy（codex额度耗尽）、双机分发后改回单设备（Note12Pro专用）；override表均未改。
-- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过（2026-09-20 大交接收尾）——`AGENTS.md`附录2行已改；归属不明0；残留删0个（6个未跟踪全是合法交付）；未决U-14～U-19已列（U-14本HANDOFF已收：黑屏/演示/Tailscale/Chrome实测进前段＋执行链；U-15本清单已收；U-16 DEV-15无review/qa doc待TM定；U-17 temp旧提示词过时待定；U-18 DEV_EXPERIENCE可写人冲突＋U-10引注失效待recorder；U-19旧U-6/7/8/9/11/12/13仍有效）；本轮仅本地改动，**未 commit／未 push**。
+- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过（2026-09-20 大交接收尾）——`AGENTS.md`附录2行已改；归属不明0；残留删0个（6个未跟踪全是合法交付）；未决U-14～U-19已列（U-14本HANDOFF已收：黑屏/演示/Tailscale/Chrome实测进前段＋执行链；U-15本清单已收；U-16 DEV-15无review/qa doc待TM定；U-17 temp旧提示词过时待定；U-18 DEV_EXPERIENCE可写人冲突＋U-10引注失效待recorder；U-19旧U-6/7/8/9/11/12/13仍有效）；本轮仅本地改动，**未 commit／未 push**。neat-freak本轮复核修订（2026-09-20晚）：新增三文档已入库（CODE_REVIEW_改名回退／BUGS_改名回退／AI模型Key配置丨2026-09-20）、E-002补写与AGENTS硬守则两处对齐（冲突口径已注）、归属不明0、残留M×3（AGENTS／DEV_EXPERIENCE／DISPATCH-LOG，与39a49ae已推一致）。
 
 ## 本次小交接快照（2026-09-20）
 
