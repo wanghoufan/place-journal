@@ -23,6 +23,10 @@ export interface OrganiseSuggestion {
   rating?: number
   budget?: number
   summary: string
+  /** AI 清洗后的感受（去口水词、补标点，原意不动）；无 AI 时原样回填用户原文。 */
+  cleanedTranscript: string
+  /** AI 按感受总结的公开分享理由；无 AI 时为空串（UI 用用户自填兜底）。 */
+  publicReason: string
   /** 命中的既有标签 id（AI 不得自动建标签）。 */
   matchedTags: string[]
   /** 未匹配到既有标签的建议名（仅供用户手动决定）。 */
@@ -88,6 +92,9 @@ export function localHeuristics(input: OrganiseInput): OrganiseSuggestion {
     rating: transcript ? inferRating(transcript) : undefined,
     budget: transcript ? extractBudget(transcript) : undefined,
     summary,
+    // 无 AI 时不做清洗（对标 Web localHeuristics）：感受原样回填，理由留空由用户手填兜底。
+    cleanedTranscript: transcript,
+    publicReason: '',
     matchedTags: matched,
     unmatched,
     mock: true,
@@ -108,8 +115,10 @@ export function createPlaceholderOrganiser(delayMs = 0): Organiser {
 
 // ---- 真网 Organiser（TASK-PWA-AI-01）----
 
-/** 服务端 AI 整理的超时；与 runOrganise 默认超时一致（语义不变）。 */
-export const AI_API_TIMEOUT_MS = 8000
+/** 服务端 AI 整理的超时；与 Web 侧一致取 12s（`src/lib/organize.ts` 同值）。
+ *  不能短于服务端自身的 failover 预算：服务端单通道 9s、全局 deadline 13s，
+ *  客户端若 8s 就掐断，就等于永远拿不到慢通道的结果，只能吃本地推测。 */
+export const AI_API_TIMEOUT_MS = 12000
 
 /** 服务端基地址：`mobile/.env` 的 EXPO_PUBLIC_AI_API_BASE（需静态读取才能被 Expo 内联）。 */
 export function aiApiBase(): string {
@@ -137,6 +146,9 @@ function toSuggestion(raw: ServerAiResult, input: OrganiseInput): OrganiseSugges
     rating: typeof raw.score === 'number' ? raw.score : undefined,
     budget: typeof raw.budget === 'number' ? raw.budget : undefined,
     summary: text ? firstSentence(text).slice(0, 60) : '',
+    // 感受与公开理由分两路（对标 Web AiConfirm）：清洗版进「整理后感受」，理由进「公开分享理由」。
+    cleanedTranscript: (raw.cleaned_transcript ?? '').trim(),
+    publicReason: (raw.public_reason ?? '').trim(),
     matchedTags,
     unmatched: (Array.isArray(raw.unmatched_suggestions) ? raw.unmatched_suggestions : [])
       .map(String)

@@ -213,6 +213,45 @@ export function createTag(
   return { id, opId }
 }
 
+/** 维度默认名（kind → 名称），仅在目标维度缺失时用于补建。 */
+const DIMENSION_NAMES: Record<string, string> = {
+  scene: '场景',
+  type: '类型',
+  crowd: '人群',
+  region: '区域',
+  custom: '自定义',
+}
+
+export interface CreateTagNamedResult {
+  id: string
+  opId: string
+  /** false = 同名标签已存在，直接复用（无新 outbox op）。 */
+  created: boolean
+}
+
+/**
+ * 按名字建标签（现场建标签 / AI 未命中建议词一键建）。
+ * 同名标签已存在则复用，不重复建；维度按 `kind` 找（默认 scene），缺失时补建该维度。
+ */
+export function createTagNamed(
+  db: SqlDatabase,
+  repo: Repository,
+  input: { name: string; kind?: string },
+): CreateTagNamedResult {
+  const name = input.name.trim()
+  if (!name) throw new RecordValidationError('标签名称不能为空')
+  const existing = db.getFirstSync<{ id: string }>('SELECT id FROM tags WHERE name = ? LIMIT 1', name)
+  if (existing) return { id: existing.id, opId: '', created: false }
+  const kind = input.kind?.trim() || 'scene'
+  const dimension = db.getFirstSync<{ id: string }>(
+    'SELECT id FROM tag_dimensions WHERE kind = ? ORDER BY sort_order ASC, name ASC LIMIT 1',
+    kind,
+  )
+  const dimensionId = dimension?.id ?? createDimension(db, repo, { name: DIMENSION_NAMES[kind] ?? kind, kind }).id
+  const tag = createTag(db, repo, { dimensionId, name })
+  return { ...tag, created: true }
+}
+
 /** 重命名标签并入队 upsert_tags（保留维度/父子/排序等既有字段）。 */
 export function renameTag(db: SqlDatabase, repo: Repository, input: { id: string; name: string }): void {
   const existing = repo.get<EntityRow>('tags', input.id)

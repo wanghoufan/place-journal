@@ -1,7 +1,7 @@
 // 共享 UI 基元（TASK-DEV-09）：暖纸配色、移动端触控尺寸、空/加载/错误态。
 // 仅使用 react-native 基础组件，不含业务与网络。
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ActivityIndicator,
   Modal,
@@ -192,6 +192,45 @@ export function TextField({
   )
 }
 
+/**
+ * 现场建标签：一行输入 + 「新建」按钮。组件只管输入与忙碌态，
+ * 落库/勾选由父级在 `onCreate` 里做（Record 与 Entry 编辑共用）。
+ */
+export function InlineTagCreator({
+  label = '现场建标签',
+  placeholder = '新标签名，如：露台',
+  busy = false,
+  onCreate,
+}: {
+  label?: string
+  placeholder?: string
+  busy?: boolean
+  onCreate: (name: string) => void
+}) {
+  const [name, setName] = useState('')
+  const trimmed = name.trim()
+  const submit = () => {
+    if (!trimmed || busy) return
+    onCreate(trimmed)
+    setName('')
+  }
+  return (
+    <View style={styles.tagCreator}>
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        placeholder={placeholder}
+        placeholderTextColor={colors.inkMuted}
+        style={[styles.input, styles.tagCreatorInput]}
+        onSubmitEditing={submit}
+        returnKeyType="done"
+        accessibilityLabel={label}
+      />
+      <AppButton label="新建" variant="secondary" onPress={submit} disabled={!trimmed || busy} loading={busy} />
+    </View>
+  )
+}
+
 export function SyncBadge({ status }: { status: SyncStatusLike | null | undefined }) {
   const tone = syncTone(status)
   const toneStyle = tone === 'ok' ? styles.badgeOk : tone === 'warn' ? styles.badgeWarn : styles.badgeMuted
@@ -365,6 +404,8 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 15,
   },
+  tagCreator: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tagCreatorInput: { flex: 1 },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, alignSelf: 'flex-start' },
   badgeOk: { backgroundColor: colors.mossSoft },
   badgeWarn: { backgroundColor: colors.dangerSoft },

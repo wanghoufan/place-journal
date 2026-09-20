@@ -13,6 +13,7 @@ import {
   ConfirmDialog,
   EmptyState,
   ErrorState,
+  InlineTagCreator,
   LoadingState,
   SectionTitle,
   Stars,
@@ -29,7 +30,7 @@ import {
   type PlaceOption,
   type TagGroup,
 } from '@/features/queries'
-import { deleteEntry, saveRecord } from '@/features/recordActions'
+import { createTagNamed, deleteEntry, saveRecord } from '@/features/recordActions'
 import { createEntryShare } from '@/features/shares'
 import { colors } from '@/theme'
 
@@ -50,6 +51,7 @@ export default function EntryDetailScreen() {
   const [tagIds, setTagIds] = useState<string[]>([])
   const [placeId, setPlaceId] = useState<string>('')
   const [saving, setSaving] = useState(false)
+  const [creatingTag, setCreatingTag] = useState(false)
   const [message, setMessage] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -110,6 +112,22 @@ export default function EntryDetailScreen() {
       setSaving(false)
     }
   }, [budget, detail, load, notePrivate, notePublic, placeId, rating, saving, tagIds, visitDate])
+
+  // 现场建标签（对标 Web EntryDetail）：同名复用，建完立刻勾上，不动已填的表单字段。
+  const addTag = useCallback((name: string) => {
+    setCreatingTag(true)
+    try {
+      const { db, repo } = getAppRepository()
+      const created = createTagNamed(db, repo, { name })
+      setTagGroups(listTagsGrouped(db))
+      setTagIds((ids) => (ids.includes(created.id) ? ids : [...ids, created.id]))
+      setMessage(created.created ? `已新建标签「${name}」并勾选。` : `已有标签「${name}」，已直接勾选。`)
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCreatingTag(false)
+    }
+  }, [])
 
   const doShare = useCallback(() => {
     if (!detail) return
@@ -176,6 +194,7 @@ export default function EntryDetailScreen() {
                 />
               ))}
             </View>
+            <InlineTagCreator busy={creatingTag} onCreate={addTag} />
             <View style={styles.actions}>
               <AppButton label={saving ? '保存中…' : '保存修改'} onPress={save} loading={saving} style={styles.grow} />
               <AppButton label="取消" variant="secondary" onPress={() => setEditing(false)} />

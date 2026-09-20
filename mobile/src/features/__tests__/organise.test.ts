@@ -1,4 +1,5 @@
 import {
+  AI_API_TIMEOUT_MS,
   createDefaultOrganiser,
   createHttpOrganiser,
   createPlaceholderOrganiser,
@@ -32,6 +33,12 @@ describe('organise: 本地启发式占位', () => {
     expect(result.summary).toBe('海边咖啡 · 海口')
     expect(result.rating).toBeUndefined()
     expect(result.matchedTags).toEqual([])
+  })
+
+  it('无 AI 时不清洗：感受原样回填 cleanedTranscript，公开理由留空', () => {
+    const result = localHeuristics({ transcript: ' 晚上很安静，人均45 ', tags })
+    expect(result.cleanedTranscript).toBe('晚上很安静，人均45')
+    expect(result.publicReason).toBe('')
   })
 })
 
@@ -133,6 +140,21 @@ describe('organise: 真网 Organiser（TASK-PWA-AI-01）', () => {
     expect(suggestion.unmatched).toEqual(['露台'])
   })
 
+  it('清洗感受与公开理由分两路回填（三件套分流）', () => {
+    const { impl } = mockFetch({
+      ok: true,
+      result: {
+        cleaned_transcript: '晚上很安静，适合拍照，人均45。',
+        public_reason: '夜景超美，很适合拍照。',
+      },
+    })
+    const organiser = createHttpOrganiser({ baseUrl: 'https://ai.example.com', fetchImpl: impl })
+    return organiser.organise({ transcript: '晚上很安静 嗯 人均45', tags }).then((suggestion) => {
+      expect(suggestion.cleanedTranscript).toBe('晚上很安静，适合拍照，人均45。')
+      expect(suggestion.publicReason).toBe('夜景超美，很适合拍照。')
+    })
+  })
+
   it('501（服务端未配 Key）→ 回退本地占位，不抛出', async () => {
     const { impl } = mockFetch({ ok: false, reason: 'not_configured' }, 501)
     const organiser = createHttpOrganiser({ baseUrl: 'https://ai.example.com', fetchImpl: impl })
@@ -154,6 +176,12 @@ describe('organise: 真网 Organiser（TASK-PWA-AI-01）', () => {
 
     expect(suggestion.mock).toBe(true)
     expect(suggestion.budget).toBe(45)
+  })
+
+  // 超时口径是对外合同：服务端单通道 9s、全局 deadline 13s，Web 侧取 12s。
+  // 客户端若短于服务端 failover 预算，慢通道永远拿不到结果，真网整理等于白接。
+  it('默认客户端超时与服务端预算对齐（12s，不短于 9s 单通道）', () => {
+    expect(AI_API_TIMEOUT_MS).toBe(12000)
   })
 
   it('返回体异常（ok 但无 result）→ 回退本地占位，不抛出', async () => {

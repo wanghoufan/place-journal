@@ -5,9 +5,11 @@ import { createRepository, type Repository } from '../../db/repository'
 import {
   createDimension,
   createTag,
+  createTagNamed,
   deleteEntry,
   deletePlace,
   deleteTag,
+  RecordValidationError,
   renameTag,
   saveRecord,
   setEntryTags,
@@ -236,5 +238,51 @@ describe('recordActions: 纯函数', () => {
     setEntryTags(db, 'e1', ['t1', 't2'])
     setEntryTags(db, 'e1', ['t2', 't3'])
     expect(db.getAllSync('SELECT tag_id FROM entry_tags ORDER BY tag_id')).toEqual([{ tag_id: 't2' }, { tag_id: 't3' }])
+  })
+})
+
+describe('recordActions: 按名建标签（现场建标签 / 未命中一键建）', () => {
+  it('维度缺失时补建「场景」维度再建标签，并入队 upsert_tags', () => {
+    const { db, repo } = setup()
+
+    const result = createTagNamed(db, repo, { name: '露台' })
+
+    expect(result.created).toBe(true)
+    expect(result.opId).not.toBe('')
+    expect(db.getAllSync<{ name: string }>('SELECT name, kind FROM tag_dimensions')).toEqual([
+      { name: '场景', kind: 'scene' },
+    ])
+    const tag = repo.get<{ name: string; parent_id: string | null; demo: number }>('tags', result.id)!
+    expect(tag).toMatchObject({ name: '露台', parent_id: null, demo: 0 })
+    expect(outboxKinds(db).map((o) => o.kind)).toEqual(['upsert_tags', 'upsert_tags'])
+  })
+
+  it('已有 scene 维度时直接落进去，不再补建维度', () => {
+    const { db, repo } = setup()
+    repo.saveCoreEntity('tag_dimensions', { id: 'd1', name: '场景', kind: 'scene', sort_order: 0 })
+
+    const result = createTagNamed(db, repo, { name: '露台' })
+
+    expect(count(db, 'tag_dimensions')).toBe(1)
+    expect(repo.get<{ dimension_id: string }>('tags', result.id)!.dimension_id).toBe('d1')
+  })
+
+  it('同名标签已存在则复用：不重复建、不新增 outbox', () => {
+    const { db, repo } = setup()
+    const dim = createDimension(db, repo, { name: '场景', kind: 'scene' })
+    const existing = createTag(db, repo, { dimensionId: dim.id, name: '露台' })
+    const opsBefore = count(db, 'outbox')
+
+    const result = createTagNamed(db, repo, { name: ' 露台 ' })
+
+    expect(result).toEqual({ id: existing.id, opId: '', created: false })
+    expect(count(db, 'tags')).toBe(1)
+    expect(count(db, 'outbox')).toBe(opsBefore)
+  })
+
+  it('空名抛 RecordValidationError（不落库）', () => {
+    const { db, repo } = setup()
+    expect(() => createTagNamed(db, repo, { name: '   ' })).toThrow(RecordValidationError)
+    expect(count(db, 'tags')).toBe(0)
   })
 })

@@ -1,5 +1,7 @@
 // Record：完整记录表单（地点 + 日期 + 评分 + 预算 + 私密感受 + 公开理由 + 标签多选 + 媒体链）。
 // 全程本地：媒体先复制进持久目录，再与记录、outbox 一起落 SQLite；不接网络。
+// 「交给 AI 整理 →」把当前表单存成内存草稿后进 ai-confirm（对标 Web Record → /confirm）；
+// 「不整理，直接保存记录」为不阻断的手工路径。
 
 import { useCallback, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -17,11 +19,22 @@ import {
 import { createExpoMediaFileSystem } from '@/media/localFiles'
 import { createExpoImageProcessor } from '@/media/processImage'
 import { persistPickedMedia } from '@/media/mediaService'
-import { AppButton, Card, Chip, ErrorState, SectionTitle, Stars, TextField } from '@/components/ui'
-import { leafTags, toggleTagId, validateRecordForm } from '@/features/form'
+import {
+  AppButton,
+  Card,
+  Chip,
+  ErrorState,
+  InlineTagCreator,
+  SectionTitle,
+  Stars,
+  TextField,
+} from '@/components/ui'
+import { Lightbox } from '@/components/Lightbox'
+import { consumeDraftSaved, setDraft } from '@/features/draft'
+import { aiNextGate, leafTags, toggleTagId, validateRecordForm } from '@/features/form'
 import { listPlaceOptions, listTagsGrouped, type PlaceOption, type TagGroup } from '@/features/queries'
 import { todayIso, parseOptionalBudget } from '@/features/format'
-import { saveRecord } from '@/features/recordActions'
+import { createTagNamed, saveRecord } from '@/features/recordActions'
 import { colors } from '@/theme'
 
 const MAX_PHOTOS = 9
@@ -45,6 +58,8 @@ export default function RecordScreen() {
   const [tagIds, setTagIds] = useState<string[]>([])
 
   const [assets, setAssets] = useState<PickedAsset[]>([])
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const [creatingTag, setCreatingTag] = useState(false)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedEntryId, setSavedEntryId] = useState<string | null>(null)
@@ -131,8 +146,20 @@ export default function RecordScreen() {
     setNotePublic('')
     setTagIds([])
     setAssets([])
+    setPreviewIndex(null)
     setSavedEntryId(null)
   }, [])
+
+  // AI 整理页保存成功后回到本页：清空表单一次，避免同一批内容被重复保存
+  // （对标 Web Record 路由切换即卸载复位；本页在 tab 栈里常驻，只能靠保存信号显式复位）。
+  useFocusEffect(
+    useCallback(() => {
+      if (consumeDraftSaved()) {
+        resetForm()
+        setMessage('AI 整理页已保存这条记录。')
+      }
+    }, [resetForm]),
+  )
 
   // 设为封面：把点中的照片移到第一位（首图即封面，与 Web 一致）。
   const setCover = useCallback((index: number) => {
@@ -144,6 +171,62 @@ export default function RecordScreen() {
       return next
     })
   }, [])
+
+  // 现场建标签：同名标签直接复用，建完立刻勾上（对标 Web Record/EntryDetail 的现场建标签）。
+  const handleCreateTag = useCallback((name: string) => {
+    setCreatingTag(true)
+    try {
+      const { db, repo } = getAppRepository()
+      const created = createTagNamed(db, repo, { name })
+      setTagGroups(listTagsGrouped(db))
+      setTagIds((ids) => (ids.includes(created.id) ? ids : [...ids, created.id]))
+      setMessage(created.created ? `已新建标签「${name}」并勾选。` : `已有标签「${name}」，已直接勾选。`)
+    } catch (error) {
+      setMessage(`新建标签失败：${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setCreatingTag(false)
+    }
+  }, [])
+
+  // 下一步：把当前表单存成内存草稿再进 ai-confirm；取不到草稿时那边回退独立输入，不阻断保存。
+  // 门槛与按钮文案同出一源（aiNextGate，对标 Web Record）：按钮已按同一口径禁用，
+  // 这里的判断只兜住「渲染到点击之间状态变了」的竞态，正常点不到。
+  const handleNextToAi = useCallback(() => {
+    const validation = validateRecordForm({
+      placeId: placeId ?? undefined,
+      newPlaceName: newMode ? newName : undefined,
+      visitDate,
+      tagIds,
+    })
+    if (validation) {
+      setMessage(validation)
+      return
+    }
+    // 地点/日期已过上面那条；这里只可能缺内容（口径与按钮 canNext 完全一致）。
+    const gate = aiNextGate({
+      placeId: placeId ?? undefined,
+      newPlaceName: newMode ? newName : undefined,
+      notePrivate,
+      notePublic,
+      photoCount: assets.length,
+    })
+    if (!gate.canNext) {
+      setMessage('添加照片或写写感受，再交给 AI 整理。')
+      return
+    }
+    setDraft({
+      assets,
+      placeId: placeId ?? undefined,
+      newPlace: newMode ? { name: newName.trim(), area: newArea.trim() || undefined } : undefined,
+      visitDate,
+      rating,
+      budget: parseOptionalBudget(budget),
+      notePrivate: notePrivate.trim() || undefined,
+      notePublic: notePublic.trim() || undefined,
+      tagIds,
+    })
+    router.push('/ai-confirm')
+  }, [assets, budget, newArea, newMode, newName, notePrivate, notePublic, placeId, rating, tagIds, visitDate])
 
   const handleSave = useCallback(async () => {
     if (saving) return
@@ -206,22 +289,29 @@ export default function RecordScreen() {
     : places.slice(0, 6)
   const selectedPlace = places.find((p) => p.id === placeId)
   const selectableTags = leafTags(tagGroups)
+  // 按钮三态（文案即门槛，对标 Web Record）：缺地点 → 先选择地点；缺内容 → 添加照片或写写感受。
+  const aiGate = aiNextGate({
+    placeId: placeId ?? undefined,
+    newPlaceName: newMode ? newName : undefined,
+    notePrivate,
+    notePublic,
+    photoCount: assets.length,
+  })
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
-      {/* 照片置顶（对标 Web Record）：拍照/多选 → 缩略图 → 点非首图设为封面 */}
+      {/* 照片置顶（对标 Web Record）：拍照/多选 → 缩略图 → 点图开灯箱预览，封面走灯箱/角标显式操作 */}
       <Card style={styles.section}>
         <SectionTitle right={<Text style={styles.muted}>{assets.length}/{MAX_PHOTOS}</Text>}>照片（第一张为封面）</SectionTitle>
         <View style={styles.photoGrid}>
           {assets.map((asset, index) => (
             <View key={`${asset.uri}-${index}`} style={styles.photoWrap}>
               <Pressable
-                accessibilityRole={index === 0 ? 'image' : 'button'}
-                accessibilityLabel={index === 0 ? '封面照片' : '设为封面'}
-                disabled={index === 0}
-                onPress={() => setCover(index)}
+                accessibilityRole="button"
+                accessibilityLabel={`预览第 ${index + 1} 张照片`}
+                onPress={() => setPreviewIndex(index)}
               >
                 <Image source={{ uri: asset.uri }} style={styles.photo} contentFit="cover" />
               </Pressable>
@@ -256,6 +346,16 @@ export default function RecordScreen() {
           {saving ? <ActivityIndicator color={colors.terra} /> : null}
         </View>
       </Card>
+
+      <Lightbox
+        visible={previewIndex != null}
+        images={assets.map((asset) => asset.uri)}
+        index={previewIndex ?? 0}
+        onIndex={setPreviewIndex}
+        onClose={() => setPreviewIndex(null)}
+        coverIndex={0}
+        onSetCover={setCover}
+      />
 
       <Card style={styles.section}>
         <SectionTitle>地点</SectionTitle>
@@ -342,7 +442,7 @@ export default function RecordScreen() {
       <Card style={styles.section}>
         <SectionTitle right={<Text style={styles.muted}>已选 {tagIds.length}</Text>}>标签</SectionTitle>
         {selectableTags.length === 0 ? (
-          <Text style={styles.muted}>还没有标签，可到「标签」页新建。</Text>
+          <Text style={styles.muted}>还没有标签，可在下方现场新建。</Text>
         ) : (
           <View style={styles.chipWrap}>
             {selectableTags.map((tag) => (
@@ -355,17 +455,19 @@ export default function RecordScreen() {
             ))}
           </View>
         )}
+        <InlineTagCreator busy={creatingTag} onCreate={handleCreateTag} />
       </Card>
 
       <Card style={styles.section}>
-        <SectionTitle>AI 整理</SectionTitle>
+        <SectionTitle right={<Text style={styles.muted}>可改</Text>}>下一步：AI 整理</SectionTitle>
         <Text style={styles.muted}>
-          V1 移动端暂不接真模型（需 AI Key ＋ 后续 Task），organise 保持本地占位；可先进去体验占位整理。
+          把上面的照片、地点、感受一起带进整理页：AI 清洗感受（仅自己可见）＋ 写一句公开理由，逐项确认后才入库；
+          超时或未联网会退回本地推测并明确标注，也可以随时改成「不整理，直接保存」。
         </Text>
-        <AppButton label="进入 AI 整理（占位）" variant="secondary" onPress={() => router.push('/ai-confirm')} />
+        <AppButton label={aiGate.label} onPress={handleNextToAi} disabled={!aiGate.canNext} />
       </Card>
 
-      <AppButton label={saving ? '保存中…' : '保存记录'} onPress={handleSave} loading={saving} />
+      <AppButton label={saving ? '保存中…' : '不整理，直接保存记录'} variant="secondary" onPress={handleSave} loading={saving} />
       {savedEntryId ? (
         <AppButton label="查看已保存记录" variant="ghost" onPress={() => router.push(`/entry/${savedEntryId}`)} />
       ) : null}

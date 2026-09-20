@@ -22,6 +22,30 @@
 - permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：本轮三次用户口令改道——codebuddy复活验证、QA改走codebuddy（codex额度耗尽）、双机分发后改回单设备（Note12Pro专用）；override表均未改。
 - 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过（2026-09-20 大交接收尾）——`AGENTS.md`附录2行已改；归属不明0；残留删0个（6个未跟踪全是合法交付）；未决U-14～U-19已列（U-14本HANDOFF已收：黑屏/演示/Tailscale/Chrome实测进前段＋执行链；U-15本清单已收；U-16 DEV-15无review/qa doc待TM定；U-17 temp旧提示词过时待定；U-18 DEV_EXPERIENCE可写人冲突＋U-10引注失效待recorder；U-19旧U-6/7/8/9/11/12/13仍有效）；本轮仅本地改动，**未 commit／未 push**。neat-freak本轮复核修订（2026-09-20晚）：新增三文档已入库（CODE_REVIEW_改名回退／BUGS_改名回退／AI模型Key配置丨2026-09-20）、E-002补写与AGENTS硬守则两处对齐（冲突口径已注）、归属不明0、残留M×3（AGENTS／DEV_EXPERIENCE／DISPATCH-LOG，与39a49ae已推一致）。
 
+## 小交接快照（2026-09-20深夜·暂停封存，用户口令「暂停工作」）
+
+### 1. 当前的工作进展
+
+- **已收工**：T062收口PASS／按钮对比度／同步接线／AI三件套（默认deepseek-flash＋PWA设置页＋mobile接线）／DeepSeek本地＋线上真调PASS／改名回退根治＋线上computer-use实测PASS／jcp洁癖＋commit f0a621c已推origin/master。P0=0。
+- **在途（未收工）**：**TASK-DEV-16A**（安卓记录链照抄PWA：Draft→AI确认＋清洗/理由分流＋建标签＋灯箱）——builder被用户中途叫停，无报告；工作树留有半截活（M：record.tsx／ai-confirm.tsx／entry/[id].tsx／organise.ts／recordActions.ts／ui.tsx＋单测；新文件：Lightbox.tsx＋lightbox.test／draft.ts＋draft.test；均未验证、未commit）。
+- PWA↔安卓差距审计已出：P0十余项，分三批（16A记录链／16B详情改名搬家灯箱／16C画廊Find Mine设置），详见TM记录。
+- 用户自有文件2个（根目录「作业提交材料…Place Journal App…html/md」）一律不碰。
+- 模拟器：本机 AVD `Pixel9`（`~/.android/avd`，emulator二进制在homebrew `/opt/homebrew/share/android-commandlinetools/emulator/emulator`，toolchain内无emulator）；Metro 8084现役。**红线：另一台真机在使用中，暂停期间禁碰一切真机（adb devices见IN9LZTAYV4UGU4JF／192.168.31.63:5555一律不动，只操作emulator-5554）。**
+
+### 2. 下一步的任务
+
+1. 恢复后先确认emulator-5554在线（`adb devices`只认emulator-5554），Metro 8084＋`adb -s emulator-5554 reverse`。
+2. 续派DEV-16A builder（codebuddy）：先接上半截活（typecheck＋jest 283基线），做完走reviewer→qa（模拟器）→supervisor。
+3. 依次16B／16C；真机（Note12Pro）空出来后再做真机测试。
+4. 按E-002：修完默认推＋发＋亲自线上/模拟器实测。
+
+### 3. 注意事项及相关规矩
+
+- 禁真机：只动emulator-5554；禁reset/checkout/stash；commit/push听用户（E-002修完默认推发）。
+- 密钥只进.mobile/.env／Vercel；不碰用户作业提交材料2文件；不改*旧版-*.md；不碰Services/DockerData/DockerBackups。
+- 读盘序：AGENTS→角色卡→override表→本HANDOFF→DEV_EXPERIENCE→任务目标最后。
+- 每轮末三行心跳：目标/剩P0/下一步。
+
 ## 本次小交接快照（2026-09-20）
 
 ### 1. 当前的工作进展

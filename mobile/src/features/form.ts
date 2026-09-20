@@ -19,6 +19,32 @@ export function validateRecordForm(values: RecordFormValues): string | null {
   return null
 }
 
+/**
+ * 「交给 AI 整理」按钮三态（对标 Web `src/pages/Record.tsx` 的 hasPlace/hasContent/canNext）：
+ * 门槛写进按钮文案本身，用户点不动时当场就能看到原因，不必靠页面顶部那行提示
+ * （记录页很长，顶部提示在按钮处根本看不见，表现为「点了没反应」）。
+ *
+ * 内容口径与 Web 逐字一致：私密感受 / 公开理由 / 照片，任一有值即算有内容
+ * —— 只填「公开分享理由」也必须能进整理页，漏掉它就会静默拦截。
+ */
+export function aiNextGate(values: {
+  placeId?: string
+  newPlaceName?: string
+  notePrivate?: string
+  notePublic?: string
+  photoCount: number
+}): { hasPlace: boolean; hasContent: boolean; canNext: boolean; label: string } {
+  const hasPlace = !!values.placeId || !!(values.newPlaceName ?? '').trim()
+  const hasContent =
+    !!(values.notePrivate ?? '').trim() || !!(values.notePublic ?? '').trim() || values.photoCount > 0
+  return {
+    hasPlace,
+    hasContent,
+    canNext: hasPlace && hasContent,
+    label: !hasPlace ? '先选择地点，再交给 AI 整理 →' : !hasContent ? '添加照片或写写感受' : '交给 AI 整理 →',
+  }
+}
+
 /** 勾选/取消一个标签 id（保持原顺序，新值追加尾部）。 */
 export function toggleTagId(ids: string[], id: string): string[] {
   return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]
