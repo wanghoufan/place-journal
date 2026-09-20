@@ -10,6 +10,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLinkingURL } from 'expo-linking';
 
 import { getAuthService, isSupabaseConfigured, type CallbackOutcome } from '@/supabase';
+import { describeCallbackOwnerMismatch } from '@/features/account';
 
 type Tone = 'pending' | 'ok' | 'warn';
 
@@ -25,7 +26,7 @@ function describe(outcome: CallbackOutcome): UiState {
     case 'duplicate':
       return { tone: 'ok', text: '该登录回调已处理过，无需重复操作。' };
     case 'owner_mismatch':
-      return { tone: 'warn', text: '当前账号与本地数据绑定账号不一致，同步已阻断。请重登原账号或导出后切号。' };
+      return { tone: 'warn', text: describeCallbackOwnerMismatch() };
     case 'terminal_reauth':
       return { tone: 'warn', text: '登录未完成，请回 Mine 重新登录。' };
     default:

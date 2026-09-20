@@ -1,38 +1,29 @@
-// Mine：登录入口 + 同步状态（成功/待传/失败/停放原文）+ 冲突入口。只读本地，登录为用户主动操作。
+// Mine：登录入口 + 同步入口（owner 门禁 → push/pull）+ 同步状态（成功/待传/失败/停放原文）+ 冲突入口。
+// 同步只在已登录时由本页自动触发；owner 未绑定/mismatch 由 `runSyncEntry` 按 account.ts 文案阻断。
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 
 import { getAppRepository } from '@/db/app'
 import { AppButton, Card, ConfirmDialog, ErrorState, LoadingState, SectionTitle, SyncBadge } from '@/components/ui'
-import { getAuthService, isSupabaseConfigured, type LoginOutcome } from '@/supabase'
+import { getAuthService, isSupabaseConfigured, type LoginState } from '@/supabase'
+import {
+  accountActions,
+  describeBindOwnerConfirm,
+  describeBindOwnerConfirmTitle,
+  describeBindOwnerDone,
+  describeLogin,
+  describeOwnerMismatch,
+  describeUnboundHint,
+} from '@/features/account'
+import { describeSyncEntry, runSyncEntry } from '@/features/syncEntry'
+import { createNativeSyncEngines } from '@/sync/nativeSync'
 import { getSyncSummary, type SyncSummary } from '@/features/status'
 import { localCounts, shareSnapshotCount } from '@/features/queries'
 import { clearDemo, demoCount, seedDemo } from '@/features/demo'
 import { formatDateTime } from '@/features/format'
 import { colors } from '@/theme'
-
-function describeLogin(outcome: LoginOutcome): string {
-  switch (outcome.status) {
-    case 'succeeded':
-      return '登录成功，已开始同步。'
-    case 'already_signed_in':
-      return '已是登录状态。'
-    case 'duplicate':
-      return '该回调已处理过。'
-    case 'owner_mismatch':
-      return '当前账号与本地数据绑定账号不一致，同步已阻断。请重登原账号。'
-    case 'terminal_reauth':
-      return '登录未完成，请重新登录。'
-    case 'cancelled':
-      return '已取消登录。'
-    case 'invalid':
-      return '登录回调无效，请重试。'
-    default:
-      return '登录未完成，请重试。'
-  }
-}
 
 export default function MineScreen() {
   const [summary, setSummary] = useState<SyncSummary | null>(null)
@@ -40,31 +31,90 @@ export default function MineScreen() {
   const [shareCount, setShareCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loginState, setLoginState] = useState<LoginState | null>(null)
   const [accountMessage, setAccountMessage] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [confirmBind, setConfirmBind] = useState(false)
   const [demoTotal, setDemoTotal] = useState(0)
   const [demoBusy, setDemoBusy] = useState(false)
   const [demoMessage, setDemoMessage] = useState('')
   const [confirmClear, setConfirmClear] = useState(false)
+  const syncBusyRef = useRef(false)
 
-  const load = useCallback(() => {
+  const refreshLoginState = useCallback(async (): Promise<LoginState | null> => {
+    if (!isSupabaseConfigured()) {
+      setLoginState(null)
+      return null
+    }
+    try {
+      const next = await getAuthService().getLoginState()
+      setLoginState(next)
+      return next
+    } catch {
+      // Auth 侧不可用不阻断本机页面：退回「登录态未知」，绑定/退出按钮不显示。
+      setLoginState(null)
+      return null
+    }
+  }, [])
+
+  const refreshLocal = useCallback(() => {
+    const { db } = getAppRepository()
+    setSummary(getSyncSummary(db))
+    setCounts(localCounts(db))
+    setShareCount(shareSnapshotCount(db))
+    setDemoTotal(demoCount(db))
+    setError(null)
+  }, [])
+
+  /**
+   * 同步入口：已登录才走 `runSyncEntry`（owner 未绑定/mismatch 在入口内按 account.ts 文案阻断，
+   * 不自动迁移、不跨号切号）；未登录一律不发起，退出登录只清 auth 态。
+   */
+  const runSync = useCallback(async (state: LoginState | null): Promise<boolean> => {
+    if (syncBusyRef.current || state?.status !== 'signed_in') return false
+    syncBusyRef.current = true
     try {
       const { db } = getAppRepository()
-      setSummary(getSyncSummary(db))
-      setCounts(localCounts(db))
-      setShareCount(shareSnapshotCount(db))
-      setDemoTotal(demoCount(db))
-      setError(null)
+      const result = await runSyncEntry({
+        db,
+        loginState: state,
+        isConfigured: isSupabaseConfigured(),
+        createEngines: createNativeSyncEngines,
+      })
+      // 阻断文案已在账号卡片就地显示同一句（account.ts），不重复贴一行。
+      setSyncMessage(result.status === 'blocked' ? '' : describeSyncEntry(result))
+      return result.status === 'ok'
+    } catch (err) {
+      setSyncMessage(`同步失败：${err instanceof Error ? err.message : String(err)}`)
+      return false
+    } finally {
+      syncBusyRef.current = false
+    }
+  }, [])
+
+  const load = useCallback(async () => {
+    try {
+      refreshLocal()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
-  }, [])
+    const loginStateNow = await refreshLoginState()
+    if (await runSync(loginStateNow)) {
+      // 同步成功后本机状态（待传/冲突/上次同步）已变，就地再读一次。
+      try {
+        refreshLocal()
+      } catch {
+        // 二次读取失败不覆盖同步结果，下次 focus 会重取。
+      }
+    }
+  }, [refreshLocal, refreshLoginState, runSync])
 
   useFocusEffect(
     useCallback(() => {
-      load()
+      void load()
     }, [load]),
   )
 
@@ -79,7 +129,7 @@ export default function MineScreen() {
       setAccountMessage(`登录失败：${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusy(false)
-      load()
+      await load()
     }
   }, [busy, load])
 
@@ -88,14 +138,31 @@ export default function MineScreen() {
     setBusy(true)
     try {
       await getAuthService().signOut()
+      setSyncMessage('')
       setAccountMessage('已退出登录（本地数据保留）。')
     } catch (err) {
       setAccountMessage(`退出失败：${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusy(false)
-      load()
+      await load()
     }
   }, [busy, load])
+
+  const handleBindOwner = useCallback(async () => {
+    if (busy || loginState?.status !== 'signed_in') return
+    const userId = loginState.userId
+    setBusy(true)
+    try {
+      await getAuthService().bindOwner(userId)
+      setAccountMessage(describeBindOwnerDone(userId))
+    } catch (err) {
+      setAccountMessage(`绑定失败：${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setConfirmBind(false)
+      setBusy(false)
+      await load()
+    }
+  }, [busy, loginState, load])
 
   const handleSeed = useCallback(() => {
     if (demoBusy) return
@@ -112,7 +179,7 @@ export default function MineScreen() {
       setDemoMessage(`播种失败：${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setDemoBusy(false)
-      load()
+      void load()
     }
   }, [demoBusy, load])
 
@@ -128,19 +195,21 @@ export default function MineScreen() {
     } finally {
       setConfirmClear(false)
       setDemoBusy(false)
-      load()
+      void load()
     }
   }, [demoBusy, load])
 
   if (loading) return <LoadingState text="正在读取本机状态…" />
-  if (error) return <ErrorState message={error} onRetry={load} />
+  if (error) return <ErrorState message={error} onRetry={() => void load()} />
   if (!summary || !counts) return null
 
   const configured = isSupabaseConfigured()
   const result = summary.lastSyncResult
+  const actions = accountActions(loginState)
+  const signedInUserId = loginState?.status === 'signed_in' ? loginState.userId : null
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Card style={styles.section}>
         <SectionTitle
           right={
@@ -156,16 +225,30 @@ export default function MineScreen() {
         <Line label="上次同步">{result ? `${formatDateTime(result.at)} · 成功 ${result.done} / 失败 ${result.failed}` : formatDateTime(summary.lastSyncAt)}</Line>
         {result?.error ? <Text style={styles.warnText}>最近报错：{result.error}</Text> : null}
         {configured ? (
-          <View style={styles.actions}>
-            <AppButton label={busy ? '处理中…' : '使用 Google 登录'} onPress={handleLogin} loading={busy} style={styles.flex} />
-            {summary.owner ? (
-              <AppButton label="退出登录" variant="secondary" onPress={handleSignOut} disabled={busy} />
+          <>
+            <View style={styles.actions}>
+              <AppButton label={busy ? '处理中…' : '使用 Google 登录'} onPress={handleLogin} loading={busy} style={styles.grow} />
+              {actions.showSignOut ? (
+                <AppButton label="退出登录" variant="secondary" onPress={handleSignOut} disabled={busy} />
+              ) : null}
+            </View>
+            {actions.blocked ? <Text style={styles.warnText}>{describeOwnerMismatch(summary.owner)}</Text> : null}
+            {actions.showBindOwner && signedInUserId ? (
+              <>
+                <Text style={styles.hint}>{describeUnboundHint()}</Text>
+                <AppButton
+                  label={busy ? '处理中…' : '确认绑定本机数据'}
+                  onPress={() => setConfirmBind(true)}
+                  disabled={busy}
+                />
+              </>
             ) : null}
-          </View>
+          </>
         ) : (
           <Text style={styles.hint}>本机可离线使用；配置云端后才可登录与跨设备同步。</Text>
         )}
         {accountMessage ? <Text style={styles.warnText}>{accountMessage}</Text> : null}
+        {syncMessage ? <Text style={styles.muted}>{syncMessage}</Text> : null}
       </Card>
 
       <Card style={styles.section}>
@@ -221,7 +304,7 @@ export default function MineScreen() {
         </Text>
         {demoMessage ? <Text style={styles.warnText}>{demoMessage}</Text> : null}
         <View style={styles.actions}>
-          <AppButton label={demoBusy ? '处理中…' : '播种演示数据'} onPress={handleSeed} loading={demoBusy} style={styles.flex} />
+          <AppButton label={demoBusy ? '处理中…' : '播种演示数据'} onPress={handleSeed} loading={demoBusy} style={styles.grow} />
           {demoTotal > 0 ? (
             <AppButton label="清除演示数据" variant="secondary" onPress={() => setConfirmClear(true)} disabled={demoBusy} />
           ) : null}
@@ -251,6 +334,15 @@ export default function MineScreen() {
       </Pressable>
 
       <ConfirmDialog
+        visible={confirmBind}
+        title={describeBindOwnerConfirmTitle()}
+        message={signedInUserId ? describeBindOwnerConfirm(signedInUserId) : ''}
+        confirmLabel="确认绑定"
+        onCancel={() => setConfirmBind(false)}
+        onConfirm={() => void handleBindOwner()}
+      />
+
+      <ConfirmDialog
         visible={confirmClear}
         title="清除全部演示数据？"
         message="只删除带 demo 标记的演示地点/记录/照片；你自己创建的记录与标签不受影响。"
@@ -273,7 +365,9 @@ function Line({ label, children }: { label: string; children: React.ReactNode })
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.paper },
+  // screen 供 ScrollView 铺底；grow 只留给需要等宽/撑满的子元素（按钮），不带背景，避免盖掉 variant 底色。
+  screen: { flex: 1, backgroundColor: colors.paper },
+  grow: { flex: 1 },
   container: { padding: 16, gap: 14, paddingBottom: 48 },
   section: { gap: 8 },
   line: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },

@@ -209,6 +209,10 @@ export default function Mine() {
         <div className="card-paper p-4 space-y-2.5 text-sm">
           <p className="font-bold text-base">🔒 隐私与 AI</p>
           <Line label="AI 整理（大模型）">{aiLine()}</Line>
+          <Link to="/ai-settings" className="flex justify-between items-center gap-2 active:scale-[0.99] transition">
+            <span className="text-inkmuted">模型名设置</span>
+            <span className="text-terra">三家通道 ›</span>
+          </Link>
           <Line label="地图（高德）">{amapConfigured() ? '已配置' : '未配置 · 分享地图用示意底图'}</Line>
           <p className="text-xs text-inkmuted leading-relaxed pt-1">
             所有密钥只保存在服务端环境变量；分享页只展示字段白名单快照，绝不包含私密笔记、原始语音与精确坐标。

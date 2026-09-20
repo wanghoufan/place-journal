@@ -67,7 +67,7 @@ export default function AiConfirmScreen() {
       if (suggestion.budget != null) setBudget(String(suggestion.budget))
       if (suggestion.summary) setSummary(suggestion.summary)
       if (suggestion.matchedTags.length > 0) setTagIds((ids) => [...new Set([...ids, ...suggestion.matchedTags])])
-      setStatusMessage('本地占位整理完成（未联网），请逐项确认修改后保存。')
+      setStatusMessage(suggestion.mock ? '本地占位整理完成（未联网），请逐项确认修改后保存。' : 'AI 整理完成，请逐项确认修改后保存。')
       setPhase('review')
       return
     }

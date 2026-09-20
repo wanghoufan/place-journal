@@ -81,6 +81,11 @@ export type RecoveryOutcome =
   | { status: 'terminal_reauth'; errorClass: AuthErrorClass }
   | { status: 'no_session' }
 
+/** 只读登录态（`getLoginState` 的返回；不改指纹、不触网）。 */
+export type LoginState =
+  | { status: 'signed_in'; userId: string; binding: OwnerBindingState }
+  | { status: 'signed_out' }
+
 export interface AuthService {
   /** HD-02 基线精确 redirect（落盘见 docs/AUTH_REDIRECT.md）。 */
   getRedirectUri(): string
@@ -100,6 +105,8 @@ export interface AuthService {
   unbindOwner(): Promise<void>
   /** Sync 侧 push/pull 门禁（后续接入）。 */
   getOwnerGate(currentUserId: string | null): Promise<OwnerGateResult>
+  /** 只读当前登录态＋owner 绑定结论（不写指纹；Mine 绑定/退出 UI 的门控依据）。 */
+  getLoginState(): Promise<LoginState>
   /** 只读诊断用（不含 code/token）。 */
   listFingerprints(): Promise<OAuthFingerprintRecord[]>
 }
@@ -316,6 +323,17 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
     unbindOwner: () => Promise.resolve(deps.ownerStore.setBoundOwner(null)),
 
     getOwnerGate: async (currentUserId) => ownerGateForSync(await readOwner(), currentUserId),
+
+    // 只读：有 session 才判绑定，未登录一律 signed_out（owner 已绑不改结论）。
+    getLoginState: async () => {
+      const session = await safeGetSession()
+      if (!session) return { status: 'signed_out' }
+      return {
+        status: 'signed_in',
+        userId: session.user.id,
+        binding: evaluateOwnerBinding(await readOwner(), session.user.id),
+      }
+    },
 
     listFingerprints: () => deps.fingerprints.list(),
   }

@@ -90,7 +90,7 @@ export default function PlaceDetailScreen() {
   if (!detail) return <EmptyState icon="🗺" title="地点不存在或已被删除" />
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
       <Card style={styles.section}>
@@ -99,7 +99,7 @@ export default function PlaceDetailScreen() {
             <TextField label="地点名称" value={name} onChangeText={setName} />
             <TextField label="区域" value={area} onChangeText={setArea} placeholder="如：海口 · 西海岸" />
             <View style={styles.actions}>
-              <AppButton label="保存" onPress={save} style={styles.flex} />
+              <AppButton label="保存" onPress={save} style={styles.grow} />
               <AppButton label="取消" variant="secondary" onPress={() => setEditing(false)} />
             </View>
           </View>
@@ -112,8 +112,8 @@ export default function PlaceDetailScreen() {
               <Stars value={detail.bestRating} size={14} />
             </View>
             <View style={styles.actions}>
-              <AppButton label="编辑地点" variant="secondary" onPress={startEdit} style={styles.flex} />
-              <AppButton label="删除地点" variant="danger" onPress={() => setConfirmDelete(true)} style={styles.flex} />
+              <AppButton label="编辑地点" variant="secondary" onPress={startEdit} style={styles.grow} />
+              <AppButton label="删除地点" variant="danger" onPress={() => setConfirmDelete(true)} style={styles.grow} />
             </View>
           </>
         )}
@@ -172,7 +172,9 @@ export default function PlaceDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.paper },
+  // screen 供 ScrollView 铺底；grow 只留给子元素撑满（按钮），不带背景，避免盖掉 variant 底色。
+  screen: { flex: 1, backgroundColor: colors.paper },
+  grow: { flex: 1 },
   container: { padding: 16, gap: 14, paddingBottom: 48 },
   section: { gap: 8 },
   stack: { gap: 10 },

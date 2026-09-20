@@ -9,6 +9,7 @@ import AiConfirm from './pages/AiConfirm'
 import EntryDetail from './pages/EntryDetail'
 import PlaceDetail from './pages/PlaceDetail'
 import TagsPage from './pages/TagsPage'
+import AiSettings from './pages/AiSettings'
 import ShareSingle from './pages/ShareSingle'
 import ShareList from './pages/ShareList'
 
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/entry/:id" element={<EntryDetail />} />
         <Route path="/place/:id" element={<PlaceDetail />} />
         <Route path="/tags" element={<TagsPage />} />
+        <Route path="/ai-settings" element={<AiSettings />} />
         {/* 公开分享路由：无需登录 */}
         <Route path="/s/p/:slug" element={<ShareSingle />} />
         <Route path="/s/l/:slug" element={<ShareList />} />

@@ -55,14 +55,18 @@ export function AppButton({
       disabled={blocked}
       style={({ pressed }) => [
         styles.button,
+        // 调用方 style 只用于布局（flex/margin 等）：排在 variant 之前，避免它带的
+        // backgroundColor 盖掉 primary 的 terra → 纸色底 + 白字（TASK-DEV-UI对比度 的根因）。
+        style,
         variantStyles[variant],
         pressed && !blocked ? styles.buttonPressed : null,
-        blocked ? styles.buttonDisabled : null,
-        style,
+        blocked ? variantDisabledStyles[variant] : null,
       ]}
     >
       {loading ? <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? colors.white : colors.ink} /> : null}
-      <Text style={[styles.buttonText, variantTextStyles[variant]]}>{label}</Text>
+      <Text style={[styles.buttonText, variantTextStyles[variant], blocked ? variantDisabledTextStyles[variant] : null]}>
+        {label}
+      </Text>
     </Pressable>
   )
 }
@@ -72,6 +76,19 @@ const variantStyles: Record<ButtonVariant, object> = {
   secondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line },
   danger: { backgroundColor: colors.danger },
   ghost: { backgroundColor: 'transparent' },
+}
+// 禁用态用实色 + 不透明文字：不给整体加 opacity，否则白字会跟底色一起变淡而看不清。
+const variantDisabledStyles: Record<ButtonVariant, object> = {
+  primary: { backgroundColor: colors.terraDeep },
+  secondary: { backgroundColor: colors.cardDeep },
+  danger: { backgroundColor: colors.dangerSoft },
+  ghost: { backgroundColor: 'transparent' },
+}
+const variantDisabledTextStyles: Record<ButtonVariant, object> = {
+  primary: { color: colors.white },
+  secondary: { color: colors.inkMuted },
+  danger: { color: colors.danger },
+  ghost: { color: colors.inkMuted },
 }
 const variantTextStyles: Record<ButtonVariant, object> = {
   primary: { color: colors.white },
@@ -99,7 +116,7 @@ export function Chip({
       accessibilityState={{ selected: active, disabled }}
       onPress={onPress}
       disabled={disabled}
-      style={[styles.chip, active && styles.chipActive, dangerTone && styles.chipDanger, disabled && styles.buttonDisabled]}
+      style={[styles.chip, active && styles.chipActive, dangerTone && styles.chipDanger, disabled && styles.chipDisabled]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive, dangerTone && styles.chipTextDanger]}>{label}</Text>
     </Pressable>
@@ -315,7 +332,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   buttonPressed: { opacity: 0.85 },
-  buttonDisabled: { opacity: 0.45 },
+  chipDisabled: { opacity: 0.45 },
   buttonText: { fontSize: 15, fontWeight: '700' },
   chip: {
     minHeight: 36,

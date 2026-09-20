@@ -2,7 +2,7 @@
 
 > 旧版字段（governance-state / Evidence / Human Gate / Promotion / Dispatch ID）已废弃，不填。
 
-- Captured at（YYYY-MM-DD HH:MM）：2026-09-19 12:37 初稿（大交接封存；neat-freak 已过）；同日续修订——构建路线更新（EAS 10-01 前停用，改本地构建）、治理两案落地（runtime 枚举＋计划文件改名）
+- Captured at（YYYY-MM-DD HH:MM）：2026-09-20 14:00 大交接（用户口令「【大交接】开发先到这里暂时结束」）；本轮 DEV-14/15、PWA-01 均收工，详见下方「本次小交接快照」§1～§3（已重写）；历史大交接与审计记录保留
 - PROJECT_PHASE：（DEVELOP——暂停中，恢复后继续；基线锁定 V1.5 不动）
 - PLAN_VERSION：（PRODUCT_PLAN_V1.5）
 - PLAN_READINESS_SCORE：（92）
@@ -11,19 +11,144 @@
 - CHANGE_REQUEST：（NONE）
 - Stage ID（本阶段叫什么）：DEVELOP-安卓APP连续开发（基线 V1.5；MVP Gate T001–T085 为内部检查点）
 - 剩 P0（没完的才列，多一条都不行）：
-  - **T062 真机登录（阻塞中）**——需 Development Build；Expo Go 做不了自定义 scheme 回跳，根因与实证见 §1.3。**构建路线＝本地构建（EAS 10-01 前停用，用户 2026-09-19 定）；动构建前须用户批准。**
-- 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：暂停封存，**无在途 Task**。上一 Task=TASK-DEV-13 已收工 PASS（reviewer 打回 1 次已闭环；supervisor 口径打回 0/2）。本轮新增 T062 阻塞诊断（根因已定位，未派 builder）。
-- 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：DEV-12 收工；DEV-13 初审打回→返工→R2放行→qa→supervisor 全闭环收工。本轮 neat-freak 文档对齐收工（本窗口 subagent）。
-- 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；AI 真整理未接；neat-freak 提案 P-1～P-10 未拍板（见 §3.5）。
-- docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`docs/prompts/Orca 通用编排者持续推进协议.md`（十卡→十一卡）、`docs/templates/归位表.md`（账本/软链表述改不可过期口径）、本 HANDOFF；`DISPATCH-LOG.jsonl` +1 行（89→90，neat-freak 派工）；收尾续改——`.gitignore`（+/temp/）、`AGENTS.md`（runtime 枚举+`codebuddy`）、`docs/roles/supervisor.md`（脚本枚举同步）、`docs/pm/PRODUCT_PLAN_V1.0.md`→`V1.5.md`（改名+文头状态注）、`mobile/src/db/schema.ts:5`（仅注释内计划文件路径）、`docs/handoff/接续恢复开发提示词丨2026-09-19.md`（新增，永久留档）；P-1 落地 7 处——`AGENTS.md`×2、根 `编排者提示词.md`×2、`docs/roles/experience-recorder.md`、`docs/handoff/HANDOFF.template.md`、`docs/templates/归位表.md`。
-- 下一步（Next Single Action）：见 **§2.1**——解 T062 阻塞（构建路线已定＝本地构建；动构建/装环境等用户批准）。
-- 人要拍什么板（列出来问，不问不许开工）：见 **§2.4**（4 项，含 commit/push 目标分支）。
-- permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：—
-- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过——机械错位 4 处已修；归属不明文件 **无**；未决 10 项已列（§3.5）；临时文件无残留；**已 commit + push**（ee4aad6 → origin/master 主干）。同日续：P-1/P-2/P-3/P-4/P-10 已决并落地（含两包同步三处 diff 全零），余 P-5/P-6/P-7/P-8/P-9 为低危提案，不阻塞，待有空处理。
+  - 无。PWA-AI 本地＋线上真调均 PASS（2026-09-20晚）：Vercel 变量由本窗口 CLI 落定（DEEPSEEK_API_KEY 三环境占位后用户网页填值、DEEPSEEK_MODEL=deepseek-flash、AI_PROVIDER_ORDER=deepseek）；`vercel redeploy` 重发生产（35s Ready）；线上 `/api/ai-organize` 实测 200（provider=deepseek，人均40/拍照命中/conf0.85）。注：线上跑的是旧代码（新设置页等 push 后才有），旧码认环境变量模型名故照样通。
+- 已收口（2026-09-20晚，用户拍板）：**T062 PASS**——真机三连3/3（绑定持久＋退出数据保留地点6/7/照片14/标签26不变＋错号登录callback阻断原话）；附带同步实跑成功6/失败2；证据本窗口adb直驱＋截图（待入库）。
+- 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：**停工封存，无在途 Task**。本轮收工链：TASK-DEV-14 PASS（绑定确认UI＋退出/文案/mismatch；reviewer打回P1×3闭环；回归260全绿；真机①②③PASS；supervisor 0/2）→ TASK-DEV-15 PASS（双机分发，新老两机均Success；后用户改令只调Note12Pro）→ TASK-PWA-01 PASS（AI三件套：洗感受/筛标签/2-3句公开理由；summary退役；reviewer打回P1×1闭环；qa回归PASS；supervisor 0/2）→ 黑屏根治（dev-client默认读8081，曾错载补光灯包，`tcp:8081→8084`映射后正常）→ 演示7条已播（Note12Pro画廊可见）→ Chrome浏览器实测（确认页降级链全对：4星/50元/3标签/理由空等手填，未点保存零写入）。codebuddy通道已恢复（本轮6派全EXIT=0）；codex额度约13:43恢复（未经验证）。
+- 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：builder×3（codebuddy/deepseek：DEV-14初版＋返工、PWA-01初版＋返工，均直调无session）／reviewer×2（本窗口subagent：CODE_REVIEW_DEV-14、CODE_REVIEW_PWA-01）／qa回归×2（codebuddy，用户口令因codex额度耗尽改道，表未改）／qa真机×1（本窗口adb直驱DEV-14）／supervisor×2（opencode直调，均PASS 0/2）／neat-freak×1（本窗口subagent，大交接收尾，AGENTS附录2行，未碰DEV_EXPERIENCE见U-18）。Metro 现役 **8084**（pid 19893，/status 200；8083已停，8082他项，3000/3100禁用）；Note12Pro 映射 `8081→8084`＋`8083`＋`8084`（恢复原状前勿动Expo Go补光灯）；PWA vite 5173（pid 50004，`--host 0.0.0.0`，本机/Tailscale`100.125.100.15`/局域网`192.168.31.60`均200）。
+- 未闭环评审意见（code-reviewer/qa 留的还没改的）：P2-1/P2-2/P2-3（后续）；review P2 backlog（PWA-01 P2×2：80字/300字口径、exporter注释）；qa观察项（O-1～O-3、O-1～O-5）；文档提案余 P-7/P-8/P-9（U-9/U-11相关）；未决 **U-1～U-19**（U-1～U-3/U-5闭环，U-4可判闭环，余见§3.5及本次U-14～U-19）。
+- docs 落盘清单（本轮新增/改了哪几个 docs 文件）：`AGENTS.md`（附录2行：09-20三项收工＋待办改T062判定，neat-freak改）、本 HANDOFF（大交接重写前段）、`docs/model/DISPATCH-LOG.jsonl`（DEV-14×6＋DEV-15×1＋PWA-01×4＋neat待记，used恒主）、`docs/model/TASK-MODEL-LOG.jsonl`（＋2行DEV-14/PWA-01）、`docs/review/CODE_REVIEW_DEV-14.md`＋`CODE_REVIEW_PWA-01.md`、`docs/qa/BUGS_DEV-14.md`＋`BUGS_PWA-01.md`、业务代码 `mobile/`6文件＋`mobile/src/features/account.ts`(+单测)、根`api/`1＋`src/`7。
+- 下一步（Next Single Action）：**等用户恢复口令**。恢复后按序：①T062收口判定（拍板）；②DEV-16手机端照抄PWA（画廊详情＋记录页，用户已喊停工前投诉，方案待定）；③PWA-AI真调（配Key部署验）；④P2-1/P2-2/P2-3、AI真整理、分享真云发布。
+- 人要拍什么板（列出来问，不问不许开工）：①T062收口放行否；②DEV-16是否开工（手机端照抄PWA）；③QA长期走codebuddy是否改override表（本轮两次用户口头改道，表未动）；④工作树20+改动是否commit＋push origin/master（早前jcp口令后被打断，未执行）；⑤改系统代理/shell/签名/卸载设备应用另行确认。
+- permission_request（可选：原文/决策/回执一句，首版可先记自然语言一句）：本轮三次用户口令改道——codebuddy复活验证、QA改走codebuddy（codex额度耗尽）、双机分发后改回单设备（Note12Pro专用）；override表均未改。
+- 收尾记一笔（neat-freak：文档对齐了没、临时文件清了没、未决列完没；neat 派完后 TM 补记，若已落盘则追加修订行）：neat-freak 已过（2026-09-20 大交接收尾）——`AGENTS.md`附录2行已改；归属不明0；残留删0个（6个未跟踪全是合法交付）；未决U-14～U-19已列（U-14本HANDOFF已收：黑屏/演示/Tailscale/Chrome实测进前段＋执行链；U-15本清单已收；U-16 DEV-15无review/qa doc待TM定；U-17 temp旧提示词过时待定；U-18 DEV_EXPERIENCE可写人冲突＋U-10引注失效待recorder；U-19旧U-6/7/8/9/11/12/13仍有效）；本轮仅本地改动，**未 commit／未 push**。
+
+## 本次小交接快照（2026-09-20）
+
+### 1. 当前的工作进展
+
+**1.1 计划与阶段（不动）**
+- 基线仍是 `PRODUCT_PLAN_V1.5`，Readiness 92，`PLAN_GATE=APPROVED`，Phase=`DEVELOP`（本交接末暂停封存，恢复后继续）。
+- 仓库根＝当前 `master` 目录，分支 `wanghoufan/master`，HEAD＝`e996cc6`（**以 `git log` 为准**）；远程只有 `origin/master`。
+- 分工表为本项目**实文件**（非软链）；表内 builder＝codebuddy/deepseek-v4.1-flash，但该**通道本轮实测不可用**（见 §1.6）。
+
+**1.2 T062 真机段：六项已拿到真机证据（可复跑）**
+
+| 项 | 结果 | 证据（原始输出摘要） |
+|---|---|---|
+| 本地 Development Build 构建 | PASS | `./gradlew :app:assembleDebug` → `BUILD SUCCESSFUL in 8m 22s`，EXIT=0 |
+| APK 实体 | PASS | `mobile/android/app/build/outputs/apk/debug/app-debug.apk`，262,468,309 字节，mtime 2026-09-20 09:34:30（本轮新建） |
+| 包名/签名/scheme（包内） | PASS | `package: name='com.wanghoufan.placejournal'`，targetSdk 36，`CN=Android Debug`；manifest 内 `com.wanghoufan.placejournal` scheme 存在 |
+| 安装到真机 | PASS | `firstInstallTime=2026-09-20 10:37:33`（走「推包＋设备侧 `pm install`」，见 §1.4） |
+| 自定义 scheme 回跳＋Google 登录 | PASS | 点「使用 Google 登录」→ Chrome 选账号 → 回 App 渲染 `auth/callback`：「登录成功，请回到 Mine 确认绑定本地数据。」 |
+| SecureStore session 冷启动恢复 | PASS | 杀进程重进后点登录 → **「已是登录状态。」**（未再开浏览器） |
+| 重复 deep link 幂等 | PASS | 重投同一 callback → **「该登录回调已处理过，无需重复操作。」** |
+
+- 安装后 `pm query-activities -a android.intent.action.VIEW -d "com.wanghoufan.placejournal://auth/callback"` → **1 activities found → `com.wanghoufan.placejournal.MainActivity`**（上一轮此处返回空，即当时根因；现已消除）。
+
+**1.3 【本轮新发现】首次绑定确认 UI 缺失——阻断 T062 剩余两项（P1）**
+- 真机现象：登录成功后 Mine 页显示 `本机归属＝未绑定`、橙色文案「登录成功，已开始同步。」，且**看不到「退出登录」**。
+- 代码证据（全仓可核）：
+  - `mobile/src/supabase/auth.ts:98` `bindOwner()`、`:100` `unbindOwner()` **零 UI 调用点**（只有定义与 `__tests__/auth.test.ts`）。
+  - `mobile/app/(tabs)/mine.tsx:161`：「退出登录」按钮以 `summary.owner` 为条件渲染 → owner 恒为 null → 永不出现。
+  - `mobile/src/sync/nativeSync.ts:34`：owner 为空直接抛 `OWNER_NOT_BOUND`；`mobile/src/sync/push.ts:181`、`pull.ts:188`：`assertOwnerForSync` 未绑定即整体阻断。
+  - `mobile/app/auth/callback.tsx:24`：让用户「回 Mine 确认绑定本地数据」，但 Mine **没有该入口**。
+  - 另注：`createNativeSyncEngines()` 全仓**无调用方**，同步引擎当前未接线（属后续任务范围）。
+- 后果：T062 DoD 里的 **owner binding 阻断走查** 与 **logout 不删业务数据** 在真机上无法执行 → T062 不能收口；T077 以 T062 为前置，一并受阻。
+
+**1.4 构建与安装链路（可复现，含一个 MIUI 坑）**
+- 代理 `127.0.0.1:7897` 本轮可用；上一轮卡死的构件 `androidx.compose.ui:ui-tooling-preview-android:1.11.0-beta02` 走代理 `http=200`。
+- 工具链：JDK 17.0.20.1（JAVA_HOME 已设）、`ANDROID_HOME=/Users/zzymima0000/android-toolchain/sdk`、build-tools 36.0.0、minSdk 24 / compileSdk=targetSdk=36。
+- 构建命令（本轮实测走通）：`cd mobile/android && ./gradlew --no-daemon -Dorg.gradle.jvmargs='-Xmx4096m -XX:MaxMetaspaceSize=1536m' -Dkotlin.daemon.jvm.options='-Xmx2048m' :app:assembleDebug`
+- **MIUI 坑（重要）**：`adb install` 被系统拒绝 → `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`（HyperOS 2.0 的「USB 安装」未开）。
+  绕过方式（本轮实测成功）：`adb push` 到 `/data/local/tmp/` → `adb shell pm install -r -t <path>` → 返回 `Success`；**装完必须删掉临时包**（本轮已删）。
+- Metro 本轮起在 **8083**（8082 被另一项目 `027-ing-蛋白质计算器` 占用，按规矩未动）；`adb reverse tcp:8083 tcp:8083` 已建（**会掉，恢复时先查**）。
+
+**1.5 设备与端口**
+- 目标真机＝红米 Note12 Pro（`ruby` / 22101316C / Android 14 / HyperOS V816 / OS2.0），serial `indq5xfi6hovay4d`。
+- 同机同时挂着 `IN9LZTAYV4UGU4JF`：**只操作 `indq5xfi6hovay4d`，不碰其他设备**（本轮已遵守）。
+- 本轮截取的界面证据暂存 `/tmp/t062_*.png`（未入库；如需留档由后续决定）。
+
+**1.6 通道故障（本轮最影响下一步的一条）**
+- builder 表定通道 **codebuddy 当前不可用**：在窗口内嵌套调用 `codebuddy --model deepseek-v4.1-flash -y -p ...` 时，子进程启动即 `EADDRINUSE: address already in use 127.0.0.1:63928`——该端口被外层会话独占；子进程随后零网络、零落盘、零输出挂起（实测 48 分钟 CPU 仅 2.45 秒）。
+- 已试无效：清空继承的 `CODEBUDDY_*`/`CLAUDE_*` 环境变量、显式改 `CODEBUDDY_SERVICE_PROXY_URL` 端口、`</dev/null`；换成 `--permission-mode` 未试。
+- 处置：终止进程（工作树无残留），DISPATCH-LOG 记 FAIL，任务定义保留待重派。
+- 结论：**换通道＝换模型范畴，须用户拍板**；下轮不得自行改表。
+
+**1.7 其他实测观察（待评审判定，未派工）**
+- Metro 日志有 `WARN WebCrypto API is not supported. Code challenge method will default to use plain instead of sha256.`——即 PKCE 的 `code_challenge_method` 退化为 `plain` 而非 S256，安全相关，交 code-reviewer 判。
+- 冷启动时用纯 `auth/callback` scheme 直接唤起会被 **dev launcher** 截走（Development Build 环境特性，release 包不受影响）；R4-03 的「换码后杀进程、冷启动 callback」真机路径本轮**未完成**，需在可加载 JS 的前提下另设计验证步骤。
+- 未跟踪文件：无；工作树改动＝`AGENTS.md`、`docs/handoff/HANDOFF.md`、`docs/model/DISPATCH-LOG.jsonl`、`mobile/package.json`、`mobile/package-lock.json`（后两个为上一轮既有）。
+
+### 2. 下一步的任务
+
+> 按序做，不要跳。第 1 条是唯一入口，不解决它后面都推不动。
+
+1. **先解通道，再把 TASK-DEV-14 重派出去（第一件事）**
+   - 任务目标（`TASK-DEV-14`，任务单原文曾在 `/tmp/TASK-DEV-14.md`，重开窗口后按本段重写即可）：补「首次绑定确认」的用户可见入口，锁死范围不扩散。
+     - ① 已登录且 owner 未绑定时，Mine 显示「确认绑定本机数据」按钮 → 二次确认 → 调 `bindOwner(当前 userId)` 写 `bound_owner_user_id` → 刷新为「已绑定 xxxxxxxx…」。
+     - ② 绑定后出现「退出登录」按钮（`signOut()`，不删本地业务数据）。
+     - ③ 文案纠正：owner 未绑定时不得再显示「登录成功，已开始同步。」。
+     - ④ mismatch 时只显示阻断原因＋「重登原账号」路径；**不实现**导出后清空切号（HD-04 已降级延后），不做自动迁移。
+     - ⑤ 约束：不碰根 Web、不改 `mobile/android/`、不改包名/scheme/redirect、不 commit/push、不改其他角色 docs、既有 240 tests 不许回归、新增逻辑要有单测。
+   - 通道选择（需用户拍板）：等 codebuddy 通道可用后按表重派；否则请用户在「换通道/换模型」与「允许本窗口 subagent 代做」之间定一次，**不许自行改 override 表**。
+2. **builder 交付后走 Phase2 主链**：code-reviewer（本窗口 subagent）→ qa（真机段走本窗口 adb 直驱）→ supervisor（opencode）→ TM 收齐。
+3. **回真机收口 T062 剩余两项**（重装新 APK 后）：
+   - 冷启动 → 登录 → 点「确认绑定本机数据」→ 二次确认 → `本机归属` 变**已绑定**；
+   - 杀进程重进 → 仍显示已绑定（持久化验证）；
+   - 点「退出登录」→ 本地业务数据**不删**（先播种 2 条记录再退，退出后条数不变）；
+   - owner binding 阻断走查（`bound_owner_user_id` 与当前账号不一致时 push/pull 被阻断；cancel/重启不改 owner 与数据）——这条要先解决 §1.3 的「同步引擎未接线」才能端到端看到效果，若仍不可见则按「代码+单测证据＋真机 UI 证据」记录并说明边界。
+4. **T062 全项收口后**再动后续：P2-1/P2-2/P2-3、AI 真整理接入、分享真云发布。**T062 未闭环前不得宣称本阶段完成。**
+5. 每次派工收工，TM 往 `docs/model/DISPATCH-LOG.jsonl` 记一行（`used` 恒填「主」）；任务真收工再往 `docs/model/TASK-MODEL-LOG.jsonl` 记一行。
+
+### 3. 注意事项及相关规矩
+
+**3.1 阶段与红线**
+- 基线锁死 `PRODUCT_PLAN_V1.5`，Phase=`DEVELOP`；**不改计划**（Plan 变更只走 Change C＋Human Approval）。本轮判定：补绑定 UI 属「已完成计划内任务的缺口」，**不是** Change A/B/C。
+- 未经明确指令**禁** `git commit`／`git push`。**禁** `git reset`／`checkout`／`stash`：工作树里有本轮未提交成果（`AGENTS.md`、本 HANDOFF、DISPATCH-LOG、两份 `mobile/package*`），误清理＝事故。
+- 不碰 `Services/`、`DockerData/`、`DockerBackups`；不改 `*旧版-*.md` 封存件；密钥只进 `mobile/.env`（gitignored），不入 Git/文档/聊天/截图；`service_role` 绝不碰。
+
+**3.2 真机与安装（本轮踩过的坑，别再踩）**
+- 只操作 `indq5xfi6hovay4d`；不卸载设备应用；不动同机其他 App 与设备。
+- `adb install` 在 HyperOS 上会被拒（`INSTALL_FAILED_USER_RESTRICTED`）：改走 `adb push` → `adb shell pm install -r -t`；**不要**去关用户手机的「USB 安装」以外乱改系统设置，装完删临时包。
+- Metro 端口**恢复时现查**（本轮 8083；8082 属别的项目、3000/3100 禁用）；`adb reverse tcp:<port> tcp:<port>` 会掉，失联先重建。
+- 冷启动加载 App 的方式：`am force-stop` 后用
+  `am start -a android.intent.action.VIEW -d "com.wanghoufan.placejournal://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A<port>"`；纯 `auth/callback` scheme 冷启会被 dev launcher 截走（§1.7）。
+- UI 自动化取坐标一律用 `uiautomator dump` 读真实 `bounds`，别按截图目测（本轮目测点错过两次）。
+
+**3.3 构建与环境**
+- 必须用项目自带 `mobile/android/gradlew`；不依赖全局 Gradle；**不许**靠升级 compileSdk/targetSdk/AGP/Kotlin 绕问题。
+- 不删 `mobile/android/` 原生目录、不执行 `npx expo prebuild --clean`、不清 Gradle/npm 缓存。
+- 不改 `~/.zshrc`／`~/.zprofile`／IDE 设置；不改正式签名/keystore。
+- 构建成功 ≠ 通过：必须同时核 **APK 实体（大小/时间/生成于本轮）＋包名＋签名＋目标设备安装状态＋scheme activity 注册**。
+- 构建日志里的 deprecated 警告、`NODE_ENV` 未设置、npm audit 提示不构成失败依据。
+
+**3.4 治理与账本**
+- 派工前读根 `USER_MODEL_OVERRIDE.md`，精确 ID 照抄；表定通道必须走通道直调，禁本窗口套娃代做；**换人只听用户口令**。
+- 本窗口 subagent 直派的角色（code-reviewer／qa 真机段／experience-recorder／neat-freak／product-reviewer）实际会继承窗口模型，派工账本要照实写实际模型，不照抄表列值（本轮 neat-freak 已按此记）。
+- 缓存五条照旧：读盘序 AGENTS→角色卡→override→HANDOFF→`docs/handoff/DEV_EXPERIENCE.md`→任务目标最后；动态信息押后。
+
+**3.5 文档未决（neat-freak 本轮产出，均未动手；TM 已据此重写本 HANDOFF 前段）**
+- U-1～U-3 **已闭环**：本 HANDOFF §1／§3 已按实测改写（APK 已产出、设备已安装、代理 7897 可用、Metro 改「现查端口」）。
+- U-4：构建命令以 §1.4 实测行为准（`--no-daemon` ＋自定义 jvmargs）。
+- U-5 **已闭环**：本 HANDOFF「未闭环评审意见」行已改为「余 P-7/P-8/P-9＋本轮 U-1～U-13」。
+- U-6：根 `AGENTS.md` 附录两处引「HANDOFF §0」（现无 §0）＋「恢复必读」顺序与 ORCA 冲突 → 待用户定「指向新快照」还是「整行标历史」。
+- U-7：根 `HANDOFF.md:20` Node 路径仍写 `22.22.2-2`（dated 旧快照，属「搬了会 broken 的留原地」映射件）→ 待定「修路径」还是「加历史注」。
+- U-8：`docs/handoff/接续恢复开发提示词丨2026-09-19.md` 多条已过期（Java/SDK/dev-client/Metro 8082/工作树干净），它却是给人粘贴用的 → 待用户定「改原文」还是「加已被 09-20 取代注」。
+- U-9（原 P-7）：`docs/roles/planner.md:6`、`senior-expert.md:4` 硬写模型 ID，其余 9 卡写「见 override 表」→ 是否统一口径，用户定。
+- U-10（原 P-8）：`docs/handoff/DEV_EXPERIENCE.md:52` 引 `HANDOFF.md:25` 与 `PRODUCT_PLAN_V1.0.md:224` 均已失效；该文件唯一可写人＝experience-recorder → 待派 recorder。
+- U-11（原 P-9）：`docs/qa/BUGS_DEV-13.md:38` 行号引注过期；`mobile/docs/AUTH_REDIRECT.md §2` 仍写「HD-03 待办」与已加白矛盾 → 待派 owner/recorder。
+- U-12：本轮 `AGENTS.md` 新增的「本目实文件例外」使项目 AGENTS 与母版分叉 → **两包不同步**，需要时在母版同步记一行（属治理改动，走用户确认）。
+- U-13：上轮大交接 §1.4 证据路径写 `t062/`，实际目录名是 `docs/qa/evidence-android-t062`（低危）。
+- U-14 **已闭环（进前段＋执行链）**：黑屏根治（8081默认端口映射）、演示7条已播、PWA切0.0.0.0+Tailscale可访、Chrome实测通过。
+- U-15 **已闭环（前段落盘清单已补全）**。
+- U-16：DEV-15（双机分发）仅账本一行，无review/qa doc——恢复后TM定是否补。
+- U-17：`temp/接续恢复开发提示词丨2026-09-20.md` 写「重派DEV-14」（已过时）——改原文还是作废，用户定。
+- U-18：DEV_EXPERIENCE唯一可写人冲突（AGENTS＋文件头定experience-recorder，本轮口令称neat-freak）；U-10引注失效仍在——待口令澄清后派recorder。
+- U-19：旧U-6/U-7/U-8/U-9/U-11/U-12/U-13仍有效（U-1～U-3/U-5已闭环；U-4可判闭环）。
 
 ## 恢复读盘（全体系唯一顺序，别乱）
 
-1. AGENTS；2. 角色卡；3. 根 `USER_MODEL_OVERRIDE.md`；4. 本 HANDOFF；5. 经验文档＝`docs/handoff/DEV_EXPERIENCE.md`（本项目定案，原“根 经验一句话.md”弃用，见 §3.5 P-1）；6. 任务目标放最后。
+1. AGENTS；2. 角色卡；3. 根 `USER_MODEL_OVERRIDE.md`；4. 本 HANDOFF；5. 经验文档＝`docs/handoff/DEV_EXPERIENCE.md`（本项目定案，原“根 经验一句话.md”弃用）；6. 任务目标放最后。
 冲突才扩大读。
 
 ---

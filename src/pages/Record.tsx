@@ -148,12 +148,12 @@ export default function Record() {
             placeholder="点这里，用微信语音输入法开始说…"
             value={transcript} onChange={(e) => setTranscript(e.target.value)}
           />
-          <p className="font-bold text-lg text-left mt-5">公开分享理由 <span className="text-xs font-normal text-inkmuted">· 分享时展示</span></p>
-          <p className="text-xs text-inkmuted mt-1 text-left">写给朋友看的一句话，不写也行；原样展示，AI 不改它</p>
+          <p className="font-bold text-lg text-left mt-5">公开分享理由 <span className="text-xs font-normal text-inkmuted">· 选填 · 分享时展示</span></p>
+          <p className="text-xs text-inkmuted mt-1 text-left">写给朋友看的话；留空也没事，AI 会按你的感受总结一句，整理后你还能改</p>
           <textarea
             ref={noteRef}
             className="field-input min-h-[110px] mt-3 text-[16px] leading-relaxed overflow-hidden"
-            placeholder="如：夜景超美，适合拍照，人均也不贵…"
+            placeholder="（选填）如：夜景超美，适合拍照，人均也不贵…不填就交给 AI 总结"
             value={notePublic} onChange={(e) => setNotePublic(e.target.value)}
           />
         </div>

@@ -144,7 +144,7 @@ export default function EntryDetailScreen() {
   const tagName = (tagId: string) => tagGroups.flatMap((g) => g.tags).find((t) => t.id === tagId)?.name ?? tagId
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
       {editing ? (
@@ -177,7 +177,7 @@ export default function EntryDetailScreen() {
               ))}
             </View>
             <View style={styles.actions}>
-              <AppButton label={saving ? '保存中…' : '保存修改'} onPress={save} loading={saving} style={styles.flex} />
+              <AppButton label={saving ? '保存中…' : '保存修改'} onPress={save} loading={saving} style={styles.grow} />
               <AppButton label="取消" variant="secondary" onPress={() => setEditing(false)} />
             </View>
           </View>
@@ -256,8 +256,8 @@ export default function EntryDetailScreen() {
           <AppButton label="分享这条记录" onPress={doShare} />
 
           <View style={styles.actions}>
-            <AppButton label="编辑" onPress={startEdit} style={styles.flex} />
-            <AppButton label="删除" variant="danger" onPress={() => setConfirmDelete(true)} style={styles.flex} />
+            <AppButton label="编辑" onPress={startEdit} style={styles.grow} />
+            <AppButton label="删除" variant="danger" onPress={() => setConfirmDelete(true)} style={styles.grow} />
           </View>
         </>
       )}
@@ -276,7 +276,9 @@ export default function EntryDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.paper },
+  // screen 供 ScrollView 铺底；grow 只留给子元素撑满（按钮），不带背景，避免盖掉 variant 底色。
+  screen: { flex: 1, backgroundColor: colors.paper },
+  grow: { flex: 1 },
   container: { padding: 16, gap: 14, paddingBottom: 48 },
   section: { gap: 10 },
   stack: { gap: 10 },

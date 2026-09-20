@@ -21,7 +21,7 @@ export default function AiConfirm() {
 
   const [rating, setRating] = useState<number | undefined>()
   const [budget, setBudget] = useState<number | undefined>()
-  const [summary, setSummary] = useState('')
+  const [transcript, setTranscript] = useState('')
   const [notePublic, setNotePublic] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [unmatched, setUnmatched] = useState<string[]>([])
@@ -41,16 +41,19 @@ export default function AiConfirm() {
           const res = r.result
           setRating(res.score)
           setBudget(res.budget)
-          setSummary(res.summary ?? '')
-          // 公开理由只取记录页单独填的那份，不拿感受自动填充，两块互不混淆
-          setNotePublic(d.notePublic ?? '')
+          // 整理后感受：初始值＝AI 清洗版（去口水词、顺标点），无则回退原文，用户可改
+          setTranscript(res.cleaned_transcript || d.transcript || '')
+          // 公开理由：用户在记录页填过就保留他填的，没填才用 AI 版兜底；两块互不混淆
+          setNotePublic(d.notePublic?.trim() ? d.notePublic : (res.public_reason ?? ''))
           setSelectedTagIds(res.matched_tags.map((n) => tagList.find((t) => t.name === n)?.id).filter(Boolean) as string[])
           setUnmatched(res.unmatched_suggestions ?? [])
         } else {
           const h = localHeuristics({ transcript: d.transcript, tags: tagList })
           setAiMock(true)
           setAiNote(r.reason === 'not_configured' ? 'AI 未配置（需在部署环境填入大模型 Key）。已按本地推测预填，请逐项确认修改。' : `AI 调用失败：${r.message}。已按本地推测预填。`)
-          setRating(h.score); setBudget(h.budget); setSummary(h.summary ?? ''); setNotePublic(d.notePublic ?? '')
+          setRating(h.score); setBudget(h.budget)
+          setTranscript(h.cleaned_transcript || d.transcript || '')
+          setNotePublic(d.notePublic?.trim() ? d.notePublic : (h.public_reason ?? ''))
           setSelectedTagIds(h.matched_tags.map((n) => tagList.find((t) => t.name === n)?.id).filter(Boolean) as string[])
           setUnmatched(h.unmatched_suggestions ?? [])
         }
@@ -95,7 +98,8 @@ export default function AiConfirm() {
       const entryId = uuid()
       const entry: Entry = {
         id: entryId, placeId, visitDate: new Date().toISOString().slice(0, 10),
-        rating, budget, transcript: draft!.transcript, notePublic, summary,
+        // summary 退役（TASK-PWA-01）：不再写入，详情页改以 notePublic 优先展示
+        rating, budget, transcript: transcript.trim() || undefined, notePublic: notePublic.trim() || undefined,
         tagIds: selectedTagIds, sync: 'local', createdAt: now, updatedAt: now,
       }
       const pid: string = placeId
@@ -129,14 +133,13 @@ export default function AiConfirm() {
           </div>
         </div>
 
-        {/* 转写引用 */}
-        {draft.transcript && (
-          <div className="card-paper px-4 py-3 relative">
-            <span className="text-terra text-2xl leading-none">“</span>
-            <p className="text-[15px] leading-relaxed px-2">{draft.transcript}</p>
-            <span className="text-terra text-2xl leading-none float-right -mt-1">”</span>
-          </div>
-        )}
+        {/* 三件套之一：整理后感受（AI 清洗版为初始值，可改；仅自己可见） */}
+        <div className="card-paper p-4">
+          <p className="font-bold mb-1.5">📝 整理后感受 <span className="text-xs font-normal text-inkmuted">· 仅自己可见</span></p>
+          <textarea className="field-input min-h-[130px] text-[15px] leading-relaxed" value={transcript}
+            onChange={(e) => setTranscript(e.target.value)}
+            placeholder="AI 会去掉口水词、补上标点，原意不动；不满意就直接改" />
+        </div>
 
         {aiNote && <div className="rounded-xl bg-terrasoft text-terradeep text-xs px-3 py-2 leading-relaxed">{aiNote}</div>}
         {aiMock && !aiNote && <div className="rounded-xl bg-terrasoft text-terradeep text-xs px-3 py-2">本地推测结果，请确认修改后保存。</div>}
@@ -184,10 +187,10 @@ export default function AiConfirm() {
             </div>
           )}
           <div className="py-3">
-            <p className="font-bold mb-1.5">📝 一句摘要</p>
-            <input className="field-input" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="如：夜晚舒服、适合拍照的平价咖啡厅" />
-            <p className="font-bold mb-1.5 mt-3">💬 公开推荐理由（分享时展示）</p>
-            <textarea className="field-input min-h-[60px]" value={notePublic} onChange={(e) => setNotePublic(e.target.value)} placeholder="写给朋友看的一句话" />
+            {/* 三件套之二：公开理由——用户自填优先，没填用 AI 版；可改可清空 */}
+            <p className="font-bold mb-1.5">💬 公开分享理由（分享时展示）</p>
+            <textarea className="field-input min-h-[80px]" value={notePublic} onChange={(e) => setNotePublic(e.target.value)} placeholder="写给朋友看的 2-3 句，可随意改；留空则分享时不展示" />
+            <p className="text-xs text-inkmuted mt-1.5">记录页没填的话，这里预填的是 AI 按你的感受总结的版本。</p>
           </div>
         </div>
 

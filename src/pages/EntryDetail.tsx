@@ -54,6 +54,8 @@ export default function EntryDetail() {
   const place = data.places.find((p) => p.id === entry.placeId)
   const media = data.media.filter((m) => m.entryId === entry.id).sort((a, b) => a.order - b.order)
   const tagNames = entry.tagIds.map((tid) => data.tags.find((t) => t.id === tid)).filter(Boolean)
+  // 顶部竖杠那句：公开分享理由优先，回退旧摘要、再回退感受，保证不空白（TASK-PWA-01）
+  const headline = entry.notePublic || entry.summary || entry.transcript
   // 仅叶子标签可选（父标签是分组容器，与 AiConfirm 口径一致）
   const selectableTags = data.tags.filter((t) => !data.tags.some((x) => x.parentId === t.id))
 
@@ -237,7 +239,7 @@ export default function EntryDetail() {
                 <textarea ref={fTranscriptRef} className="field-input min-h-[70px] overflow-hidden" value={fTranscript} onChange={(e) => setFTranscript(e.target.value)} />
               </div>
               <div>
-                <p className="text-sm font-bold mb-1.5">公开推荐理由（分享时展示）</p>
+                <p className="text-sm font-bold mb-1.5">公开分享理由（分享时展示，即详情页顶部那句）</p>
                 <textarea ref={fNotePublicRef} className="field-input min-h-[60px] overflow-hidden" value={fNotePublic} onChange={(e) => setFNotePublic(e.target.value)} />
               </div>
               <div>
@@ -285,19 +287,13 @@ export default function EntryDetail() {
               </div>
             )}
 
-            {/* 摘要与笔记 */}
+            {/* 感受与笔记：顶部竖杠＝公开理由（旧记录回退摘要/感受）；公开理由不再在底部重复一块 */}
             <div className="card-paper p-4 space-y-3">
-              {entry.summary && <p className="border-l-4 border-terra/70 pl-3 font-bold">{entry.summary}</p>}
+              {headline && <p className="border-l-4 border-terra/70 pl-3 font-bold">{headline}</p>}
               {entry.transcript && (
                 <div>
                   <p className="text-xs text-inkmuted mb-1">我的感受</p>
                   <p className="text-[15px] leading-relaxed">{entry.transcript}</p>
-                </div>
-              )}
-              {entry.notePublic && (
-                <div>
-                  <p className="text-xs text-inkmuted mb-1">公开推荐理由（分享时展示）</p>
-                  <p className="text-[15px] leading-relaxed">{entry.notePublic}</p>
                 </div>
               )}
             </div>

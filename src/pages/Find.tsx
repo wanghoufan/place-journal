@@ -130,7 +130,7 @@ export default function Find() {
                   <Cover m={data.media.find((m) => m.id === h.best.coverMediaId) ?? data.media.find((m) => m.entryId === h.best.id) ?? { id: '', entryId: '', placeId: '', order: 0, sync: 'local' }} className="w-24 h-20 rounded-xl shrink-0" />
                   <div className="min-w-0 text-left">
                     <p className="font-bold text-[16px] truncate">{h.place.name} <span className="text-terra text-xs">✦</span></p>
-                    <p className="text-xs text-inkmuted mt-1">{h.best.budget != null ? <>人均 ¥{h.best.budget} · </> : ''}{h.best.summary ?? h.best.transcript ?? '—'}</p>
+                    <p className="text-xs text-inkmuted mt-1">{h.best.budget != null ? <>人均 ¥{h.best.budget} · </> : ''}{h.best.notePublic ?? h.best.summary ?? h.best.transcript ?? '—'}</p>
                   </div>
                 </button>
                 <button aria-label="选择" className={`w-6 h-6 rounded-full border-2 shrink-0 ${picked.has(h.place.id) ? 'bg-terra border-terra text-white text-xs' : 'border-line'}`}

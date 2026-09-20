@@ -42,7 +42,7 @@ Phase1（PLAN）：planner（Sol）→product-reviewer（Research Reviewer）→
 ## 模型
 
 - 数据库审核（db-admin，专项，不占 Phase 主链）：TM 直派直收（审查材料→三态结论），结论记 HANDOFF，不经过 Human Gate；supervisor 抽查结论格式与三态口径。
-每次派前读根 `USER_MODEL_OVERRIDE.md`，有就用它（11行以表为准）。精确 ID，照抄执行（TM行例外：开窗口时定）。表内无备用列：换人用户直接改母版真源表；DISPATCH 的 used 恒填主，supervisor 抽查实派==表。换谁、用到几时，用户定。改表后必须真调验证可用才生效（烧额度先经用户批；只读验名免费先行，不通即停，表不动）。分工表软链制：各项目根表均为软链，指母版真源，改母版即全项目同步（禁拷实文件；跨机器断链时拷实文件并记 HANDOFF）。
+每次派前读根 `USER_MODEL_OVERRIDE.md`，有就用它（11行以表为准）。精确 ID，照抄执行（TM行例外：开窗口时定）。表内无备用列：换人用户直接改母版真源表；DISPATCH 的 used 恒填主，supervisor 抽查实派==表。换谁、用到几时，用户定。改表后必须真调验证可用才生效（烧额度先经用户批；只读验名免费先行，不通即停，表不动）。分工表软链制：各项目根表均为软链，指母版真源，改母版即全项目同步（禁拷实文件；跨机器断链时拷实文件并记 HANDOFF）。**本目例外（2026-09-18 用户令）**：本项目根表已转实文件（旧软链已删，备份 `USER_MODEL_OVERRIDE.md.旧版-2026-09-13`），软链制仅约束未转实文件的项目。
 
 ## 升级（普通→高级，只对当次任务）
 
@@ -95,7 +95,7 @@ npm install
 npm run dev        # http://localhost:5173  改 .env.local 后需重启 vite
 npm run build && npm run preview -- --port 4175
 ```
-Node: `/Users/zzymima0000/.workbuddy/binaries/node/versions/22.22.2-2/bin/node`；端口约定 5173/4175/8081，勿占 3000/3100。
+Node: `/Users/zzymima0000/.workbuddy/binaries/node/versions/22.22.2-3/bin/node`（2026-09-20 实测更正：本节旧写 `-2`，该目录不存在）；端口约定 5173/4175/8081，勿占 3000/3100。
 
 **技术栈**：React 18 + TS 5 + Vite 5 + Tailwind + vite-plugin-pwa；IndexedDB(via idb) + outbox 同步引擎；Supabase JS (`habit_tracker` schema, `table()` helper)；Vercel Functions (`api/`，现仅 `ai-organize`)；高德 JS API / OpenRouter|DeepSeek|OpenCode（三适配器，`OPENCODE_MODEL=glm-5.3-flash`）。录音/ASR 与封面 OCR 已按用户决定整条下线。
 
@@ -105,8 +105,8 @@ Node: `/Users/zzymima0000/.workbuddy/binaries/node/versions/22.22.2-2/bin/node`�
 - 全部查询走 `supabase.schema('habit_tracker')`；禁止业务表进 `public`、禁止整库回写、禁止 `service_role` 进前端/Git。
 
 **当前状态与下一步**
-- 已完成（2026-09-07）：M0–M6 + 主题系统 + 分享长图/卡片图 + 标签真删 + Find 分离；S1（`20260903141849`）/S2/L2_PASS/TAG_FIX_PASS/QA_V02_PASS/QA_Vercel_PASS_WITH_BLOCKED；ENV-1 已关闭；ASR 真转写曾PASS后整条下线（改走微信语音输入）；AI（`glm-5.3-flash`，12s 降级保留）全通；Docker 8081 已上线（healthy）；Vercel 生产 `https://place-journal-xi.vercel.app` 已上线+验收；09-06/07 七批：灯箱相册＋换设备远端图根治＋同步可靠性（锁超时/毒丸停放/推拉解耦/结果可视化）＋地点改名/搬家（QA第二轮P1_PASS）＋感受与公开理由分框＋Cover自适应铺满＋AI连通性测试；封面OCR曾上线后因GLM单次8–17s整条下线（HEAD=origin/master=`d1b2e4b`，2026-09-07 验证一致）。
-- 待办：高德 Key 联调（Vercel/8081 两端补变量）；历史验收标签清理待示下；QA第二轮 P2/P3-2 重跑；P0 待真机三行；L3 并发验收仍取消，但双端日常使用已成主要场景。
+- 已完成（2026-09-07）：M0–M6 + 主题系统 + 分享长图/卡片图 + 标签真删 + Find 分离；S1（`20260903141849`）/S2/L2_PASS/TAG_FIX_PASS/QA_V02_PASS/QA_Vercel_PASS_WITH_BLOCKED；ENV-1 已关闭；ASR 真转写曾PASS后整条下线（改走微信语音输入）；AI（`glm-5.3-flash`，12s 降级保留）全通；Docker 8081 已上线（healthy）；Vercel 生产 `https://place-journal-xi.vercel.app` 已上线+验收；09-06/07 七批：灯箱相册＋换设备远端图根治＋同步可靠性（锁超时/毒丸停放/推拉解耦/结果可视化）＋地点改名/搬家（QA第二轮P1_PASS）＋感受与公开理由分框＋Cover自适应铺满＋AI连通性测试；封面OCR曾上线后因GLM单次8–17s整条下线（该快照当时 HEAD=origin/master=`d1b2e4b`，2026-09-07 验证；此值已过时，现役 HEAD 一律以 `git log` 为准）。09-20：TASK-DEV-14（首次绑定确认UI＋退出/文案/mismatch；回归260全绿＋真机①②③PASS，mismatch端到端记边界）＋TASK-DEV-15（双机分发）＋TASK-PWA-01（PWA-AI三件套：洗感受/筛标签/公开理由，summary退役）收工；均未 commit/push。
+- 待办：T062 收口判定（绑定/退出两项真机已PASS，mismatch端到端因同步引擎未接线记边界）；之后 P2-1/P2-2/P2-3、AI 真整理、分享真云发布；高德 Key 联调（Vercel/8081 两端补变量）；历史验收标签清理待示下；QA第二轮 P2/P3-2 重跑；L3 并发验收仍取消，但双端日常使用已成主要场景。
 - 硬守则：未明确确认禁 `git commit/push`（push 二次确认）；未授权禁动 `Services/`/`DockerData/`/`DockerBackups`；`VITE_*` 改动必重建镜像；密钥只进 `.env.local` / Vercel 变量。
 
 **恢复必读**：`docs/handoff/HANDOFF.md` §0 → `README.md` → `docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md` → `.workbuddy/memory/2026-09-05.md`（09-05 全日总结；09-03/09-01 为历史）

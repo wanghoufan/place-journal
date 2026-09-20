@@ -226,6 +226,58 @@ describe('auth: interrupted flow recovery (session-first)', () => {
   })
 })
 
+describe('auth: read-only login state for binding UI (TASK-DEV-14)', () => {
+  it('reports signed_in with the binding verdict without touching fingerprints', async () => {
+    const h = setup({ session: { user: { id: 'owner-1' } }, boundOwner: 'owner-1' })
+
+    expect(await h.service.getLoginState()).toEqual({
+      status: 'signed_in',
+      userId: 'owner-1',
+      binding: 'match',
+    })
+    expect(await h.repo.list()).toEqual([])
+    expect(h.auth.exchangeCodeForSession).not.toHaveBeenCalled()
+    expect(h.openAuthSession).not.toHaveBeenCalled()
+  })
+
+  it('reports unbound on first login so Mine can offer the confirm button', async () => {
+    const h = setup({ session: { user: { id: 'owner-1' } } })
+    expect(await h.service.getLoginState()).toEqual({
+      status: 'signed_in',
+      userId: 'owner-1',
+      binding: 'unbound',
+    })
+
+    await h.service.bindOwner('owner-1')
+    expect(await h.service.getLoginState()).toEqual({
+      status: 'signed_in',
+      userId: 'owner-1',
+      binding: 'match',
+    })
+  })
+
+  it('reports mismatch when the signed-in account differs from the bound owner', async () => {
+    const h = setup({ session: { user: { id: 'owner-B' } }, boundOwner: 'owner-A' })
+    expect(await h.service.getLoginState()).toEqual({
+      status: 'signed_in',
+      userId: 'owner-B',
+      binding: 'mismatch',
+    })
+    expect(h.getBound()).toBe('owner-A')
+  })
+
+  it('reports signed_out when there is no readable session', async () => {
+    const h = setup()
+    expect(await h.service.getLoginState()).toEqual({ status: 'signed_out' })
+  })
+
+  it('treats an unreadable session as signed_out instead of throwing', async () => {
+    const h = setup({ session: { user: { id: 'owner-1' } } })
+    h.auth.getSession.mockRejectedValueOnce(new Error('secure store unavailable'))
+    expect(await h.service.getLoginState()).toEqual({ status: 'signed_out' })
+  })
+})
+
 describe('auth: owner mismatch blocks sync (RF-04)', () => {
   it('blocks push/pull without mutating the bound owner', async () => {
     const h = setup({ session: { user: { id: 'owner-B' } }, boundOwner: 'owner-A' })

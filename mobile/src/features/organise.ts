@@ -1,11 +1,10 @@
-// AI 整理占位（TASK-DEV-09，AI Confirm 页；对应 SDD US006 超时降级）。
+// AI 整理（TASK-DEV-09 建端口；TASK-PWA-AI-01 接真网）。
 //
-// 现状：现役 Web 有 `/api/ai-organize`，但移动端 V1 本 Task 明确**禁网络调用**，
-// 且 Android 尚未持有 AI 通道配置，因此这里提供可替换的 `Organiser` 端口 +
-// 纯本地占位实现（`localHeuristics`），并用超时包装：
-//   - 正常：返回建议（rating/budget/summary/matchedTags），UI 全部可改后再保存；
-//   - 超时/异常：返回 timeout/skipped，UI 直接跳过 AI 走手工保存，不阻断记录。
-// 未来接入真模型时只需替换 `Organiser` 实现，UI 与超时语义不变。
+// 端口不变：`Organiser` 抽象 + 超时包装（runOrganise）。当前提供两种实现：
+//   - `createPlaceholderOrganiser`：纯本地启发式（离线/未配置时用，mock=true）；
+//   - `createHttpOrganiser`：调同一服务端 `/api/ai-organize`（与 Web 共用），
+//     任何失败/超时/未配置都回退本地占位，绝不阻断保存。
+// 走哪条由 `createDefaultOrganiser` 决定：配了 `EXPO_PUBLIC_AI_API_BASE` 走真网，否则保持占位。
 
 export interface OrganiseTagOption {
   id: string
@@ -107,6 +106,91 @@ export function createPlaceholderOrganiser(delayMs = 0): Organiser {
   }
 }
 
+// ---- 真网 Organiser（TASK-PWA-AI-01）----
+
+/** 服务端 AI 整理的超时；与 runOrganise 默认超时一致（语义不变）。 */
+export const AI_API_TIMEOUT_MS = 8000
+
+/** 服务端基地址：`mobile/.env` 的 EXPO_PUBLIC_AI_API_BASE（需静态读取才能被 Expo 内联）。 */
+export function aiApiBase(): string {
+  return (process.env.EXPO_PUBLIC_AI_API_BASE ?? '').trim().replace(/\/+$/, '')
+}
+
+/** 服务端 `/api/ai-organize` 返回的 result 字段（与 Web 同一合同）。 */
+interface ServerAiResult {
+  score?: number
+  budget?: number
+  cleaned_transcript?: string
+  public_reason?: string
+  matched_tags?: string[]
+  unmatched_suggestions?: string[]
+}
+
+function toSuggestion(raw: ServerAiResult, input: OrganiseInput): OrganiseSuggestion {
+  const idByName = new Map(input.tags.map((t) => [t.name, t.id]))
+  // 服务端给的是标签「名字」，本端只认既有标签 id：命不中的名字一律丢弃，AI 不得自动建标签
+  const matchedTags = (Array.isArray(raw.matched_tags) ? raw.matched_tags : [])
+    .map((name) => idByName.get(String(name)))
+    .filter((id): id is string => !!id)
+  const text = raw.public_reason || raw.cleaned_transcript || ''
+  return {
+    rating: typeof raw.score === 'number' ? raw.score : undefined,
+    budget: typeof raw.budget === 'number' ? raw.budget : undefined,
+    summary: text ? firstSentence(text).slice(0, 60) : '',
+    matchedTags,
+    unmatched: (Array.isArray(raw.unmatched_suggestions) ? raw.unmatched_suggestions : [])
+      .map(String)
+      .filter((name) => !idByName.has(name)),
+    mock: false,
+  }
+}
+
+/**
+ * 真网 Organiser：调服务端 `/api/ai-organize`（Key 只在服务端，本端不带任何密钥）。
+ * 501 / 网络失败 / 超时 / 返回体异常 → 回退 `localHeuristics`（mock=true），绝不抛出。
+ */
+export function createHttpOrganiser(opts?: {
+  baseUrl?: string
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}): Organiser {
+  const baseUrl = (opts?.baseUrl ?? aiApiBase()).trim().replace(/\/+$/, '')
+  const timeoutMs = opts?.timeoutMs ?? AI_API_TIMEOUT_MS
+  const doFetch = opts?.fetchImpl ?? fetch
+  return {
+    async organise(input) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      try {
+        const response = await doFetch(`${baseUrl}/api/ai-organize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transcript: input.transcript,
+            placeName: input.placeName,
+            area: input.area,
+            tags: input.tags.map((t) => ({ name: t.name, dimension: t.dimension ?? '' })),
+          }),
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const payload = (await response.json()) as { ok?: boolean; result?: ServerAiResult }
+        if (!payload?.ok || !payload.result) throw new Error('bad payload')
+        return toSuggestion(payload.result, input)
+      } catch {
+        return localHeuristics(input)
+      } finally {
+        clearTimeout(timer)
+      }
+    },
+  }
+}
+
+/** 默认整理器：配了服务端基地址走真网，否则保持本地占位（缺省不发网）。 */
+export function createDefaultOrganiser(): Organiser {
+  return aiApiBase() ? createHttpOrganiser() : createPlaceholderOrganiser()
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
   return Promise.race([
@@ -120,16 +204,17 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 }
 
 /**
- * 执行 AI 整理（占位）：无文字 → skipped；超时/异常 → timeout/skipped，
- * 由 UI 走「跳过并手工保存」。
+ * 执行 AI 整理：无文字 → skipped；超时/异常 → timeout/skipped，
+ * 由 UI 走「跳过并手工保存」。默认整理器见 `createDefaultOrganiser`
+ * （未配 `EXPO_PUBLIC_AI_API_BASE` 时就是本地占位，行为与旧版一致）。
  */
 export async function runOrganise(
   input: OrganiseInput,
   opts?: { organiser?: Organiser; timeoutMs?: number },
 ): Promise<OrganiseResult> {
   if (!(input.transcript ?? '').trim()) return { status: 'skipped', reason: 'empty' }
-  const timeoutMs = opts?.timeoutMs ?? 8000
-  const organiser = opts?.organiser ?? createPlaceholderOrganiser()
+  const timeoutMs = opts?.timeoutMs ?? AI_API_TIMEOUT_MS
+  const organiser = opts?.organiser ?? createDefaultOrganiser()
   try {
     const suggestion = await withTimeout(organiser.organise(input), timeoutMs)
     return { status: 'ok', suggestion }

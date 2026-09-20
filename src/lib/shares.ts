@@ -32,7 +32,8 @@ function toShareItem(entry: Entry, place: Place, media: MediaItem[], tagNames: s
     area: place.area,
     rating: entry.rating,
     budget: entry.budget,
-    reason: entry.notePublic || entry.summary,
+    // 三级回退与详情/Find/地点页口径一致（CODE_REVIEW_PWA-01 P1-1）：公开理由 → 旧 summary → 感受转写，避免分享卡理由空白
+    reason: entry.notePublic || entry.summary || entry.transcript,
     coverUri: cover?.demoUri,
     photos,
     tags: tagNames,

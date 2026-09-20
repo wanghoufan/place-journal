@@ -90,12 +90,15 @@ export interface ShareSnapshot {
   createdAt: string
 }
 
-// AI 固定 JSON 合同（方案 5.2）
+// AI 固定 JSON 合同（方案 5.2；TASK-PWA-01 三件套）
+// summary 已退役（2026-09-20）：不再由 AI 产出，字段保留仅供旧记录/库读回兼容
 export interface AiOrganizeResult {
   score?: number
   budget?: number
-  summary?: string
-  matched_tags: string[]        // 标签名（客户端映射为 id）
+  summary?: string               // 退役（旧数据兼容），新链路不写
+  cleaned_transcript?: string    // 整理后感受全文：去口水词、顺标点，原意不变
+  public_reason?: string         // 公开分享理由：2-3 句，写给朋友看
+  matched_tags: string[]        // 标签名（客户端映射为 id）；从感受里真正提到的点提取
   unmatched_suggestions: string[]
   confidence?: number
 }
@@ -108,7 +111,7 @@ export interface RecordDraft {
   newPlaceName?: string
   newPlaceArea?: string
   transcript?: string            // 我的感受（私密）：只给 AI 整理用
-  notePublic?: string            // 公开分享理由：原样透传，不经 AI 改写
+  notePublic?: string            // 公开分享理由（选填）：用户填的优先保留；没填则用 AI 的 public_reason 兜底
   ai?: AiOrganizeResult
   aiMock?: boolean
 }

@@ -208,7 +208,7 @@ export default function RecordScreen() {
   const selectableTags = leafTags(tagGroups)
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
       {/* 照片置顶（对标 Web Record）：拍照/多选 → 缩略图 → 点非首图设为封面 */}
@@ -251,8 +251,8 @@ export default function RecordScreen() {
           ))}
         </View>
         <View style={styles.photoActions}>
-          <AppButton label="选择照片" variant="secondary" onPress={() => pick('library')} style={styles.flex} />
-          <AppButton label="拍照" variant="secondary" onPress={() => pick('camera')} style={styles.flex} />
+          <AppButton label="选择照片" variant="secondary" onPress={() => pick('library')} style={styles.grow} />
+          <AppButton label="拍照" variant="secondary" onPress={() => pick('camera')} style={styles.grow} />
           {saving ? <ActivityIndicator color={colors.terra} /> : null}
         </View>
       </Card>
@@ -298,7 +298,7 @@ export default function RecordScreen() {
         <SectionTitle>日期与评分</SectionTitle>
         <View style={styles.stack}>
           <View style={styles.inlineRow}>
-            <View style={styles.flex}>
+            <View style={styles.grow}>
               <TextField label="到访日期（YYYY-MM-DD）" value={visitDate} onChangeText={setVisitDate} placeholder="2026-09-18" />
             </View>
             <Chip label="今天" onPress={() => setVisitDate(todayIso())} />
@@ -374,7 +374,9 @@ export default function RecordScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.paper },
+  // screen 供 ScrollView 铺底；grow 只留给子元素撑满（按钮），不带背景，避免盖掉 variant 底色。
+  screen: { flex: 1, backgroundColor: colors.paper },
+  grow: { flex: 1 },
   container: { padding: 16, gap: 14, paddingBottom: 48 },
   section: { gap: 12 },
   stack: { gap: 10 },

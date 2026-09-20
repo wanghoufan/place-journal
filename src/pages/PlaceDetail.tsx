@@ -34,7 +34,7 @@ export default function PlaceDetail() {
                 <div className="min-w-0">
                   <p className="text-sm text-inkmuted">{e.visitDate.replace(/-/g, ' . ')}</p>
                   <Stars value={e.rating} size={12} />
-                  <p className="text-sm mt-0.5 truncate">{e.summary ?? e.transcript ?? '—'}</p>
+                  <p className="text-sm mt-0.5 truncate">{e.notePublic ?? e.summary ?? e.transcript ?? '—'}</p>
                   <p className="text-xs text-inkmuted">{e.budget != null ? `人均 ¥${e.budget}` : '—'}</p>
                 </div>
               </div>
