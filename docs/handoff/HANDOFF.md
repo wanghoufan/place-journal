@@ -11,7 +11,7 @@
 - CHANGE_REQUEST：（NONE）
 - Stage ID（本阶段叫什么）：DEVELOP-安卓APP连续开发（基线 V1.5；MVP Gate T001–T085 为内部检查点）
 - 剩 P0（没完的才列，多一条都不行）：
-  - 无。T062已收口PASS；PWA-AI本地＋线上真调PASS；改名回退根治＋线上实测PASS（用户确认可以了）。
+  - 无。T062已收口PASS；PWA-AI本地＋线上真调PASS；改名回退根治＋线上实测PASS（用户确认可以了）；**DEV-16A收工**（supervisor PASS累计1/2，313全绿，Note12真机验：门槛翻转/接力/保存7→8/复位/还原7条；手机真网AI真返回待用户日常验证）。
 - 已收口（2026-09-20晚，用户拍板）：**T062 PASS**——真机三连3/3（绑定持久＋退出数据保留地点6/7/照片14/标签26不变＋错号登录callback阻断原话）；附带同步实跑成功6/失败2；证据本窗口adb直驱＋截图（已入库evidence-android-t062）。**改名回退 PASS**——根因推送回写窗口并发覆盖，sync.ts writeBackIfUnchanged＋idb.ts saveTags revision+1根治（reviewer P1×2闭环）；线上computer-use实测改名→刷新→同步→改回全程不回退。
 - 当前 Task（正干到哪）（累计打回 n/2，supervisor每次打回时TM同步更新）：**停工封存，无在途 Task**。本轮收工链：TASK-DEV-14 PASS（绑定确认UI＋退出/文案/mismatch；reviewer打回P1×3闭环；回归260全绿；真机①②③PASS；supervisor 0/2）→ TASK-DEV-15 PASS（双机分发，新老两机均Success；后用户改令只调Note12Pro）→ TASK-PWA-01 PASS（AI三件套：洗感受/筛标签/2-3句公开理由；summary退役；reviewer打回P1×1闭环；qa回归PASS；supervisor 0/2）→ 黑屏根治（dev-client默认读8081，曾错载补光灯包，`tcp:8081→8084`映射后正常）→ 演示7条已播（Note12Pro画廊可见）→ Chrome浏览器实测（确认页降级链全对：4星/50元/3标签/理由空等手填，未点保存零写入）。codebuddy通道已恢复（本轮6派全EXIT=0）；codex额度约13:43恢复（未经验证）。
 - 执行链/Session（可选，仅真 resume 通道填，普通 subagent 可空；TM 只记录/引用，ID 由基础设施返回，不手造、不要求用户复制；返工确认是否原链；senior 升级开新链后更新）：builder×3（codebuddy/deepseek：DEV-14初版＋返工、PWA-01初版＋返工，均直调无session）／reviewer×2（本窗口subagent：CODE_REVIEW_DEV-14、CODE_REVIEW_PWA-01）／qa回归×2（codebuddy，用户口令因codex额度耗尽改道，表未改）／qa真机×1（本窗口adb直驱DEV-14）／supervisor×2（opencode直调，均PASS 0/2）／neat-freak×1（本窗口subagent，大交接收尾，AGENTS附录2行，未碰DEV_EXPERIENCE见U-18）。Metro 现役 **8084**（pid 19893，/status 200；8083已停，8082他项，3000/3100禁用）；Note12Pro 映射 `8081→8084`＋`8083`＋`8084`（恢复原状前勿动Expo Go补光灯）；PWA vite 5173（pid 50004，`--host 0.0.0.0`，本机/Tailscale`100.125.100.15`/局域网`192.168.31.60`均200）。
