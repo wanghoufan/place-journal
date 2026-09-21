@@ -1,12 +1,14 @@
 // Mine：登录入口 + 同步入口（owner 门禁 → push/pull）+ 同步状态（成功/待传/失败/停放原文）+ 冲突入口。
 // 同步只在已登录时由本页自动触发；owner 未绑定/mismatch 由 `runSyncEntry` 按 account.ts 文案阻断。
+// 另对齐 Web Mine：数据导出（JSON/CSV）、外观主题切换、AI 连通性探针、版本号/BuildMark。
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import Constants from 'expo-constants'
 import { router, useFocusEffect } from 'expo-router'
 
 import { getAppRepository } from '@/db/app'
-import { AppButton, Card, ConfirmDialog, ErrorState, LoadingState, SectionTitle, SyncBadge } from '@/components/ui'
+import { AppButton, Card, ConfirmDialog, ErrorState, LoadingState, SectionTitle, Sheet, SyncBadge } from '@/components/ui'
 import { getAuthService, isSupabaseConfigured, type LoginState } from '@/supabase'
 import {
   accountActions,
@@ -22,10 +24,17 @@ import { createNativeSyncEngines } from '@/sync/nativeSync'
 import { getSyncSummary, type SyncSummary } from '@/features/status'
 import { localCounts, shareSnapshotCount } from '@/features/queries'
 import { clearDemo, demoCount, seedDemo } from '@/features/demo'
-import { formatDateTime } from '@/features/format'
-import { colors } from '@/theme'
+import { appVersionLabel, formatDateTime } from '@/features/format'
+import { readExportBundle, toExportCsv, toExportJson, type ExportFile } from '@/features/export'
+import { shareExportFile } from '@/features/exportFile'
+import { probeAiConfig, testAiConnectivity } from '@/features/aiProbe'
+import { APP_THEMES, type AppTheme, type Palette } from '@/theme'
+import { useTheme } from '@/themeProvider'
 
 export default function MineScreen() {
+  const { palette, theme, setTheme } = useTheme()
+  const styles = useMemo(() => makeStyles(palette), [palette])
+
   const [summary, setSummary] = useState<SyncSummary | null>(null)
   const [counts, setCounts] = useState<{ places: number; entries: number; media: number; tags: number } | null>(null)
   const [shareCount, setShareCount] = useState(0)
@@ -40,7 +49,26 @@ export default function MineScreen() {
   const [demoBusy, setDemoBusy] = useState(false)
   const [demoMessage, setDemoMessage] = useState('')
   const [confirmClear, setConfirmClear] = useState(false)
+  // 导出 / AI 探针（本页新增，对齐 Web Mine）。
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
+  const [exportMessage, setExportMessage] = useState('')
+  const [aiStatus, setAiStatus] = useState('检测中…')
+  const [aiTesting, setAiTesting] = useState(false)
   const syncBusyRef = useRef(false)
+
+  // 被动探针：空包只看 Key 配没配（400=已配置 / 501=未配置），不消耗大模型调用。
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true
+      probeAiConfig().then((probe) => {
+        if (alive) setAiStatus(probe.label)
+      })
+      return () => {
+        alive = false
+      }
+    }, []),
+  )
 
   const refreshLoginState = useCallback(async (): Promise<LoginState | null> => {
     if (!isSupabaseConfigured()) {
@@ -199,6 +227,38 @@ export default function MineScreen() {
     }
   }, [demoBusy, load])
 
+  // 导出：读全量 → 纯序列化 → 写本机 cache + 拉起系统分享。
+  const handleExport = useCallback(async (kind: 'json' | 'csv') => {
+    if (exportBusy) return
+    setExportBusy(true)
+    setExportMessage('')
+    try {
+      const { db } = getAppRepository()
+      const bundle = readExportBundle(db)
+      const file: ExportFile = kind === 'json' ? toExportJson(bundle) : toExportCsv(bundle)
+      const result = await shareExportFile(file)
+      setExportMessage(
+        result.shared
+          ? `已导出 ${file.filename}（同时写入本机缓存，可再分享）。`
+          : `已生成 ${file.filename}（已取消分享），文件已写入本机缓存。`,
+      )
+    } catch (err) {
+      setExportMessage(`导出失败：${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setExportBusy(false)
+    }
+  }, [exportBusy])
+
+  // 主动连通性测试：实打实调一次大模型（消耗一次微量调用），报通道名 + 耗时。
+  const handleAiTest = useCallback(async () => {
+    if (aiTesting) return
+    setAiTesting(true)
+    setAiStatus('测试中…')
+    const outcome = await testAiConnectivity()
+    setAiStatus(outcome.label)
+    setAiTesting(false)
+  }, [aiTesting])
+
   if (loading) return <LoadingState text="正在读取本机状态…" />
   if (error) return <ErrorState message={error} onRetry={() => void load()} />
   if (!summary || !counts) return null
@@ -294,6 +354,36 @@ export default function MineScreen() {
         <Line label="地点 / 记录">{counts.places} / {counts.entries}</Line>
         <Line label="照片">{counts.media} 张</Line>
         <Line label="标签">{counts.tags} 个</Line>
+        <AppButton label="导出数据（JSON / CSV）" variant="secondary" onPress={() => setExportOpen(true)} />
+        {exportMessage ? <Text style={styles.muted}>{exportMessage}</Text> : null}
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionTitle>外观主题</SectionTitle>
+        <View style={styles.themeRow}>
+          {APP_THEMES.map((t) => (
+            <Pressable
+              key={t.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected: theme === t.id }}
+              onPress={() => setTheme(t.id as AppTheme)}
+              style={[styles.themeOption, theme === t.id && styles.themeOptionActive]}
+            >
+              <View style={[styles.themeSwatch, { backgroundColor: t.swatch }]} />
+              <Text style={[styles.themeName, theme === t.id && styles.themeNameActive]}>{t.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.hint}>切换立即生效并记住选择；导航栏与「画廊 / 发现 / 我的」三页配色随主题换装。</Text>
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionTitle>隐私与 AI</SectionTitle>
+        <Line label="AI 整理（大模型）">{aiStatus}</Line>
+        <AppButton label={aiTesting ? '测试中…' : '测试连通性'} variant="secondary" onPress={handleAiTest} loading={aiTesting} />
+        <Text style={styles.hint}>
+          被动探针只看服务端 Key 配没配（不消耗调用）；「测试连通性」会真调一次模型并显示通道与耗时。密钥只保存在服务端。
+        </Text>
       </Card>
 
       <Card style={styles.section}>
@@ -333,6 +423,26 @@ export default function MineScreen() {
         </View>
       </Pressable>
 
+      <Text style={styles.buildMark}>{buildMark()}</Text>
+
+      <Sheet open={exportOpen} onClose={() => setExportOpen(false)} title="导出数据">
+        <AppButton
+          label={exportBusy ? '处理中…' : '导出 JSON（含媒体清单）'}
+          onPress={() => void handleExport('json')}
+          loading={exportBusy}
+        />
+        <AppButton
+          label="导出 CSV（表格）"
+          variant="secondary"
+          onPress={() => void handleExport('csv')}
+          disabled={exportBusy}
+        />
+        <Text style={styles.hint}>
+          导出属于你自己的数据自主权：地点、记录、标签、分享快照与媒体清单。
+          生成后拉起系统分享（Android 以文本分享，iOS 附文件），同时写入本机缓存目录。
+        </Text>
+      </Sheet>
+
       <ConfirmDialog
         visible={confirmBind}
         title={describeBindOwnerConfirmTitle()}
@@ -355,7 +465,18 @@ export default function MineScreen() {
   )
 }
 
+/** 版本号 / BuildMark：打包版本 + versionCode（对标 Web 页脚「前端版本」行）。 */
+function buildMark(): string {
+  return `${appVersionLabel({
+    version: Constants.expoConfig?.version ?? null,
+    androidVersionCode: Constants.expoConfig?.android?.versionCode ?? null,
+    nativeBuildVersion: (Constants as { nativeBuildVersion?: string | null }).nativeBuildVersion ?? null,
+  })} · 若刚更新过请重启 App`
+}
+
 function Line({ label, children }: { label: string; children: React.ReactNode }) {
+  const { palette } = useTheme()
+  const styles = useMemo(() => makeStyles(palette), [palette])
   return (
     <View style={styles.line}>
       <Text style={styles.lineLabel}>{label}</Text>
@@ -364,32 +485,60 @@ function Line({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
-const styles = StyleSheet.create({
-  // screen 供 ScrollView 铺底；grow 只留给需要等宽/撑满的子元素（按钮），不带背景，避免盖掉 variant 底色。
-  screen: { flex: 1, backgroundColor: colors.paper },
-  grow: { flex: 1 },
-  container: { padding: 16, gap: 14, paddingBottom: 48 },
-  section: { gap: 8 },
-  line: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  lineLabel: { fontSize: 13, color: colors.inkMuted },
-  lineValue: { fontSize: 13, color: colors.ink, flexShrink: 1, textAlign: 'right' },
-  muted: { fontSize: 12, color: colors.inkMuted },
-  warnText: { fontSize: 12, color: colors.terraDeep, lineHeight: 18 },
-  hint: { fontSize: 12, color: colors.inkMuted, lineHeight: 18 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  parkedBlock: { gap: 6, marginTop: 4 },
-  parkedTitle: { fontSize: 13, fontWeight: '700', color: colors.danger },
-  parkedItem: { backgroundColor: colors.dangerSoft, borderRadius: 10, padding: 8, gap: 2 },
-  parkedError: { fontSize: 12, color: colors.danger, lineHeight: 17 },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 16,
-  },
-  pressed: { opacity: 0.9 },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
-  cardValue: { fontSize: 13, color: colors.terraDeep, fontWeight: '700' },
-})
+const styleCache = new Map<Palette, ReturnType<typeof buildStyles>>()
+
+function makeStyles(c: Palette) {
+  let cached = styleCache.get(c)
+  if (!cached) {
+    cached = buildStyles(c)
+    styleCache.set(c, cached)
+  }
+  return cached
+}
+
+function buildStyles(colors: Palette) {
+  return StyleSheet.create({
+    // screen 供 ScrollView 铺底；grow 只留给需要等宽/撑满的子元素（按钮），不带背景，避免盖掉 variant 底色。
+    screen: { flex: 1, backgroundColor: colors.paper },
+    grow: { flex: 1 },
+    container: { padding: 16, gap: 14, paddingBottom: 48 },
+    section: { gap: 8 },
+    line: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+    lineLabel: { fontSize: 13, color: colors.inkMuted },
+    lineValue: { fontSize: 13, color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    muted: { fontSize: 12, color: colors.inkMuted },
+    warnText: { fontSize: 12, color: colors.terraDeep, lineHeight: 18 },
+    hint: { fontSize: 12, color: colors.inkMuted, lineHeight: 18 },
+    actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    parkedBlock: { gap: 6, marginTop: 4 },
+    parkedTitle: { fontSize: 13, fontWeight: '700', color: colors.danger },
+    parkedItem: { backgroundColor: colors.dangerSoft, borderRadius: 10, padding: 8, gap: 2 },
+    parkedError: { fontSize: 12, color: colors.danger, lineHeight: 17 },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.line,
+      padding: 16,
+    },
+    pressed: { opacity: 0.9 },
+    rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
+    cardValue: { fontSize: 13, color: colors.terraDeep, fontWeight: '700' },
+    themeRow: { flexDirection: 'row', gap: 10 },
+    themeOption: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: colors.line,
+      alignItems: 'center',
+      gap: 6,
+    },
+    themeOptionActive: { borderColor: colors.terra },
+    themeSwatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.line },
+    themeName: { fontSize: 12, color: colors.inkMuted },
+    themeNameActive: { color: colors.terra, fontWeight: '700' },
+    buildMark: { textAlign: 'center', fontSize: 10, color: colors.inkMuted, paddingBottom: 4 },
+  })
+}

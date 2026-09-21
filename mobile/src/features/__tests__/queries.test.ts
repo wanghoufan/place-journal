@@ -5,9 +5,12 @@ import { createRepository, type Repository } from '../../db/repository'
 import {
   countDistinctPlaces,
   countEntriesForPlace,
+  expandTagIds,
+  filterEntriesByAnyTag,
   filterGalleryEntries,
   getEntryDetail,
   getPlaceDetail,
+  groupEntriesByPlace,
   listGalleryEntries,
   listPlaceOptions,
   listTagsGrouped,
@@ -289,5 +292,41 @@ describe('queries: 详情页辅助（改名提示 / 灯箱取图）', () => {
 
     const empty: MediaDetail = { ...full, localDisplayPath: undefined, localThumbPath: undefined }
     expect(mediaUri(empty)).toBe('')
+  })
+})
+
+describe('queries: 画廊场景筛选与按地点聚合', () => {
+  const tag = (id: string, parentId: string | null): { id: string; parentId: string | null } => ({ id, parentId })
+
+  it('expandTagIds 展开父标签到全部子孙（含去重/环保护）', () => {
+    const tags = [tag('p1', null), tag('c1', 'p1'), tag('c2', 'p1'), tag('g1', 'c1'), tag('other', null)]
+    expect(expandTagIds(['p1'], tags).sort()).toEqual(['c1', 'c2', 'g1', 'p1'])
+    expect(expandTagIds(['other'], tags)).toEqual(['other'])
+    expect(expandTagIds([], tags)).toEqual([])
+    // 重复入参只展开一次。
+    expect(expandTagIds(['p1', 'p1'], tags)).toHaveLength(4)
+  })
+
+  it('filterEntriesByAnyTag：任一命中即保留；空筛选原样返回', () => {
+    const entries = [
+      { id: 'e1', tagIds: ['c1'] },
+      { id: 'e2', tagIds: ['c2'] },
+      { id: 'e3', tagIds: [] },
+    ] as unknown as GalleryEntry[]
+    expect(filterEntriesByAnyTag(entries, ['c1']).map((e) => e.id)).toEqual(['e1'])
+    expect(filterEntriesByAnyTag(entries, ['c1', 'c2']).map((e) => e.id)).toEqual(['e1', 'e2'])
+    expect(filterEntriesByAnyTag(entries, [])).toHaveLength(3)
+  })
+
+  it('groupEntriesByPlace：组内按到访倒序，组间按最近到访倒序，附去过次数与最高分', () => {
+    const entries = [
+      { id: 'a1', placeId: 'p1', placeName: '海边咖啡', visitDate: '2026-09-10', rating: 3, createdAt: '' },
+      { id: 'b1', placeId: 'p2', placeName: '市集', visitDate: '2026-09-18', rating: 5, createdAt: '' },
+      { id: 'a2', placeId: 'p1', placeName: '海边咖啡', visitDate: '2026-09-15', rating: 4, createdAt: '' },
+    ] as unknown as GalleryEntry[]
+    const groups = groupEntriesByPlace(entries)
+    expect(groups.map((g) => g.placeId)).toEqual(['p2', 'p1'])
+    expect(groups[1]).toMatchObject({ visitCount: 2, bestRating: 4, lastVisitDate: '2026-09-15' })
+    expect(groups[1].entries.map((e) => e.id)).toEqual(['a2', 'a1'])
   })
 })

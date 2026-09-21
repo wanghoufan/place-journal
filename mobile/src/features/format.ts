@@ -102,3 +102,20 @@ export function parseOptionalInt(value: string, min = 1, max = 99999): number | 
 export function parseOptionalBudget(value: string): number | undefined {
   return parseOptionalInt(value, 0, 1000000)
 }
+
+/**
+ * 版本号 / BuildMark 文案（对标 Web 页脚的「前端版本」行）。
+ * 移动端没有 bundle hash，改用打包版本 + versionCode + 原生 build 号：
+ * 例 `版本 0.1.0 · build 1`；缺版本号时回退「版本未知」，绝不抛错。
+ */
+export function appVersionLabel(info: {
+  version?: string | null
+  androidVersionCode?: number | null
+  iosBuildNumber?: string | null
+  nativeBuildVersion?: string | null
+}): string {
+  const parts: string[] = [info.version ? `版本 ${info.version}` : '版本未知']
+  const build = info.nativeBuildVersion ?? info.iosBuildNumber ?? (info.androidVersionCode != null ? String(info.androidVersionCode) : null)
+  if (build) parts.push(`build ${build}`)
+  return parts.join(' · ')
+}

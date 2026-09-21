@@ -45,15 +45,18 @@ export default function AuthCallbackScreen() {
     let cancelled = false;
 
     void (async () => {
-      if (!isSupabaseConfigured()) {
-        if (!cancelled) setState({ tone: 'warn', text: '未配置 Supabase 环境变量，无法完成登录。' });
-        return;
-      }
       try {
+        if (!isSupabaseConfigured()) {
+          if (!cancelled) setState({ tone: 'warn', text: '未配置 Supabase 环境变量，无法完成登录。' });
+          return;
+        }
         const outcome = await getAuthService().handleCallback(url);
         if (!cancelled) setState(describe(outcome));
       } catch {
         if (!cancelled) setState({ tone: 'warn', text: '登录回调处理失败，请回 Mine 重新登录。' });
+      } finally {
+        // 处理完即释放：不在 ref 中长期持有含一次性 code 的回调 URL（缩小 code 内存存活窗口）。
+        if (lastHandled.current === url) lastHandled.current = null;
       }
     })();
 

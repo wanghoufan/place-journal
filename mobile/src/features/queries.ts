@@ -69,6 +69,17 @@ export interface PlaceDetail {
   entries: GalleryEntry[]
 }
 
+/** 按地点聚合的一组记录（`groupEntriesByPlace` 的返回项）。 */
+export interface PlaceGroup {
+  placeId: string
+  placeName: string
+  placeArea?: string
+  visitCount: number
+  bestRating?: number
+  lastVisitDate: string
+  entries: GalleryEntry[]
+}
+
 export interface TagWithUsage {
   id: string
   dimensionId: string
@@ -343,6 +354,60 @@ export function filterGalleryEntries(entries: GalleryEntry[], filters: SearchFil
  */
 export function countDistinctPlaces(entries: GalleryEntry[]): number {
   return new Set(entries.map((entry) => entry.placeId)).size
+}
+
+/**
+ * 标签 id 展开：父标签 → 「父 + 全部子孙」（对标 Web `src/lib/search.ts` 的 `expandTagIds`）。
+ * 只用于筛选口径：勾一个父标签（如「海口」）即命中其下所有子标签记录。
+ */
+export function expandTagIds(
+  rootIds: string[],
+  tags: { id: string; parentId: string | null }[],
+): string[] {
+  const out = new Set<string>()
+  const walk = (id: string) => {
+    if (out.has(id)) return
+    out.add(id)
+    for (const tag of tags) if (tag.parentId === id) walk(tag.id)
+  }
+  for (const id of rootIds) walk(id)
+  return [...out]
+}
+
+/** 任一标签命中即保留（对标 Web Gallery 场景筛选：场景间是「或」）。 */
+export function filterEntriesByAnyTag(entries: GalleryEntry[], tagIds: string[]): GalleryEntry[] {
+  if (tagIds.length === 0) return entries
+  const wanted = new Set(tagIds)
+  return entries.filter((entry) => entry.tagIds.some((id) => wanted.has(id)))
+}
+
+/**
+ * 按地点聚合记录（Gallery「按地点」视图 / Find 画廊视图的数据源）。
+ * 组内按到访日期倒序；组间按最近一次到访倒序；无记录的地点不出现。
+ */
+export function groupEntriesByPlace(entries: GalleryEntry[]): PlaceGroup[] {
+  const byPlace = new Map<string, GalleryEntry[]>()
+  for (const entry of entries) {
+    const list = byPlace.get(entry.placeId)
+    if (list) list.push(entry)
+    else byPlace.set(entry.placeId, [entry])
+  }
+  const groups: PlaceGroup[] = []
+  for (const [placeId, list] of byPlace) {
+    const sorted = [...list].sort((a, b) => b.visitDate.localeCompare(a.visitDate) || b.createdAt.localeCompare(a.createdAt))
+    const ratings = sorted.map((e) => e.rating).filter((r): r is number => typeof r === 'number')
+    const first = sorted[0]
+    groups.push({
+      placeId,
+      placeName: first.placeName,
+      placeArea: first.placeArea,
+      visitCount: sorted.length,
+      bestRating: ratings.length > 0 ? Math.max(...ratings) : undefined,
+      lastVisitDate: first.visitDate,
+      entries: sorted,
+    })
+  }
+  return groups.sort((a, b) => b.lastVisitDate.localeCompare(a.lastVisitDate))
 }
 
 /**

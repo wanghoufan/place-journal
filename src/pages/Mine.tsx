@@ -9,6 +9,7 @@ import { exportJson, exportCsv, storageUsage } from '../lib/exporter'
 import { copyText, shareUrl } from '../lib/shares'
 import { amapConfigured, cloudConfigured } from '../lib/env'
 import { applyTheme, APP_THEMES, type AppTheme } from '../lib/theme'
+import { loadModelOverrides } from '../lib/aiSettings'
 
 export default function Mine() {
   const data = useDBData()
@@ -269,6 +270,8 @@ function AiStatus() {
     setTesting(true)
     setS('测试中…')
     const t0 = Date.now()
+    // 与主链 organize()/设置页 testAiProvider 同口径：带上设置页选的模型名，避免两处结果不一致
+    const modelOverrides = loadModelOverrides()
     try {
       const ctl = new AbortController()
       const timer = setTimeout(() => ctl.abort(), 15000)
@@ -276,7 +279,12 @@ function AiStatus() {
       try {
         r = await fetch('/api/ai-organize', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript: '连通性测试：今天去了海边咖啡馆，人均45，很放松', placeName: '测试', tags: [] }),
+          body: JSON.stringify({
+            transcript: '连通性测试：今天去了海边咖啡馆，人均45，很放松',
+            placeName: '测试',
+            tags: [],
+            ...(Object.keys(modelOverrides).length ? { modelOverrides } : {}),
+          }),
           signal: ctl.signal,
         })
       } finally { clearTimeout(timer) }

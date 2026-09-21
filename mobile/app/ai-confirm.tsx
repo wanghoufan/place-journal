@@ -169,6 +169,18 @@ export default function AiConfirmScreen() {
     })()
   }, [draft, organise])
 
+  /** 当前地点上下文：选中既有地点时取其 name/area，否则用新地点输入；作为 AI 整理的地点上下文透传。 */
+  const placeContext = useCallback(
+    (): { placeName?: string; area?: string } => {
+      if (placeId) {
+        const selected = places.find((p) => p.id === placeId)
+        if (selected) return { placeName: selected.name, area: selected.area }
+      }
+      return { placeName: newPlaceName || undefined, area: newPlaceArea || undefined }
+    },
+    [placeId, places, newPlaceName, newPlaceArea],
+  )
+
   // AI 不得自动建标签：用户点「加入场景」才建（对标 Web addUnmatchedTag）。
   const addUnmatchedTag = useCallback((name: string) => {
     setCreatingTag(true)
@@ -315,7 +327,7 @@ export default function AiConfirmScreen() {
           />
           <AppButton
             label="AI 整理"
-            onPress={() => void organise(notePrivate, { placeName: newPlaceName, area: newPlaceArea })}
+            onPress={() => void organise(notePrivate, placeContext())}
             disabled={!notePrivate.trim()}
           />
         </Card>
@@ -409,7 +421,7 @@ export default function AiConfirmScreen() {
         <AppButton
           label="重新整理"
           variant="ghost"
-          onPress={() => void organise(notePrivate, { placeName: newPlaceName, area: newPlaceArea })}
+          onPress={() => void organise(notePrivate, placeContext())}
           disabled={!notePrivate.trim()}
         />
       ) : null}

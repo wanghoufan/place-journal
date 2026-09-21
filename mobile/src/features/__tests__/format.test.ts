@@ -1,4 +1,5 @@
 import {
+  appVersionLabel,
   dimensionKindLabel,
   formatDateTime,
   formatVisitDate,
@@ -95,5 +96,21 @@ describe('form: 校验与标签', () => {
     ]
     expect(leafTags(groups).map((t) => t.id)).toEqual(['child'])
     expect(sortTagsByUsage(groups[0].tags).map((t) => t.id)).toEqual(['child', 'parent'])
+  })
+})
+
+describe('format: 版本号 / BuildMark', () => {
+  it('版本 + build 齐备', () => {
+    expect(appVersionLabel({ version: '0.1.0', androidVersionCode: 1 })).toBe('版本 0.1.0 · build 1')
+  })
+
+  it('原生 build 号优先于 versionCode', () => {
+    expect(appVersionLabel({ version: '0.2.0', androidVersionCode: 7, nativeBuildVersion: '42' })).toBe('版本 0.2.0 · build 42')
+  })
+
+  it('缺版本号 / 缺 build 都不抛错', () => {
+    expect(appVersionLabel({})).toBe('版本未知')
+    expect(appVersionLabel({ version: '1.0.0' })).toBe('版本 1.0.0')
+    expect(appVersionLabel({ version: null, androidVersionCode: null })).toBe('版本未知')
   })
 })

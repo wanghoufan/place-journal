@@ -18,7 +18,7 @@ export function stripBase64Prefix(input: string): string {
   return input.replace(/\s+/g, '')
 }
 
-/** base64 字符串 → ArrayBuffer（忽略 padding，非法字符视为 0）。 */
+/** base64 字符串 → ArrayBuffer（忽略 padding，非法字符跳过）。 */
 export function base64ToArrayBuffer(input: string): ArrayBuffer {
   const text = stripBase64Prefix(input)
   if (typeof globalThis.atob === 'function') {

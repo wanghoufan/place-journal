@@ -14,6 +14,7 @@ export type MetaKey =
   | 'syncing_lock'
   | 'parked_ops'
   | 'demo_seeded'
+  | 'app_theme'
 
 export interface SyncResult {
   at: string

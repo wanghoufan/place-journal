@@ -136,3 +136,12 @@
 {"date": "2026-09-22", "task": "TASK-DEV-16B", "role": "code-reviewer", "model": "opencode/muse-spark-1.3-contributor-free", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "初审打回P1x2，复验通过"}
 {"date": "2026-09-22", "task": "TASK-DEV-16B", "role": "qa", "model": "codex/gpt-5.6-luna", "used": "主", "runtime": "codex", "result": "PASS", "note": "37套325纯增量，越界零"}
 {"date": "2026-09-22", "task": "TASK-DEV-16B", "role": "supervisor", "model": "opencode-go/muse-spark-1.3-contributor", "used": "主", "runtime": "opencode", "result": "PASS", "note": "复检PASS累计1/2"}
+{"date": "2026-09-22", "task": "TASK-DEV-16C", "role": "builder", "model": "codebuddy/deepseek-v4.1-flash", "used": "主", "runtime": "codebuddy", "result": "PASS", "note": "画廊/Find/Mine，369全绿"}
+{"date": "2026-09-22", "task": "TASK-DEV-16C", "role": "code-reviewer", "model": "opencode/muse-spark-1.3-contributor-free", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "过P0=0P1=0"}
+{"date": "2026-09-22", "task": "TASK-DEV-16C", "role": "qa", "model": "codex/gpt-5.6-luna", "used": "主", "runtime": "codex", "result": "PASS", "note": "41套369纯增量"}
+{"date": "2026-09-22", "task": "TASK-DEV-16C", "role": "qa", "model": "本窗口（开窗口模型）", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "Note12目视：筛选/按地点/Find/Mine，402系余额不足"}
+{"date": "2026-09-22", "task": "TASK-DEV-16C", "role": "supervisor", "model": "opencode-go/muse-spark-1.3-contributor", "used": "主", "runtime": "opencode", "result": "PASS", "note": "PASS收工"}
+{"date": "2026-09-22", "task": "TASK-P2扫尾", "role": "builder", "model": "codebuddy/deepseek-v4.1-flash", "used": "主", "runtime": "codebuddy", "result": "PASS", "note": "4修4免动，369全绿"}
+{"date": "2026-09-22", "task": "TASK-P2扫尾", "role": "code-reviewer", "model": "opencode/muse-spark-1.3-contributor-free", "used": "主", "runtime": "本窗口", "result": "PASS", "note": "过"}
+{"date": "2026-09-22", "task": "TASK-P2扫尾", "role": "qa", "model": "codex/gpt-5.6-luna", "used": "主", "runtime": "codex", "result": "PASS", "note": "41套369"}
+{"date": "2026-09-22", "task": "TASK-P2扫尾", "role": "supervisor", "model": "opencode-go/muse-spark-1.3-contributor", "used": "主", "runtime": "opencode", "result": "PASS", "note": "PASS收工"}
