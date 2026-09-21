@@ -13,6 +13,7 @@ import {
   createListShare,
   newSlug,
   revokeShare,
+  revokeSharesForEntry,
   shareItemFromRow,
   ShareValidationError,
 } from '../shares'
@@ -229,6 +230,55 @@ describe('shares: 撤销幂等', () => {
     expect(unknown.reason).toBe('not_found')
     expect(unknown.opId).toBeNull()
     expect(outboxRows(db).filter((o) => o.kind === 'revoke_share')).toHaveLength(1)
+  })
+})
+
+describe('shares: 级联撤销（记录删除，RQA-V-02）', () => {
+  it('按 entry_id 命中撤销该记录的分享，其他记录的分享保持 active', () => {
+    const { db, repo } = setup()
+    seedEntry(db, repo, 'e1')
+    seedEntry(db, repo, 'e2')
+    createEntryShare(db, repo, { entryId: 'e1', slug: SLUG, now: NOW })
+    createEntryShare(db, repo, { entryId: 'e2', slug: 'bbbbbbbbbbbbbbbbbbbbbb', now: NOW })
+
+    const revoked = revokeSharesForEntry(db, repo, 'e1', { now: NOW })
+
+    expect(revoked).toEqual([SLUG])
+    const statusOf = (slug: string) =>
+      db.getFirstSync<{ status: string }>('SELECT status FROM share_snapshots WHERE slug = ?', slug)?.status
+    expect(statusOf(SLUG)).toBe('revoked')
+    expect(statusOf('bbbbbbbbbbbbbbbbbbbbbb')).toBe('active')
+    expect(outboxRows(db).filter((o) => o.kind === 'revoke_share').map((o) => o.entity_id)).toEqual([SLUG])
+    // 幂等：已撤销不重复入队
+    expect(revokeSharesForEntry(db, repo, 'e1', { now: NOW })).toEqual([])
+    expect(outboxRows(db).filter((o) => o.kind === 'revoke_share')).toHaveLength(1)
+  })
+
+  it('旧快照缺 entry_id 时按记录封面图反查', () => {
+    const { db, repo } = setup()
+    seedEntry(db, repo, 'e1')
+    db.runSync(
+      `INSERT INTO share_snapshots (id, slug, kind, title, status, created_at)
+       VALUES ('s-old', 'cccccccccccccccccccccc', 'single', '旧地点', 'active', ?)`,
+      NOW,
+    )
+    db.runSync(
+      `INSERT INTO share_items (snapshot_id, client_id, entry_id, cover_media_id, sort_order, place_name)
+       VALUES ('s-old', 'c-old', NULL, 'm-e1', 0, '旧地点')`,
+    )
+
+    expect(revokeSharesForEntry(db, repo, 'e1', { now: NOW })).toEqual(['cccccccccccccccccccccc'])
+    expect(db.getFirstSync<{ status: string }>('SELECT status FROM share_snapshots WHERE id = ?', 's-old')?.status).toBe(
+      'revoked',
+    )
+  })
+
+  it('无关联分享时不入队', () => {
+    const { db, repo } = setup()
+    seedEntry(db, repo, 'e1')
+
+    expect(revokeSharesForEntry(db, repo, 'e1', { now: NOW })).toEqual([])
+    expect(outboxRows(db).filter((o) => o.kind === 'revoke_share')).toHaveLength(0)
   })
 })
 

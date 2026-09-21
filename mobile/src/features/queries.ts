@@ -256,6 +256,23 @@ export function listPlaceOptions(db: SqlDatabase): PlaceOption[] {
     .map((p) => ({ id: p.id, name: p.name, area: opt(p.area) }))
 }
 
+/** 某地点下的记录数（编辑页改名提示用：>1 时提示「改名会一起生效」）。 */
+export function countEntriesForPlace(db: SqlDatabase, placeId: string): number {
+  return db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM entries WHERE place_id = ?', placeId)?.n ?? 0
+}
+
+/**
+ * 媒体取图 URI：网格缩略图优先 thumb，灯箱大图优先 display；
+ * 本地路径缺失时回退演示远端图（picsum），都没有则为空串（Image 自行处理）。
+ */
+export function mediaUri(m: MediaDetail, size: 'thumb' | 'display' = 'thumb'): string {
+  const candidates =
+    size === 'thumb'
+      ? [m.localThumbPath, m.demoUri, m.localDisplayPath]
+      : [m.localDisplayPath, m.demoUri, m.localThumbPath]
+  return candidates.find((uri): uri is string => typeof uri === 'string' && uri.length > 0) ?? ''
+}
+
 /** 标签维度 + 标签（含被记录引用次数），供 Tags / Record / Find 复用。 */
 export function listTagsGrouped(db: SqlDatabase): TagGroup[] {
   const dimensions = db.getAllSync<{ id: string; name: string; kind: string; sort_order: number }>(

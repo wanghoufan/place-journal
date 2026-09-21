@@ -4,6 +4,7 @@
 //   - 创建：entry → 白名单 ShareItem（公开字段唯一真源＝`shareItemToPayload`）→
 //     share_snapshots + share_items 落库＋`create_share` op 入队（同一事务）；
 //   - 撤销：本地 `status='revoked'` ＋ `revoke_share` op 入队（幂等：已撤销不重复入队）；
+//   - 级联撤销：删除记录时撤销该记录的全部未撤销分享（RQA-V-02，按 entry_id／封面图定位）；
 //   - slug：22 位 base36（与 Web `src/lib/shares.ts` slug 同口径，兼容云端 ≥16 位 CHECK）。
 //
 // 白名单口径（R-12）：payload 只含 7 个基础字段；私密感受、转写、精确坐标、
@@ -358,4 +359,36 @@ export function revokeShare(
     opId = insertOutboxOp(db, { kind: 'revoke_share', entityId: input.slug }, { now })
   })
   return { changed: true, opId, reason: 'revoked' }
+}
+
+/**
+ * 级联撤销某条记录关联的全部未撤销分享，返回本次真改状态的 slug（RQA-V-02 口径）。
+ *
+ * 定位键对标 Web `repo.deleteEntry`：分享项 `entry_id` 命中；旧快照缺 `entry_id` 时
+ * 按封面图 `cover_media_id` 反查（无照片旧快照接受边缘）。含该记录的合集分享整份撤销。
+ * 调用方须在记录仍存在时调用（封面反查依赖记录行）。
+ */
+export function revokeSharesForEntry(
+  db: SqlDatabase,
+  repo: Repository,
+  entryId: string,
+  opts?: { now?: string },
+): string[] {
+  const entry = repo.get<EntityRow>('entries', entryId)
+  const coverMediaId = entry ? optString(entry.cover_media_id) : undefined
+  const rows = db.getAllSync<{ slug: string; entry_id: string | null; cover_media_id: string | null }>(
+    `SELECT s.slug AS slug, i.entry_id AS entry_id, i.cover_media_id AS cover_media_id
+     FROM share_snapshots s JOIN share_items i ON i.snapshot_id = s.id
+     WHERE s.status = 'active'`,
+  )
+  const slugs: string[] = []
+  for (const row of rows) {
+    if (row.entry_id !== entryId && !(coverMediaId != null && row.cover_media_id === coverMediaId)) continue
+    if (!slugs.includes(row.slug)) slugs.push(row.slug)
+  }
+  const revoked: string[] = []
+  for (const slug of slugs) {
+    if (revokeShare(db, repo, { slug, now: opts?.now }).changed) revoked.push(slug)
+  }
+  return revoked
 }

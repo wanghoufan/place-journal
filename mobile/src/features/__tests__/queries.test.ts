@@ -4,6 +4,7 @@ import { runMigrations } from '../../db/migrations'
 import { createRepository, type Repository } from '../../db/repository'
 import {
   countDistinctPlaces,
+  countEntriesForPlace,
   filterGalleryEntries,
   getEntryDetail,
   getPlaceDetail,
@@ -11,10 +12,12 @@ import {
   listPlaceOptions,
   listTagsGrouped,
   localCounts,
+  mediaUri,
   ratingTierCounts,
   searchGalleryEntries,
   tagUsageWithChildren,
   type GalleryEntry,
+  type MediaDetail,
   type TagGroup,
   type TagWithUsage,
 } from '../queries'
@@ -247,5 +250,44 @@ describe('queries: 过滤与计数', () => {
 
     expect(searchGalleryEntries(db, { text: '海口' }).map((e) => e.id)).toEqual(['e1'])
     expect(localCounts(db)).toEqual({ places: 1, entries: 1, media: 1, tags: 0 })
+  })
+})
+
+describe('queries: 详情页辅助（改名提示 / 灯箱取图）', () => {
+  it('countEntriesForPlace 只数本地点；未知地点为 0', () => {
+    const { db, repo } = setup()
+    seedPlace(repo, 'p1', '地点一')
+    seedPlace(repo, 'p2', '地点二')
+    seedEntry(repo, 'e1', 'p1', '2026-09-10')
+    seedEntry(repo, 'e2', 'p1', '2026-09-18')
+    seedEntry(repo, 'e3', 'p2', '2026-09-18')
+
+    expect(countEntriesForPlace(db, 'p1')).toBe(2)
+    expect(countEntriesForPlace(db, 'p2')).toBe(1)
+    expect(countEntriesForPlace(db, 'missing')).toBe(0)
+  })
+
+  it('mediaUri：缩略图优先 thumb、大图优先 display；本地缺失回退演示图，全无则空串', () => {
+    const full: MediaDetail = {
+      id: 'm1',
+      entryId: 'e1',
+      placeId: 'p1',
+      localDisplayPath: 'file:///display.jpg',
+      localThumbPath: 'file:///thumb.jpg',
+      order: 0,
+      syncStatus: 'local',
+    }
+    expect(mediaUri(full)).toBe('file:///thumb.jpg')
+    expect(mediaUri(full, 'display')).toBe('file:///display.jpg')
+
+    const demo: MediaDetail = { ...full, localDisplayPath: undefined, localThumbPath: undefined, demoUri: 'https://picsum.photos/1' }
+    expect(mediaUri(demo)).toBe('https://picsum.photos/1')
+    expect(mediaUri(demo, 'display')).toBe('https://picsum.photos/1')
+
+    const onlyDisplay: MediaDetail = { ...full, localThumbPath: undefined }
+    expect(mediaUri(onlyDisplay)).toBe('file:///display.jpg')
+
+    const empty: MediaDetail = { ...full, localDisplayPath: undefined, localThumbPath: undefined }
+    expect(mediaUri(empty)).toBe('')
   })
 })

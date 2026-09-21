@@ -3,7 +3,8 @@
 // 全部经 `Repository` 的原子边界（实体 + outbox 同事务），不接网络：
 //   - 新建记录：可选先建地点（upsert_place），再建 entry（upsert_entry，依赖地点 op）；
 //   - 编辑记录：保留 created_at/cover_media_id 等既有字段，revision 由仓库自增；
-//   - 删除记录：FK 级联删 media，删空地点一并清理；
+//   - 搬家：entry + 其 media 一起换 place_id，有本地图的重传一份到新路径，搬空的老地点级联清理；
+//   - 删记录：级联删 media、级联撤销其分享、删空地点一并清理；
 //   - 标签/维度：核心实体 + upsert_tags 入队；记录↔标签关系写 entry_tags。
 //
 // UI 只调用本文件导出的函数，不直接拼 SQL（除纯查询层）。
@@ -12,6 +13,7 @@ import type { SqlDatabase } from '../db/database'
 import { newUuid } from '../domain/ids'
 import type { EntityRow, Repository } from '../db/repository'
 import { insertOutboxOp, newOpId } from '../sync/outbox'
+import { revokeSharesForEntry } from './shares'
 
 export interface SaveRecordInput {
   /** 编辑时传既有 entry id；新建留空。 */
@@ -146,11 +148,124 @@ export function saveRecord(db: SqlDatabase, repo: Repository, input: SaveRecordI
   return { entryId, placeId, createdPlace, entryOpId }
 }
 
-/** 删除记录；若地点已无其他记录，一并清理空地点。 */
+/** 媒体行是否带本地文件（搬家重传的判据；只有云端路径的行无处可传）。 */
+function hasLocalFile(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+export interface MoveEntryInput {
+  entryId: string
+  /** 目标地点（须已存在）。 */
+  toPlaceId: string
+  now?: string
+}
+
+export interface MoveEntryResult {
+  /** false = 目标地点与当前相同，无副作用。 */
+  moved: boolean
+  /** 跟随改归属且带本地文件、已重新入队的 media 数。 */
+  reuploaded: number
+  /** 老地点已无任何记录，被级联清理。 */
+  removedOldPlace: boolean
+}
+
+/**
+ * 搬家：记录 + 它的照片一起换归属（对标 Web EntryDetail 的 saveEdit 搬家分支）。
+ *
+ * 云端媒体对象路径按 `owner/placeId/...` 组织（`privateDisplayPath`），换地点即换路径，
+ * 所以带本地文件的 media 一律重传：置 `sync_status='local'`、清空旧的 remote 路径，
+ * 并入队 `upload_media`（依赖本次 `upsert_entry`，保证云端先认新归属）。老地点搬空即删。
+ *
+ * 原子性（P1-2 返工）：记录换归属、media 批量换归属、各自 outbox 入队、搬空老地点清理，
+ * 全部落在同一个 `withTransactionSync` 内，全成或全败。原实现分两次落盘（entry 一次事务、
+ * media 另一次事务），两事务之间崩溃会留下「entry 已搬家、media 仍旧 place_id」的半搬家态——
+ * outbox `dependsOn` 只保序不保原子。
+ */
+export function moveEntry(db: SqlDatabase, repo: Repository, input: MoveEntryInput): MoveEntryResult {
+  const now = input.now ?? new Date().toISOString()
+  const entry = repo.get<EntityRow>('entries', input.entryId)
+  if (!entry) throw new RecordValidationError('待搬家的记录不存在')
+  const oldPlaceId = String(entry.place_id)
+  const toPlaceId = input.toPlaceId?.trim()
+  if (!toPlaceId) throw new RecordValidationError('请选择要搬到的地方')
+  if (toPlaceId === oldPlaceId) return { moved: false, reuploaded: 0, removedOldPlace: false }
+  if (!repo.get('places', toPlaceId)) throw new RecordValidationError('目标地点不存在')
+
+  const media = db.getAllSync<EntityRow>('SELECT * FROM media WHERE entry_id = ?', input.entryId)
+  let entryOpId = ''
+  let reuploaded = 0
+  let removedOldPlace = false
+
+  db.withTransactionSync(() => {
+    // 记录换归属：照 `Repository.writeCoreEntity` 的核心实体语义（revision 单调 +1、标 dirty、
+    // 清 sync_error），但必须在既有事务内执行——`repo.saveEntityWithOutbox` 会自开事务，而
+    // expo-sqlite 的 `withTransactionSync` 不支持嵌套（嵌套 BEGIN 会抛错），无法与 media 更新合成一事务。
+    // 未列出的列（created_at/base_revision/cover_media_id 等）保持原值不变。
+    db.runSync(
+      `UPDATE entries SET place_id = ?, revision = revision + 1, sync_status = 'local',
+                          sync_error = NULL, updated_at = ? WHERE id = ?`,
+      toPlaceId,
+      now,
+      input.entryId,
+    )
+    entryOpId = insertOutboxOp(db, { kind: 'upsert_entry', entityId: input.entryId }, { now })
+
+    for (const m of media) {
+      const mediaId = String(m.id)
+      db.runSync(
+        `UPDATE media SET place_id = ?, remote_path = NULL, remote_thumb_path = NULL,
+                          sync_status = 'local', updated_at = ? WHERE id = ?`,
+        toPlaceId,
+        now,
+        mediaId,
+      )
+      if (hasLocalFile(m.local_display_path) || hasLocalFile(m.local_thumb_path)) {
+        insertOutboxOp(db, { kind: 'upload_media', entityId: mediaId, dependsOn: [entryOpId] }, { now })
+        reuploaded += 1
+      }
+    }
+
+    const remaining = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM entries WHERE place_id = ?', oldPlaceId)
+    removedOldPlace = (remaining?.n ?? 0) === 0
+    if (removedOldPlace) {
+      db.runSync('DELETE FROM places WHERE id = ?', oldPlaceId)
+      insertOutboxOp(db, { kind: 'delete_place', entityId: oldPlaceId }, { now })
+    }
+  })
+
+  return { moved: true, reuploaded, removedOldPlace }
+}
+
+/** 显式设封面：media 必须属于该记录（对标 Web EntryDetail 的 setCover）。 */
+export function setEntryCover(
+  db: SqlDatabase,
+  repo: Repository,
+  input: { entryId: string; mediaId: string; now?: string },
+): void {
+  const entry = repo.get<EntityRow>('entries', input.entryId)
+  if (!entry) throw new RecordValidationError('记录不存在')
+  const media = db.getFirstSync<{ id: string }>(
+    'SELECT id FROM media WHERE id = ? AND entry_id = ?',
+    input.mediaId,
+    input.entryId,
+  )
+  if (!media) throw new RecordValidationError('该照片不属于此记录')
+  repo.saveEntityWithOutbox(
+    'entries',
+    { ...entry, id: input.entryId, cover_media_id: input.mediaId },
+    { kind: 'upsert_entry', entityId: input.entryId },
+    { now: input.now },
+  )
+}
+
+/** 删除记录；级联撤销其分享；若地点已无其他记录，一并清理空地点。 */
 export function deleteEntry(db: SqlDatabase, repo: Repository, entryId: string): void {
   const entry = repo.get<{ place_id: string }>('entries', entryId)
   if (!entry) return
   const placeId = entry.place_id
+  // RQA-V-02（对标 Web `repo.deleteEntry`）：级联撤销该记录的分享。放在删除前——旧快照
+  // 无 entry_id 时要按记录封面图反查，删完就查不到了。
+  revokeSharesForEntry(db, repo, entryId)
   repo.removeWithOutbox('entries', entryId, { kind: 'delete_entry', entityId: entryId })
   const remaining = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM entries WHERE place_id = ?', placeId)
   if ((remaining?.n ?? 0) === 0) {

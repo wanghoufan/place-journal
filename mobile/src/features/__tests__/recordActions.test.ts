@@ -9,13 +9,19 @@ import {
   deleteEntry,
   deletePlace,
   deleteTag,
+  moveEntry,
   RecordValidationError,
   renameTag,
   saveRecord,
+  setEntryCover,
   setEntryTags,
   uniqueTagIds,
   updatePlace,
 } from '../recordActions'
+import { createEntryShare } from '../shares'
+import type { EntityRow } from '../../db/repository'
+
+const NOW = '2026-09-18T10:00:00.000Z'
 
 function setup(): { db: SqlDatabase; repo: Repository } {
   const db = createNodeSqliteDatabase()
@@ -238,6 +244,184 @@ describe('recordActions: 纯函数', () => {
     setEntryTags(db, 'e1', ['t1', 't2'])
     setEntryTags(db, 'e1', ['t2', 't3'])
     expect(db.getAllSync('SELECT tag_id FROM entry_tags ORDER BY tag_id')).toEqual([{ tag_id: 't2' }, { tag_id: 't3' }])
+  })
+})
+
+describe('recordActions: 搬家（记录＋照片一起换归属）', () => {
+  /** 建两个地点，返回旧地点下的记录与目标地点。 */
+  function seedTwoPlaces(db: SqlDatabase, repo: Repository) {
+    const from = saveRecord(db, repo, { newPlace: { name: '旧地点' }, visitDate: '2026-09-10' })
+    const to = saveRecord(db, repo, { newPlace: { name: '新地点' }, visitDate: '2026-09-18' })
+    return { from, to }
+  }
+
+  it('记录与照片一起换归属；带本地文件的照片重传；搬空的老地点清理', () => {
+    const { db, repo } = setup()
+    const { from, to } = seedTwoPlaces(db, repo)
+    repo.upsert('media', {
+      id: 'm1',
+      entry_id: from.entryId,
+      place_id: from.placeId,
+      local_display_path: 'file:///documents/d.jpg',
+      local_thumb_path: 'file:///documents/t.jpg',
+      remote_path: 'owner/old/d.jpg',
+      remote_thumb_path: 'owner/old/t.jpg',
+      sort_order: 0,
+      sync_status: 'synced',
+    })
+    // 演示数据只有远端 URI，没有本地文件 → 无处可传（不重传）；归属已改，行标 dirty 如实反映。
+    repo.upsert('media', {
+      id: 'm2',
+      entry_id: from.entryId,
+      place_id: from.placeId,
+      demo_uri: 'https://picsum.photos/seed/1',
+      sort_order: 1,
+      sync_status: 'synced',
+    })
+
+    const result = moveEntry(db, repo, { entryId: from.entryId, toPlaceId: to.placeId, now: NOW })
+
+    expect(result).toEqual({ moved: true, reuploaded: 1, removedOldPlace: true })
+    expect(repo.get<EntityRow>('entries', from.entryId)).toMatchObject({ place_id: to.placeId, revision: 2 })
+    // 老地点已无记录 → 删除并入队 delete_place
+    expect(repo.get('places', from.placeId)).toBeNull()
+    expect(repo.get<EntityRow>('media', 'm1')).toMatchObject({
+      place_id: to.placeId,
+      remote_path: null,
+      remote_thumb_path: null,
+      sync_status: 'local',
+    })
+    expect(repo.get<EntityRow>('media', 'm2')).toMatchObject({ place_id: to.placeId, sync_status: 'local' })
+
+    const ops = outboxKinds(db)
+    const moveEntryOp = ops.filter((o) => o.kind === 'upsert_entry').pop()!
+    expect(moveEntryOp.entity_id).toBe(from.entryId)
+    const uploadOps = ops.filter((o) => o.kind === 'upload_media')
+    expect(uploadOps).toHaveLength(1)
+    expect(uploadOps[0].entity_id).toBe('m1')
+    const moveOpId = db.getFirstSync<{ op_id: string }>(
+      "SELECT op_id FROM outbox WHERE kind = 'upsert_entry' ORDER BY seq DESC LIMIT 1",
+    )!.op_id
+    expect(JSON.parse(uploadOps[0].depends_on)).toEqual([moveOpId])
+    expect(ops[ops.length - 1].kind).toBe('delete_place')
+  })
+
+  it('搬家是单事务：media 更新失败时 entry 不搬家、outbox/老地点零残留（P1-2）', () => {
+    const { db, repo } = setup()
+    const { from, to } = seedTwoPlaces(db, repo)
+    repo.upsert('media', {
+      id: 'm1',
+      entry_id: from.entryId,
+      place_id: from.placeId,
+      local_display_path: 'file:///documents/d.jpg',
+      remote_path: 'owner/old/d.jpg',
+      sort_order: 0,
+      sync_status: 'synced',
+    })
+    const opsBefore = count(db, 'outbox')
+    const entryBefore = repo.get<EntityRow>('entries', from.entryId)!
+
+    // 模拟第二个写入点失败：media 更新抛错，整段事务必须回滚，不能留下「entry 已搬家、media 仍旧」的半搬家态。
+    const failing: SqlDatabase = {
+      ...db,
+      runSync(source, ...params) {
+        if (/UPDATE\s+media/i.test(source)) throw new Error('disk full')
+        return db.runSync(source, ...params)
+      },
+    }
+
+    expect(() => moveEntry(failing, repo, { entryId: from.entryId, toPlaceId: to.placeId, now: NOW })).toThrow('disk full')
+
+    expect(repo.get<EntityRow>('entries', from.entryId)).toMatchObject({
+      place_id: from.placeId,
+      revision: entryBefore.revision,
+    })
+    expect(repo.get<EntityRow>('media', 'm1')).toMatchObject({
+      place_id: from.placeId,
+      remote_path: 'owner/old/d.jpg',
+      sync_status: 'synced',
+    })
+    expect(count(db, 'outbox')).toBe(opsBefore)
+    expect(repo.get('places', from.placeId)).not.toBeNull()
+  })
+
+  it('老地点还有别的记录时不清理；同地点搬家无副作用', () => {
+    const { db, repo } = setup()
+    const { from, to } = seedTwoPlaces(db, repo)
+    const sibling = saveRecord(db, repo, { placeId: from.placeId, visitDate: '2026-09-12' })
+    const opsBefore = count(db, 'outbox')
+
+    const same = moveEntry(db, repo, { entryId: from.entryId, toPlaceId: from.placeId, now: NOW })
+    expect(same).toEqual({ moved: false, reuploaded: 0, removedOldPlace: false })
+    expect(count(db, 'outbox')).toBe(opsBefore)
+
+    const result = moveEntry(db, repo, { entryId: from.entryId, toPlaceId: to.placeId, now: NOW })
+
+    expect(result.removedOldPlace).toBe(false)
+    expect(repo.get<EntityRow>('entries', sibling.entryId)).toMatchObject({ place_id: from.placeId })
+    expect(repo.get('places', from.placeId)).not.toBeNull()
+    expect(db.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE kind = 'delete_place'")?.n).toBe(0)
+  })
+
+  it('记录不存在 / 目标地点不存在 / 目标为空 → 抛 RecordValidationError 且不落库', () => {
+    const { db, repo } = setup()
+    const { from } = seedTwoPlaces(db, repo)
+    const opsBefore = count(db, 'outbox')
+
+    expect(() => moveEntry(db, repo, { entryId: 'missing', toPlaceId: from.placeId })).toThrow(/不存在/)
+    expect(() => moveEntry(db, repo, { entryId: from.entryId, toPlaceId: 'missing-place' })).toThrow(RecordValidationError)
+    expect(() => moveEntry(db, repo, { entryId: from.entryId, toPlaceId: '  ' })).toThrow(/地方/)
+    expect(count(db, 'outbox')).toBe(opsBefore)
+    expect(repo.get<EntityRow>('entries', from.entryId)).toMatchObject({ place_id: from.placeId })
+  })
+})
+
+describe('recordActions: 显式设封面', () => {
+  it('cover_media_id 更新、revision+1 并入队 upsert_entry', () => {
+    const { db, repo } = setup()
+    const created = saveRecord(db, repo, { newPlace: { name: '地点' }, visitDate: '2026-09-18' })
+    repo.upsert('media', { id: 'm1', entry_id: created.entryId, place_id: created.placeId, sort_order: 0, sync_status: 'local' })
+    const before = repo.get<{ revision: number }>('entries', created.entryId)!
+
+    setEntryCover(db, repo, { entryId: created.entryId, mediaId: 'm1', now: NOW })
+
+    const after = repo.get<Record<string, unknown>>('entries', created.entryId)!
+    expect(after.cover_media_id).toBe('m1')
+    expect(after.revision).toBe(before.revision + 1)
+    const op = outboxKinds(db).filter((o) => o.kind === 'upsert_entry').pop()!
+    expect(op.entity_id).toBe(created.entryId)
+  })
+
+  it('照片不属于该记录 / 记录不存在 → 抛错且不改封面', () => {
+    const { db, repo } = setup()
+    const created = saveRecord(db, repo, { newPlace: { name: '地点' }, visitDate: '2026-09-18' })
+    const other = saveRecord(db, repo, { placeId: created.placeId, visitDate: '2026-09-17' })
+    repo.upsert('media', { id: 'm-other', entry_id: other.entryId, place_id: created.placeId, sort_order: 0, sync_status: 'local' })
+
+    expect(() => setEntryCover(db, repo, { entryId: created.entryId, mediaId: 'm-other' })).toThrow(RecordValidationError)
+    expect(() => setEntryCover(db, repo, { entryId: 'missing', mediaId: 'm-other' })).toThrow(/不存在/)
+    expect(repo.get<EntityRow>('entries', created.entryId)?.cover_media_id).toBeNull()
+  })
+})
+
+describe('recordActions: 删除记录级联撤销分享（RQA-V-02）', () => {
+  it('删除记录后它的分享失效，其他记录的分享不受影响', () => {
+    const { db, repo } = setup()
+    const a = saveRecord(db, repo, { newPlace: { name: '地点 A' }, visitDate: '2026-09-10', notePublic: '理由 A' })
+    const b = saveRecord(db, repo, { newPlace: { name: '地点 B' }, visitDate: '2026-09-18', notePublic: '理由 B' })
+    createEntryShare(db, repo, { entryId: a.entryId, slug: 'slug-a', now: NOW })
+    createEntryShare(db, repo, { entryId: b.entryId, slug: 'slug-b', now: NOW })
+
+    deleteEntry(db, repo, a.entryId)
+
+    const statusOf = (slug: string) =>
+      db.getFirstSync<{ status: string }>('SELECT status FROM share_snapshots WHERE slug = ?', slug)?.status
+    expect(statusOf('slug-a')).toBe('revoked')
+    expect(statusOf('slug-b')).toBe('active')
+    const revokeOps = db.getAllSync<{ entity_id: string }>(
+      "SELECT entity_id FROM outbox WHERE kind = 'revoke_share' ORDER BY seq ASC",
+    )
+    expect(revokeOps).toEqual([{ entity_id: 'slug-a' }])
   })
 })
 
