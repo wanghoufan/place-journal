@@ -153,6 +153,22 @@ export function Stars({
   )
 }
 
+/** 多行输入框单行基准高（fontSize 15 × 1.4 行距，取 21 便于「至少 N 行」换算与断言）。 */
+export const MULTILINE_LINE_HEIGHT = 21
+/** 多行框统一行数区间（TASK-UX-01 P1-2）：下限 2 行防塌成一行，上限 3 行封顶。 */
+export const MULTILINE_MIN_LINES = 2
+export const MULTILINE_MAX_LINES = 3
+
+/**
+ * 多行框行数：按 `minHeight` 换算后夹在 2–3 行（`minHeight` 交给 Yoga 兜底，
+ * `numberOfLines` 再让 Android 原生 EditText 自己按行数撑高，空值也保底）。
+ * 上限 3 行：通用兜底不再出现「默认 96 → 5 行」的偏高口径。
+ */
+export function multilineLinesFor(minHeight: number): number {
+  const lines = Math.round(minHeight / MULTILINE_LINE_HEIGHT)
+  return Math.min(MULTILINE_MAX_LINES, Math.max(MULTILINE_MIN_LINES, lines))
+}
+
 export function TextField({
   label,
   value,
@@ -163,6 +179,7 @@ export function TextField({
   autoFocus = false,
   maxLength,
   minHeight,
+  numberOfLines,
 }: {
   label?: string
   value: string
@@ -173,7 +190,10 @@ export function TextField({
   autoFocus?: boolean
   maxLength?: number
   minHeight?: number
+  /** 多行时的可见行数（Android 原生生效；不传则按 minHeight 推算，统一夹在 2–3 行）。 */
+  numberOfLines?: number
 }) {
+  const multilineHeight = minHeight ?? MULTILINE_MAX_LINES * MULTILINE_LINE_HEIGHT
   return (
     <View style={styles.fieldGroup}>
       {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
@@ -186,7 +206,8 @@ export function TextField({
         multiline={multiline}
         autoFocus={autoFocus}
         maxLength={maxLength}
-        style={[styles.input, multiline && { minHeight: minHeight ?? 96, textAlignVertical: 'top', paddingTop: 12 }]}
+        numberOfLines={multiline ? (numberOfLines ?? multilineLinesFor(multilineHeight)) : undefined}
+        style={[styles.input, multiline && { minHeight: multilineHeight, textAlignVertical: 'top', paddingTop: 12 }]}
       />
     </View>
   )

@@ -435,6 +435,7 @@ export default function RecordScreen() {
             placeholder="如：夜景超美，适合拍照，人均也不贵…"
             multiline
             minHeight={80}
+            numberOfLines={3}
           />
         </View>
       </Card>

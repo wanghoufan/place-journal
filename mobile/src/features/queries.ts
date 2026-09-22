@@ -382,6 +382,49 @@ export function filterEntriesByAnyTag(entries: GalleryEntry[], tagIds: string[])
 }
 
 /**
+ * 记录集合指纹（TASK-UX-01 第 4 项）：覆盖渲染会读到的全部字段。
+ *
+ * 用途：页面每次 focus 都会重查一次 SQLite，重查必然造出全新的对象数组，
+ * 卡片 `memo` 因此全部失效、切 Tab 回来整列表重渲染。拿指纹先比一次，
+ * 内容没变就保留旧引用（`setState` 直接跳过），memo 才真正省下重渲染。
+ */
+export function entriesSignature(entries: GalleryEntry[]): string {
+  return entries
+    .map((e) =>
+      [
+        e.id,
+        e.placeId,
+        e.placeName,
+        e.placeArea ?? '',
+        e.visitDate,
+        e.rating ?? '',
+        e.budget ?? '',
+        e.notePrivate ?? '',
+        e.notePublic ?? '',
+        e.summary ?? '',
+        e.coverThumbPath ?? '',
+        e.mediaCount,
+        e.syncStatus,
+        e.revision,
+        e.updatedAt,
+        e.tagIds.join(','),
+      ].join('\u0001'),
+    )
+    .join('\u0002')
+}
+
+/** 标签树指纹（维度 + 标签 + 引用次数），口径同 `entriesSignature`。 */
+export function tagGroupsSignature(groups: TagGroup[]): string {
+  return groups
+    .map(
+      (g) =>
+        `${g.dimension.id}:${g.dimension.name}:${g.dimension.kind}:${g.dimension.sortOrder}` +
+        `|${g.tags.map((t) => `${t.id}:${t.name}:${t.parentId ?? ''}:${t.sortOrder}:${t.usage}`).join(',')}`,
+    )
+    .join(';')
+}
+
+/**
  * 按地点聚合记录（Gallery「按地点」视图 / Find 画廊视图的数据源）。
  * 组内按到访日期倒序；组间按最近一次到访倒序；无记录的地点不出现。
  */

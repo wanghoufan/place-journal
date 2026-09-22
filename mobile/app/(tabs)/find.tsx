@@ -3,21 +3,41 @@
 //   - 自然语言（预算 / N 星以上 / 标签名）走 `parseQuery`，与结构化 chips 叠加；
 //   - 命中按地点聚合（量词＝私藏地点数），点结果进地点页；全部本地过滤。
 // 配色随主题。
+//
+// 性能（TASK-UX-01 第 4 项）：列表补 flex 边界 + 窗口化调参；行/卡 `memo` 且回调只传 id，
+// 图片带 `recyclingKey`/`cachePolicy`，避免切 Tab 回来整列表重渲染 + 重新解码。
 
-import { useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
 import { router, useFocusEffect } from 'expo-router'
 
 import { getAppRepository } from '@/db/app'
 import { AppButton, Chip, EmptyState, ErrorState, LoadingState, Sheet, Stars, TextField } from '@/components/ui'
-import { listGalleryEntries, listTagsGrouped, ratingTierCounts, type GalleryEntry, type TagGroup } from '@/features/queries'
+import {
+  entriesSignature,
+  listGalleryEntries,
+  listTagsGrouped,
+  ratingTierCounts,
+  tagGroupsSignature,
+  type GalleryEntry,
+  type TagGroup,
+} from '@/features/queries'
 import { flattenTags, matchEntries, parseQuery, type Hit } from '@/features/search'
 import { createListShare } from '@/features/shares'
 import { useTheme } from '@/themeProvider'
 import type { Palette } from '@/theme'
 
 type ViewMode = 'list' | 'gallery'
+
+/** 结果列表窗口化调参（默认 windowSize 21 = 21 屏，配合图片解码明显吃内存/掉帧）。 */
+const RESULT_LIST_TUNING = {
+  initialNumToRender: 8,
+  maxToRenderPerBatch: 8,
+  windowSize: 5,
+  removeClippedSubviews: true,
+  updateCellsBatchingPeriod: 50,
+} as const
 
 export default function FindScreen() {
   const { palette } = useTheme()
@@ -37,11 +57,24 @@ export default function FindScreen() {
   const [listTitle, setListTitle] = useState('')
   const [message, setMessage] = useState('')
 
+  // 同画廊：focus 重查内容未变就保留旧引用，行/卡 memo 才真正生效。
+  const signatureRef = useRef({ entries: '', tagGroups: '' })
+
   const load = useCallback(() => {
     try {
       const { db } = getAppRepository()
-      setEntries(listGalleryEntries(db))
-      setTagGroups(listTagsGrouped(db))
+      const nextEntries = listGalleryEntries(db)
+      const entriesSig = entriesSignature(nextEntries)
+      if (entriesSig !== signatureRef.current.entries) {
+        signatureRef.current.entries = entriesSig
+        setEntries(nextEntries)
+      }
+      const nextTagGroups = listTagsGrouped(db)
+      const tagGroupsSig = tagGroupsSignature(nextTagGroups)
+      if (tagGroupsSig !== signatureRef.current.tagGroups) {
+        signatureRef.current.tagGroups = tagGroupsSig
+        setTagGroups(nextTagGroups)
+      }
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -102,11 +135,34 @@ export default function FindScreen() {
     [parsed, tagNameOf],
   )
 
-  const toggleTag = (id: string) =>
-    setPickedTags((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
+  const toggleTag = useCallback(
+    (id: string) => setPickedTags((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id])),
+    [],
+  )
 
-  const togglePicked = (placeId: string) =>
-    setPicked((ids) => (ids.includes(placeId) ? ids.filter((x) => x !== placeId) : [...ids, placeId]))
+  const togglePicked = useCallback(
+    (placeId: string) => setPicked((ids) => (ids.includes(placeId) ? ids.filter((x) => x !== placeId) : [...ids, placeId])),
+    [],
+  )
+
+  // 回调只带 id 且用 useCallback 固化：行/卡 `memo` 才有意义。
+  const openPlace = useCallback((placeId: string) => router.push(`/place/${placeId}`), [])
+  const renderHitRow = useCallback(
+    ({ item }: { item: Hit }) => (
+      <HitRow
+        hit={item}
+        styles={styles}
+        picked={picked.includes(item.placeId)}
+        onOpen={openPlace}
+        onToggle={togglePicked}
+      />
+    ),
+    [styles, picked, openPlace],
+  )
+  const renderHitCard = useCallback(
+    ({ item }: { item: Hit }) => <HitCard hit={item} styles={styles} onPress={openPlace} />,
+    [styles, openPlace],
+  )
 
   const makeList = useCallback(() => {
     try {
@@ -185,6 +241,7 @@ export default function FindScreen() {
           data={hits}
           keyExtractor={(item) => item.placeId}
           contentContainerStyle={styles.container}
+          style={styles.listFlex}
           ListHeaderComponent={header}
           ListEmptyComponent={<EmptyState icon="🔍" title="没有符合条件的地点" hint="换个说法，或清空筛选试试。" />}
           ListFooterComponent={
@@ -192,15 +249,8 @@ export default function FindScreen() {
               <AppButton label={`🌿 用选中的 ${picked.length} 个地点建清单`} onPress={() => setListOpen(true)} />
             ) : null
           }
-          renderItem={({ item }) => (
-            <HitRow
-              hit={item}
-              styles={styles}
-              picked={picked.includes(item.placeId)}
-              onOpen={() => router.push(`/place/${item.placeId}`)}
-              onToggle={() => togglePicked(item.placeId)}
-            />
-          )}
+          renderItem={renderHitRow}
+          {...RESULT_LIST_TUNING}
         />
       ) : (
         <FlatList
@@ -209,11 +259,11 @@ export default function FindScreen() {
           numColumns={2}
           columnWrapperStyle={styles.gridRow}
           contentContainerStyle={styles.container}
+          style={styles.listFlex}
           ListHeaderComponent={header}
           ListEmptyComponent={<EmptyState icon="🔍" title="没有符合条件的地点" hint="换个说法，或清空筛选试试。" />}
-          renderItem={({ item }) => (
-            <HitCard hit={item} styles={styles} onPress={() => router.push(`/place/${item.placeId}`)} />
-          )}
+          renderItem={renderHitCard}
+          {...RESULT_LIST_TUNING}
         />
       )}
 
@@ -245,7 +295,7 @@ export default function FindScreen() {
   )
 }
 
-function HitRow({
+const HitRow = memo(function HitRow({
   hit,
   styles,
   picked,
@@ -255,12 +305,12 @@ function HitRow({
   hit: Hit
   styles: ReturnType<typeof makeStyles>
   picked: boolean
-  onOpen: () => void
-  onToggle: () => void
+  onOpen: (placeId: string) => void
+  onToggle: (placeId: string) => void
 }) {
   return (
     <View style={[styles.resultCard, picked && styles.resultCardPicked]}>
-      <Pressable accessibilityRole="button" onPress={onOpen} style={styles.resultMain}>
+      <Pressable accessibilityRole="button" onPress={() => onOpen(hit.placeId)} style={styles.resultMain}>
         <Thumb hit={hit} styles={styles} size="row" />
         <View style={styles.resultBody}>
           <Text style={styles.placeName} numberOfLines={1}>
@@ -277,7 +327,7 @@ function HitRow({
         accessibilityRole="button"
         accessibilityLabel="选择"
         accessibilityState={{ selected: picked }}
-        onPress={onToggle}
+        onPress={() => onToggle(hit.placeId)}
         hitSlop={6}
         style={[styles.check, picked && styles.checkOn]}
       >
@@ -285,22 +335,22 @@ function HitRow({
       </Pressable>
     </View>
   )
-}
+})
 
-function HitCard({
+const HitCard = memo(function HitCard({
   hit,
   styles,
   onPress,
 }: {
   hit: Hit
   styles: ReturnType<typeof makeStyles>
-  onPress: () => void
+  onPress: (placeId: string) => void
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       style={({ pressed }) => [styles.gridCard, pressed && styles.pressed]}
-      onPress={onPress}
+      onPress={() => onPress(hit.placeId)}
     >
       <Thumb hit={hit} styles={styles} size="grid" />
       <View style={styles.gridBody}>
@@ -311,7 +361,7 @@ function HitCard({
       </View>
     </Pressable>
   )
-}
+})
 
 function Thumb({
   hit,
@@ -324,7 +374,15 @@ function Thumb({
 }) {
   const style = size === 'row' ? styles.thumb : styles.gridThumb
   if (hit.best.coverThumbPath) {
-    return <Image source={{ uri: hit.best.coverThumbPath }} style={style} contentFit="cover" />
+    return (
+      <Image
+        source={{ uri: hit.best.coverThumbPath }}
+        style={style}
+        contentFit="cover"
+        recyclingKey={hit.placeId}
+        cachePolicy="memory-disk"
+      />
+    )
   }
   return (
     <View style={[style, styles.thumbEmpty]}>
@@ -347,6 +405,8 @@ function makeStyles(c: Palette) {
 function buildStyles(c: Palette) {
   return StyleSheet.create({
     flex: { flex: 1, backgroundColor: c.paper },
+    // 列表要有边界，否则 Yoga 按整份结果高度参与列布局（慢且会挤压上方筛选区）。
+    listFlex: { flex: 1 },
     container: { padding: 16, gap: 12, paddingBottom: 96 },
     gridRow: { gap: 12 },
     filters: { gap: 10 },

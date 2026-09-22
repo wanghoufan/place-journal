@@ -357,6 +357,7 @@ export default function AiConfirmScreen() {
               placeholder="写给朋友看的 2-3 句，可随意改；留空则分享时不展示"
               multiline
               minHeight={80}
+              numberOfLines={3}
             />
             <Text style={styles.muted}>记录页没填的话，这里预填的是 AI 按你的感受总结的版本；两块互不混淆。</Text>
           </Card>

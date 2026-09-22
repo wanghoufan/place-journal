@@ -8,7 +8,7 @@ import type { ReactTestRendererJSON } from 'react-test-renderer'
 import type { ComponentProps } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
 
-import { AppButton, InlineTagCreator } from '../ui'
+import { AppButton, InlineTagCreator, MULTILINE_LINE_HEIGHT, TextField, multilineLinesFor } from '../ui'
 import { colors } from '../../theme'
 
 type Node = ReactTestRendererJSON
@@ -127,8 +127,7 @@ function createButton(renderer: TestRenderer.ReactTestRenderer) {
   return node
 }
 
-describe('InlineTagCreator 现场建标签', () => {
-  it('空输入时「新建」按钮禁用，且带可访问标签的输入框在位', () => {
+describe('InlineTagCreator 现场建标签', () => {  it('空输入时「新建」按钮禁用，且带可访问标签的输入框在位', () => {
     const renderer = renderTagCreator(() => {})
     const json = renderer.toJSON() as Node
     const input = [json, ...descendants(json)].find((n) => n.props.accessibilityLabel === '现场建标签')
@@ -155,5 +154,56 @@ describe('InlineTagCreator 现场建标签', () => {
     TestRenderer.act(() => renderer.update(<InlineTagCreator busy onCreate={() => {}} />))
     expect(createButton(renderer).props.accessibilityState?.disabled).toBe(true)
     TestRenderer.act(() => renderer.unmount())
+  })
+})
+
+// 多行输入框（TASK-UX-01 第 1 项）：公开分享理由曾只显示一行。
+// 双保险：minHeight 交 Yoga 撑高，numberOfLines 让 Android 原生 EditText 自己按行数保底。
+function renderField(props: Partial<ComponentProps<typeof TextField>> = {}) {
+  let renderer: TestRenderer.ReactTestRenderer | null = null
+  TestRenderer.act(() => {
+    renderer = TestRenderer.create(<TextField value="" onChangeText={() => {}} {...props} />)
+  })
+  const r = renderer as unknown as TestRenderer.ReactTestRenderer
+  return { renderer: r, input: r.root.findAllByType(TextInput)[0] }
+}
+
+describe('TextField 多行高度', () => {
+  it('公开理由口径（minHeight 80）至少 2 行，且带 numberOfLines 原生保底', () => {
+    const { renderer, input } = renderField({ multiline: true, minHeight: 80, numberOfLines: 3 })
+    const style = StyleSheet.flatten(input.props.style) as Record<string, unknown>
+    expect(input.props.multiline).toBe(true)
+    expect(style.minHeight).toBe(80)
+    expect(style.minHeight as number).toBeGreaterThanOrEqual(2 * MULTILINE_LINE_HEIGHT)
+    expect(input.props.numberOfLines).toBe(3)
+    expect(style.textAlignVertical).toBe('top')
+    TestRenderer.act(() => renderer.unmount())
+  })
+
+  it('单行输入框不传 numberOfLines（不影响普通字段）', () => {
+    const { renderer, input } = renderField({ value: '海口' })
+    expect(input.props.multiline).toBe(false)
+    expect(input.props.numberOfLines).toBeUndefined()
+    TestRenderer.act(() => renderer.unmount())
+  })
+
+  it('multilineLinesFor 按 minHeight 换算，统一夹在 2–3 行（上限 3 行）', () => {
+    expect(multilineLinesFor(10)).toBe(2) // 下限：空值不塌成一行
+    expect(multilineLinesFor(42)).toBe(2)
+    expect(multilineLinesFor(63)).toBe(3)
+    expect(multilineLinesFor(80)).toBe(3) // 曾按 80/21≈4 行偏高
+    expect(multilineLinesFor(120)).toBe(3) // 默认 96→5 行口径收敛到 3 行
+  })
+
+  it('未显式给 numberOfLines 时按 minHeight 推算（空值也不塌成一行，且不超过 3 行）', () => {
+    const { renderer, input } = renderField({ multiline: true, minHeight: 120 })
+    expect(input.props.numberOfLines).toBe(multilineLinesFor(120))
+    expect(input.props.numberOfLines as number).toBeGreaterThanOrEqual(2)
+    TestRenderer.act(() => renderer.unmount())
+
+    // 不传 minHeight 的通用兜底同样封在 3 行（旧的 96→5 行口径已收敛）。
+    const fallback = renderField({ multiline: true })
+    expect(fallback.input.props.numberOfLines).toBe(3)
+    TestRenderer.act(() => fallback.renderer.unmount())
   })
 })
