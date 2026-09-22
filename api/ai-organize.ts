@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify({ model: p.model, messages, temperature: 0.2, response_format: { type: 'json_object' } }),
         signal: ctl.signal,
       })
-      if (!r.ok) { lastErr = `${p.name} HTTP ${r.status}`; continue }
+      if (!r.ok) { const t = await r.text().catch(() => ''); lastErr = `${lastErr ? lastErr + '; ' : ''}${p.name} HTTP ${r.status} ${t.slice(0, 200)}`; continue }
       const j = await r.json()
       const text: string = j?.choices?.[0]?.message?.content ?? ''
       const jsonText = text.replace(/^```(?:json)?/m, '').replace(/```$/m, '').trim()
