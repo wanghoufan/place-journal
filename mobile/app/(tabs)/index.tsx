@@ -9,6 +9,12 @@
 //     也会把上方的 chips 行挤到重叠（见 `galleryLayout.ts` 的 chipScroll 注释）；
 //   - 卡片 `memo` + 回调 `useCallback` 且只传 id，避免父级任何一次 setState 都把已挂载卡片全量重渲染；
 //   - FlatList 窗口化调参 + `removeClippedSubviews`，图片 `recyclingKey`/`cachePolicy` 让 Android 复用视图与磁盘缓存。
+//
+// 顶栏跟随滚动（TASK-UX-02）：标题/场景 chips/浏览·布局切换整块挂到 `ListHeaderComponent`，
+//   - 上滑时顶栏随内容一起滚出视野，下拉回到顶，把竖向空间全留给图片；
+//   - 不做吸顶（不用 `stickyHeaderIndices`），顶栏是普通列表头；
+//   - 空态/错误态走 ScrollView 同款结构，保证两种状态下顶栏位置一致；
+//   - 切单双栏/筛选只改数据与 `key`，顶栏节点本身不搬家，状态照旧生效（切布局会重挂列表 → 回到顶部）。
 
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -34,6 +40,7 @@ import {
   galleryListKey,
   galleryListTuning,
   GALLERY_LAYOUTS,
+  GALLERY_LIST_PADDING,
   loadGalleryLayout,
   parseGalleryLayout,
   saveGalleryLayout,
@@ -158,103 +165,128 @@ export default function GalleryScreen() {
     [layout, openPlace],
   )
 
+  // 顶栏整块（标题 + 场景 chips + 浏览/布局）＝列表的 Header：随列表一起滚走，不吸顶。
+  // 元素按依赖重算即可（无内部状态，重算只重建轻量 JSX，卡片 memo 不受影响）。
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.headerBlock}>
+        <View style={styles.topBar}>
+          <Text style={styles.topText}>
+            {sceneId || filtered.length !== entries.length
+              ? `共 ${filtered.length} / ${entries.length} 条记录`
+              : `共 ${entries.length} 条记录`}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/tags')}
+            style={styles.tagsButton}
+            hitSlop={8}
+          >
+            <Text style={styles.tagsButtonText}>🏷 标签</Text>
+          </Pressable>
+        </View>
+
+        {sceneTags.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            style={styles.chipScroll}
+          >
+            {sceneTags.map((tag) => {
+              const active = sceneId === tag.id
+              return (
+                <Pressable
+                  key={tag.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => toggleScene(tag.id)}
+                  style={[styles.chip, active && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {sceneEmoji(tag.name)} {tag.name}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </ScrollView>
+        ) : null}
+
+        {/* 浏览 / 布局两组合并成一行，放不下就整组换行 —— 不叠不挤。 */}
+        <View style={styles.viewRow}>
+          <View style={styles.viewGroup}>
+            <Text style={styles.viewLabel}>浏览：</Text>
+            {(['entry', 'place'] as ViewMode[]).map((m) => (
+              <Pressable
+                key={m}
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === m }}
+                onPress={() => setMode(m)}
+                style={[styles.chip, mode === m && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, mode === m && styles.chipTextActive]}>
+                  {m === 'entry' ? '按记录' : '按地点'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.viewGroup}>
+            <Text style={styles.viewLabel}>布局：</Text>
+            {GALLERY_LAYOUTS.map((item) => (
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityLabel={item.id === 'grid' ? '双栏网格' : '单栏清单'}
+                accessibilityState={{ selected: layout === item.id }}
+                onPress={() => changeLayout(item.id)}
+                style={[styles.chip, layout === item.id && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, layout === item.id && styles.chipTextActive]}>
+                  {item.icon} {item.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </View>
+    ),
+    [sceneTags, sceneId, toggleScene, mode, layout, changeLayout, entries.length, filtered.length, styles],
+  )
+
   if (loading) return <LoadingState text="正在读取本机记录…" />
 
   const tuning = galleryListTuning(layout)
 
+  // 空态/错误态没有可滚的列表数据，但顶栏同样挂在滚动容器里，位置与列表态一致。
+  if (error || filtered.length === 0) {
+    return (
+      <ScrollView style={styles.flex} contentContainerStyle={[styles.list, styles.stateContent]}>
+        {listHeader}
+        {error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : (
+          <EmptyState
+            icon="📍"
+            title="还没有记录"
+            hint="点底部「记录」拍下第一个地方吧。"
+            actionLabel="去记录"
+            onAction={() => router.push('/record')}
+          />
+        )}
+      </ScrollView>
+    )
+  }
+
   return (
     <View style={styles.flex}>
-      <View style={styles.topBar}>
-        <Text style={styles.topText}>
-          {sceneId || filtered.length !== entries.length
-            ? `共 ${filtered.length} / ${entries.length} 条记录`
-            : `共 ${entries.length} 条记录`}
-        </Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/tags')} style={styles.tagsButton} hitSlop={8}>
-          <Text style={styles.tagsButtonText}>🏷 标签</Text>
-        </Pressable>
-      </View>
-
-      {sceneTags.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          style={styles.chipScroll}
-        >
-          {sceneTags.map((tag) => {
-            const active = sceneId === tag.id
-            return (
-              <Pressable
-                key={tag.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => toggleScene(tag.id)}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {sceneEmoji(tag.name)} {tag.name}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </ScrollView>
-      ) : null}
-
-      {/* 浏览 / 布局两组合并成一行，放不下就整组换行 —— 不叠不挤。 */}
-      <View style={styles.viewRow}>
-        <View style={styles.viewGroup}>
-          <Text style={styles.viewLabel}>浏览：</Text>
-          {(['entry', 'place'] as ViewMode[]).map((m) => (
-            <Pressable
-              key={m}
-              accessibilityRole="button"
-              accessibilityState={{ selected: mode === m }}
-              onPress={() => setMode(m)}
-              style={[styles.chip, mode === m && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, mode === m && styles.chipTextActive]}>
-                {m === 'entry' ? '按记录' : '按地点'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.viewGroup}>
-          <Text style={styles.viewLabel}>布局：</Text>
-          {GALLERY_LAYOUTS.map((item) => (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              accessibilityLabel={item.id === 'grid' ? '双栏网格' : '单栏清单'}
-              accessibilityState={{ selected: layout === item.id }}
-              onPress={() => changeLayout(item.id)}
-              style={[styles.chip, layout === item.id && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, layout === item.id && styles.chipTextActive]}>
-                {item.icon} {item.name}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {error ? (
-        <ErrorState message={error} onRetry={load} />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon="📍"
-          title="还没有记录"
-          hint="点底部「记录」拍下第一个地方吧。"
-          actionLabel="去记录"
-          onAction={() => router.push('/record')}
-        />
-      ) : mode === 'entry' ? (
+      {mode === 'entry' ? (
         <FlatList
           // numColumns 不支持热切换：换布局必须换 key 强制重挂（RN 硬性要求）。
           key={galleryListKey('entry', layout)}
           data={filtered}
           keyExtractor={entryKeyOf}
           renderItem={renderEntry}
+          ListHeaderComponent={listHeader}
           numColumns={tuning.numColumns}
           columnWrapperStyle={layout === 'grid' ? styles.row : undefined}
           initialNumToRender={tuning.initialNumToRender}
@@ -271,6 +303,7 @@ export default function GalleryScreen() {
           data={placeGroups}
           keyExtractor={placeKeyOf}
           renderItem={renderPlace}
+          ListHeaderComponent={listHeader}
           numColumns={tuning.numColumns}
           columnWrapperStyle={layout === 'grid' ? styles.row : undefined}
           initialNumToRender={tuning.initialNumToRender}
@@ -536,6 +569,10 @@ function makeStyles(c: Palette) {
 function buildStyles(c: Palette) {
   return StyleSheet.create({
     flex: { flex: 1, backgroundColor: c.paper },
+    // 顶栏挂在列表 Header 里（TASK-UX-02）：用负 margin 抵掉列表左右内衬 12，
+    // 顶栏各行仍按自己的 paddingHorizontal 16 对齐屏幕边缘（几何与改造前一致，
+    // chips 横向也能滚到屏幕最边）。
+    headerBlock: { marginHorizontal: -GALLERY_LIST_PADDING },
     topBar: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -549,6 +586,7 @@ function buildStyles(c: Palette) {
     tagsButtonText: { fontSize: 13, fontWeight: '700', color: c.ink },
     // flexShrink: 0 + 高度下限：横向 ScrollView 自带 flexShrink: 1，不锁死会被挤到
     // 内容高度以下，chips 直接盖住下方浏览行（本次重叠的根因，见 galleryLayout.ts）。
+    // 顶栏进列表 Header 后这层保险留着无副作用（Header 单元格是自动高度）。
     chipScroll: { ...galleryChipScrollStyle },
     chipRow: { gap: 8, paddingHorizontal: 16, paddingVertical: 6 },
     chip: {
@@ -580,7 +618,11 @@ function buildStyles(c: Palette) {
     viewLabel: { fontSize: 13, color: c.inkMuted },
     // 列表要有边界：无 flex 时 Yoga 按整份内容高度参与列布局，既慢又会挤压上方行。
     listFlex: { flex: 1 },
-    list: { padding: 12, gap: 12 },
+    // paddingTop 归零：顶栏是列表第一个孩子，顶部留白交给 topBar 自己的 paddingTop 12
+    // （保留 12 会在顶栏上方多出一段空白，且与改造前的观感不一致）。
+    list: { padding: GALLERY_LIST_PADDING, paddingTop: 0, gap: 12 },
+    // 空态/错误态的滚动容器：撑满余下高度，滚动观感与列表态统一。
+    stateContent: { flexGrow: 1 },
     row: { gap: 12 },
     card: {
       flex: 1,

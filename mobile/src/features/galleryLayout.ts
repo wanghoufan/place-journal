@@ -57,6 +57,14 @@ export const galleryChipScrollStyle = {
   minHeight: GALLERY_CHIP_ROW_HEIGHT,
 } as const
 
+/**
+ * 画廊列表 `contentContainerStyle` 的左右内衬（空态滚动容器同口径）。
+ *
+ * 顶栏（TASK-UX-02）已挂进列表 Header，要整幅贴边：用 `marginHorizontal: -GALLERY_LIST_PADDING`
+ * 抵掉这层内衬，顶栏各行的 `paddingHorizontal: 16` 才对得齐屏幕边缘、chips 才能滚到最边。
+ */
+export const GALLERY_LIST_PADDING = 12
+
 /** FlatList 窗口化调参（默认 windowSize 21 = 21 屏，配合图片解码明显吃内存/掉帧）。 */
 export interface GalleryListTuning {
   numColumns: number
