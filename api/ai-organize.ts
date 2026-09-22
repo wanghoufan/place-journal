@@ -72,10 +72,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (remain < 1000) { lastErr = `${lastErr ? lastErr + '; ' : ''}deadline reached`; break }
     const ctl = new AbortController()
     const timer = setTimeout(() => ctl.abort(), Math.min(UPSTREAM_TIMEOUT_MS, remain))
-    try {
+    // OpenCode Go 要求：自报家门 UA＋每会话稳定的 x-opencode-session（见 https://opencode.ai/docs/go/），否则 400 MissingSessionID。
+  const extraHeaders: Record<string, string> =
+    p.name === 'opencode' ? { 'User-Agent': 'place-journal/1.0', 'x-opencode-session': 'place-journal-ai' } : {}
+  try {
       const r = await fetch(p.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}`, ...extraHeaders },
         body: JSON.stringify({ model: p.model, messages, temperature: 0.2, response_format: { type: 'json_object' } }),
         signal: ctl.signal,
       })
