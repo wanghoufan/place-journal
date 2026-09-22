@@ -28,7 +28,7 @@ import { appVersionLabel, formatDateTime } from '@/features/format'
 import { readExportBundle, toExportCsv, toExportJson, type ExportFile } from '@/features/export'
 import { shareExportFile } from '@/features/exportFile'
 import { probeAiConfig, testAiConnectivity } from '@/features/aiProbe'
-import { APP_THEMES, type AppTheme, type Palette } from '@/theme'
+import { APP_THEMES, colors, type AppTheme, type Palette } from '@/theme'
 import { useTheme } from '@/themeProvider'
 
 export default function MineScreen() {

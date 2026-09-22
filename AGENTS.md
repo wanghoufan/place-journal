@@ -108,6 +108,7 @@ Node: `/Users/zzymima0000/.workbuddy/binaries/node/versions/22.22.2-3/bin/node`�
 - 已完成（2026-09-07）：M0–M6 + 主题系统 + 分享长图/卡片图 + 标签真删 + Find 分离；S1（`20260903141849`）/S2/L2_PASS/TAG_FIX_PASS/QA_V02_PASS/QA_Vercel_PASS_WITH_BLOCKED；ENV-1 已关闭；ASR 真转写曾PASS后整条下线（改走微信语音输入）；AI（`glm-5.3-flash`，12s 降级保留）全通；Docker 8081 已上线（healthy）；Vercel 生产 `https://place-journal-xi.vercel.app` 已上线+验收；09-06/07 七批：灯箱相册＋换设备远端图根治＋同步可靠性（锁超时/毒丸停放/推拉解耦/结果可视化）＋地点改名/搬家（QA第二轮P1_PASS）＋感受与公开理由分框＋Cover自适应铺满＋AI连通性测试；封面OCR曾上线后因GLM单次8–17s整条下线（该快照当时 HEAD=origin/master=`d1b2e4b`，2026-09-07 验证；此值已过时，现役 HEAD 一律以 `git log` 为准）。09-20：TASK-DEV-14（首次绑定确认UI＋退出/文案/mismatch；回归260全绿＋真机①②③PASS，mismatch端到端记边界）＋TASK-DEV-15（双机分发）＋TASK-PWA-01（PWA-AI三件套：洗感受/筛标签/公开理由，summary退役）收工；均未 commit/push。
 - 待办：T062 收口判定（绑定/退出两项真机已PASS，mismatch端到端因同步引擎未接线记边界）；之后 P2-1/P2-2/P2-3、AI 真整理、分享真云发布；高德 Key 联调（Vercel/8081 两端补变量）；历史验收标签清理待示下；QA第二轮 P2/P3-2 重跑；L3 并发验收仍取消，但双端日常使用已成主要场景。
 - 硬守则：未明确确认禁 `git commit/push`（push 二次确认）；未授权禁动 `Services/`/`DockerData/`/`DockerBackups`；`VITE_*` 改动必重建镜像；密钥只进 `.env.local` / Vercel 变量。
-- 硬守则（2026-09-20 用户令，E-002）：修完默认推＋发（commit＋push＋Vercel 发版），亲自线上＋真机实测刚改功能，有问题迭代至解决；用户验收仍有问题时不算完工。（与上方禁commit条并存：无当次明确指令默认禁，有明确修完即推令则按E-002执行。）
+- 硬守则（2026-09-20 用户令，E-002）：修完默认推＋发（commit＋push＋Vercel 发版），亲自线上＋真机实测刚改功能，有问题迭代至解决；用户验收仍有问题时不算完工。
+- 硬守则（2026-09-21 用户令）：需用户填 Key 时，先给准确匹配的官方获取链接；建完整配置文档、该填的全填好，只空 Key；Key 字段放文档最底部加一眼可见标记；打开文档让用户填存，不让用户到处找。（与上方禁commit条并存：无当次明确指令默认禁，有明确修完即推令则按E-002执行。）
 
 **恢复必读**：`docs/handoff/HANDOFF.md` §0 → `README.md` → `docs/V1_PRODUCT_AND_TECHNICAL_PLAN.md` → `.workbuddy/memory/2026-09-05.md`（09-05 全日总结；09-03/09-01 为历史）
