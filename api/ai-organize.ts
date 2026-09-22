@@ -79,7 +79,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const r = await fetch(p.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}`, ...extraHeaders },
-        body: JSON.stringify({ model: p.model, messages, temperature: 0.2, response_format: { type: 'json_object' } }),
+        body: JSON.stringify({ model: p.model, messages, temperature: 0.2, response_format: { type: 'json_object' },
+          // DeepSeek V4 默认思考模式（high）慢且贵，结构化整理不需要推理，直接关（官方 thinking.type=disabled）
+          ...(p.name === 'deepseek' ? { thinking: { type: 'disabled' } } : {}),
+        }),
         signal: ctl.signal,
       })
       if (!r.ok) { const t = await r.text().catch(() => ''); lastErr = `${lastErr ? lastErr + '; ' : ''}${p.name} HTTP ${r.status} ${t.slice(0, 200)}`; continue }
